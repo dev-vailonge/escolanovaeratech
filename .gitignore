@@ -37,5 +37,6 @@ next-env.d.ts
 .vscode/
 .idea/
 
-# logs
+# Logs
+logs
 *.log 

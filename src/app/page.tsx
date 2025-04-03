@@ -3,18 +3,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
-import {
-  CodeBracketIcon,
-  LightBulbIcon,
-  RocketLaunchIcon,
-  CommandLineIcon,
-  GlobeAltIcon,
-  UserGroupIcon,
-  SparklesIcon,
-  ChartBarIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon
-} from '@heroicons/react/24/outline'
 
 export default function Home() {
   const [email, setEmail] = useState('')
@@ -44,16 +32,8 @@ export default function Home() {
       const formData = {
         email: email.toLowerCase().trim(),
         name: name.trim(),
-      }
-
-      // Add phone if it exists (no validation)
-      if (phone.trim()) {
-        Object.assign(formData, { phone: phone.trim() })
-      }
-
-      // Add source if it exists
-      if (source) {
-        Object.assign(formData, { source })
+        phone: phone.trim() || undefined,
+        source: source || undefined
       }
 
       const { error: supabaseError } = await supabase
@@ -82,58 +62,43 @@ export default function Home() {
     setPhone(e.target.value)
   }
 
-  const keywords = [
-    { icon: CommandLineIcon, text: 'Código' },
-    { icon: GlobeAltIcon, text: 'Remoto' },
-    { icon: UserGroupIcon, text: 'Comunidade' },
-    { icon: SparklesIcon, text: 'Futuro' },
-    { icon: ChartBarIcon, text: 'Carreira' },
-    { icon: RocketLaunchIcon, text: 'Liberdade' },
-  ]
-
   const courses = [
     {
       type: 'SaaS',
       title: 'MVP - Espresso',
       description: 'Lance suas ideias no mercado em poucos dias com um template pronto para você.',
       image: '/images/mvp.png',
-      isAvailable: true,
-      link: 'https://www.mvpespresso.dev/'
+      isAvailable: true
     },
     {
       type: 'Programação',
       title: 'Lógica de Programação',
       description: 'Aprenda a programar do absuluto zero com exemplos práticos e exercídios de fixação.',
       image: '/images/tech.png',
-      isAvailable: false,
-      link: 'https://logica.escolanovaeratech.com.br'
+      isAvailable: true
     },
     {
       type: 'Programação',
       title: 'Mobile',
       description: 'Desenvolva apps para Android e iOS com Kotlin Multiplatform Mobile.',
       image: '/images/mobile.png',
-      isAvailable: false,
-      link: ''
+      isAvailable: false
     },
     {
       type: 'Programação',
       title: 'Web',
       description: 'Aprenda os fundamentos da web com HTML, CSS e JavaScript.',
       image: '/images/web.png',
-      isAvailable: false,
-      link: ''
+      isAvailable: false
     }
   ]
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <main className="min-h-screen bg-black">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-sm border-b border-white/10">
-        <nav className="container mx-auto px-4 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <h1 className="text-2xl font-bold">Nova Era</h1>
-          </div>
+        <nav className="container mx-auto px-4 py-4">
+          <h1 className="text-2xl font-bold text-white">Nova Era</h1>
         </nav>
       </header>
 
@@ -142,24 +107,24 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Left side - Content */}
-            <div className="text-left">
-              <motion.h1 
+            <div className="space-y-6">
+              <motion.h2 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-5xl md:text-7xl font-bold mb-6 leading-tight"
+                className="text-4xl md:text-6xl font-bold text-white leading-tight"
               >
                 Uma nova era na programação.
-              </motion.h1>
+              </motion.h2>
               <motion.p 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="text-xl text-gray-400 mb-12"
+                className="text-xl text-gray-400"
               >
                 Em breve lançaremos nosso primeiro curso de lógica de programação{' '}
                 <span className="relative inline-block">
                   <span className="relative z-10">100% grátis por tempo limitado</span>
-                  <span className="absolute -bottom-1 left-0 w-full h-1 bg-[#FFD700] opacity-100"></span>
+                  <span className="absolute -bottom-1 left-0 w-full h-1 bg-yellow-400"></span>
                 </span>
                 .
               </motion.p>
@@ -170,7 +135,7 @@ export default function Home() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4 }}
-              className="bg-[#111111] rounded-3xl p-8 max-w-md"
+              className="bg-zinc-900/50 backdrop-blur-sm rounded-2xl p-8 max-w-md mx-auto w-full border border-white/10"
             >
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
@@ -183,7 +148,7 @@ export default function Home() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Digite seu nome"
-                    className="w-full px-4 py-3 rounded-xl bg-[#1A1A1A] text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[#FFD700]"
+                    className="w-full px-4 py-3 rounded-xl bg-black/50 text-white border border-white/10 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all"
                     required
                     minLength={3}
                   />
@@ -199,9 +164,8 @@ export default function Home() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Digite seu melhor e-mail"
-                    className="w-full px-4 py-3 rounded-xl bg-[#1A1A1A] text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[#FFD700]"
+                    className="w-full px-4 py-3 rounded-xl bg-black/50 text-white border border-white/10 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all"
                     required
-                    pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
                   />
                 </div>
 
@@ -215,28 +179,28 @@ export default function Home() {
                     value={phone}
                     onChange={handlePhoneChange}
                     placeholder="+55 11 98765-4321"
-                    className="w-full px-4 py-3 rounded-xl bg-[#1A1A1A] text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[#FFD700]"
+                    className="w-full px-4 py-3 rounded-xl bg-black/50 text-white border border-white/10 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all"
                   />
-                  <span className="text-xs text-gray-500 mt-1 block">
+                  <p className="mt-2 text-sm text-gray-500">
                     Exemplo: +55 para Brasil, +1 para EUA/Canadá
-                  </span>
+                  </p>
                 </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-yellow-400 text-black font-semibold py-3 px-6 rounded-xl hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:ring-offset-2 focus:ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  {isLoading ? 'Enviando...' : 'Quero ser avisado'}
+                </button>
 
                 {error && (
                   <p className="text-red-400 text-sm text-center">{error}</p>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-[#FFD700] text-black px-6 py-3 rounded-xl font-medium hover:bg-opacity-90 transition-all text-base disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? 'Enviando...' : 'Quero ser avisado'}
-                </button>
-                
                 {success && (
-                  <p className="mt-4 text-green-400 text-sm text-center">
-                    Obrigado! Você foi adicionado à lista de espera.
+                  <p className="text-green-400 text-sm text-center">
+                    Cadastro realizado com sucesso! Em breve você receberá novidades.
                   </p>
                 )}
               </form>
@@ -246,65 +210,55 @@ export default function Home() {
       </section>
 
       {/* Courses Section */}
-      <section className="py-20">
+      <section className="py-20 bg-zinc-900/50">
         <div className="container mx-auto px-4">
-          <div className="flex items-center gap-4 mb-12">
-            <div className="w-1 h-8 bg-[#FFD700]"></div>
-            <h2 className="text-4xl font-bold">Conheça nossos cursos</h2>
-          </div>
+          <h2 className="text-3xl font-bold text-white mb-12">
+            Conheça nossos cursos
+          </h2>
           
-          <div className="relative">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {courses.map((course, index) => (
-                <div key={index} className="bg-black border border-white/10 rounded-lg overflow-hidden group">
-                  <div className="aspect-[4/3] relative overflow-hidden">
-                    <div className="absolute inset-0"></div>
-                    <img 
-                      src={course.image} 
-                      alt={course.title}
-                      className="w-full h-full object-cover"
-                    />
-                    {!course.isAvailable && (
-                      <div className="absolute top-4 right-4">
-                        <span className="bg-[#FFD700] text-black text-xs font-medium px-3 py-1 rounded-full">
-                          Em breve
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-400">{course.type}</span>
-                      {!course.isAvailable && (
-                        <span className="text-[#FFD700] text-sm">Em breve</span>
-                      )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {courses.map((course, index) => (
+              <div key={index} className="bg-black border border-white/10 rounded-lg overflow-hidden group">
+                <div className="aspect-[4/3] relative overflow-hidden">
+                  <div className="absolute inset-0"></div>
+                  <img 
+                    src={course.image} 
+                    alt={course.title}
+                    className="w-full h-full object-cover"
+                  />
+                  {!course.isAvailable && (
+                    <div className="absolute top-4 right-4">
+                      <span className="bg-[#FFD700] text-black text-xs font-medium px-3 py-1 rounded-full">
+                        Em breve
+                      </span>
                     </div>
-                    <h3 className="text-xl font-bold mt-2 mb-3">{course.title}</h3>
-                    <p className="text-gray-400 text-sm mb-6">{course.description}</p>
-                    {course.isAvailable ? (
-                      <a 
-                        href={course.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block w-full px-6 py-3 rounded-full font-medium transition-all bg-[#FFD700] text-black hover:bg-opacity-90 text-center"
-                      >
-                        SAIBA MAIS
-                      </a>
-                    ) : (
-                      <button 
-                        className="w-full px-6 py-3 rounded-full font-medium transition-all bg-white/5 text-white/50 cursor-not-allowed"
-                        disabled
-                      >
-                        EM BREVE
-                      </button>
+                  )}
+                </div>
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-400">{course.type}</span>
+                    {!course.isAvailable && (
+                      <span className="text-[#FFD700] text-sm">Em breve</span>
                     )}
                   </div>
+                  <h3 className="text-xl font-bold mt-2 mb-3">{course.title}</h3>
+                  <p className="text-gray-400 text-sm mb-6">{course.description}</p>
+                  <button 
+                    className={`w-full px-6 py-3 rounded-full font-medium transition-all ${
+                      course.isAvailable 
+                        ? 'bg-[#FFD700] text-black hover:bg-opacity-90' 
+                        : 'bg-white/5 text-white/50 cursor-not-allowed'
+                    }`}
+                    disabled={!course.isAvailable}
+                  >
+                    {course.isAvailable ? 'SAIBA MAIS' : 'EM BREVE'}
+                  </button>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
-    </div>
+    </main>
   )
 }
