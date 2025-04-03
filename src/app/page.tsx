@@ -297,7 +297,7 @@ export default function Home() {
                       <span className="text-[#FFD700] text-sm">Em breve</span>
                     )}
                   </div>
-                  <h3 className="text-xl font-bold mt-2 mb-3">{course.title}</h3>
+                  <h3 className="text-xl font-bold text-white mt-2 mb-3">{course.title}</h3>
                   <p className="text-gray-400 text-sm mb-6">{course.description}</p>
                   <button 
                     className={`w-full px-6 py-3 rounded-full font-medium transition-all ${
