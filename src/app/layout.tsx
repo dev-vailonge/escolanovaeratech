@@ -10,6 +10,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
+      <head>
+        <link rel="icon" href="/images/logo.png" />
+      </head>
       <body className={`${inter.className} antialiased`}>
         {children}
       </body>

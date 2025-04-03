@@ -68,28 +68,32 @@ export default function Home() {
       title: 'MVP - Espresso',
       description: 'Lance suas ideias no mercado em poucos dias com um template pronto para você.',
       image: '/images/mvp.png',
-      isAvailable: true
+      isAvailable: true,
+      link: 'https://www.mvpespresso.dev/'
     },
     {
       type: 'Programação',
       title: 'Lógica de Programação',
       description: 'Aprenda a programar do absuluto zero com exemplos práticos e exercídios de fixação.',
       image: '/images/tech.png',
-      isAvailable: true
+      isAvailable: true,
+      link: '/logica'
     },
     {
       type: 'Programação',
       title: 'Mobile',
       description: 'Desenvolva apps para Android e iOS com Kotlin Multiplatform Mobile.',
       image: '/images/mobile.png',
-      isAvailable: false
+      isAvailable: false,
+      link: ''
     },
     {
       type: 'Programação',
       title: 'Web',
       description: 'Aprenda os fundamentos da web com HTML, CSS e JavaScript.',
       image: '/images/web.png',
-      isAvailable: false
+      isAvailable: false,
+      link: ''
     }
   ]
 
@@ -113,7 +117,7 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 className="text-4xl md:text-6xl font-bold text-white leading-tight"
               >
-                Uma nova era na programação.
+                Aprenda programação com estratégia.
               </motion.h2>
               <motion.p 
                 initial={{ opacity: 0, y: 20 }}
@@ -209,6 +213,58 @@ export default function Home() {
         </div>
       </section>
 
+      {/* About Section */}
+      <section className="py-32 bg-gradient-to-b from-black to-zinc-900/50">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center justify-center gap-4 mb-16">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-12 h-12 rounded-xl bg-yellow-400 flex items-center justify-center"
+              >
+                <svg className="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2L1 21h22L12 2zm0 3.516L20.297 19H3.703L12 5.516zM11 16h2v2h-2v-2zm0-7h2v5h-2V9z"/>
+                </svg>
+              </motion.div>
+              <motion.h2 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-5xl md:text-6xl font-extrabold text-white tracking-tight"
+              >
+                A Nova Era chegou.
+              </motion.h2>
+            </div>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="space-y-12 text-gray-300 text-lg md:text-xl leading-relaxed"
+            >
+              <div className="space-y-8">
+                <p className="relative pl-6 border-l-2 border-yellow-400">
+                  Você pode até ignorar isso, mas estamos prestes a viver uma Nova Era — não só na forma como aprendemos, mas no próprio mercado de programação. A IA está mudando tudo. E enquanto muitos vão ficar para trás, nós vamos te preparar para o que está vindo.
+                </p>
+                <p>
+                  Chega de enrolação. Vamos direto ao ponto: te ensinamos a programar com propósito, 
+                  aplicar seus aprendizados em projetos reais e usar a{' '}
+                  <span className="text-white font-medium relative">
+                    inteligência artificial ao seu favor
+                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-yellow-400/50"></span>
+                  </span>{' '}
+                  – seja para conquistar sua primeira vaga na área ou para construir sua independência com programação.
+                </p>
+                <p className="text-2xl font-medium text-white text-center italic">
+                  "Você não precisa estudar por anos para começar a ver retorno."
+                </p>
+              </div>
+            </motion.div>
+
+          </div>
+        </div>
+      </section>
+
       {/* Courses Section */}
       <section className="py-20 bg-zinc-900/50">
         <div className="container mx-auto px-4">
@@ -249,9 +305,14 @@ export default function Home() {
                         ? 'bg-[#FFD700] text-black hover:bg-opacity-90' 
                         : 'bg-white/5 text-white/50 cursor-not-allowed'
                     }`}
+                    onClick={() => {
+                      if (course.isAvailable && course.link) {
+                        window.location.href = course.link
+                      }
+                    }}
                     disabled={!course.isAvailable}
                   >
-                    {course.isAvailable ? 'SAIBA MAIS' : 'EM BREVE'}
+                    {course.isAvailable ? 'Acessar curso' : 'Em breve'}
                   </button>
                 </div>
               </div>
@@ -262,3 +323,4 @@ export default function Home() {
     </main>
   )
 }
+
