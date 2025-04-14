@@ -175,7 +175,7 @@ export default function Home() {
 
                 <div>
                   <label htmlFor="phone" className="block text-sm text-gray-400 mb-2">
-                    Celular (opcional)
+                    Celular
                   </label>
                   <input
                     id="phone"
