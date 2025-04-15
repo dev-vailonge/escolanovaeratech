@@ -33,9 +33,8 @@ export default function LogicaPage() {
       
       if (supabaseError) throw supabaseError
 
-      setSuccess(true)
-      setFormData({ name: '', email: '', phone: '' })
-      setTimeout(() => setIsDialogOpen(false), 2000)
+      // Redirect to thank you page
+      window.location.href = '/thank-you'
     } catch (err: any) {
       console.error('Error:', err)
       if (err?.message?.includes('duplicate')) {

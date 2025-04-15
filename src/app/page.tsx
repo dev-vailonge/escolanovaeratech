@@ -42,10 +42,8 @@ export default function Home() {
       
       if (supabaseError) throw supabaseError
       
-      setSuccess(true)
-      setEmail('')
-      setName('')
-      setPhone('')
+      // Redirect to thank you page
+      window.location.href = '/thank-you'
     } catch (err: any) {
       console.error('Error:', err)
       if (err?.message?.includes('duplicate')) {
@@ -244,7 +242,7 @@ export default function Home() {
             >
               <div className="space-y-8">
                 <p className="relative pl-6 border-l-2 border-yellow-400">
-                  Você pode até ignorar isso, mas estamos prestes a viver uma Nova Era — não só na forma como aprendemos, mas no próprio mercado de programação. A IA está mudando tudo. E enquanto muitos vão ficar para trás, nós vamos te preparar para o que está vindo.
+                  Acreditamos que os estudos abrem portas, e por isso criamos a Nova Era. Uma escola de programação com foco em IA e empreendedorismo.
                 </p>
                 <p>
                   Chega de enrolação. Vamos direto ao ponto: te ensinamos a programar com propósito, 
@@ -253,14 +251,72 @@ export default function Home() {
                     inteligência artificial ao seu favor
                     <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-yellow-400/50"></span>
                   </span>{' '}
-                  – seja para conquistar sua primeira vaga na área ou para construir sua independência com programação.
+                  seja para conquistar sua primeira vaga na área ou para construir sua independência com programação.
                 </p>
-                <p className="text-2xl font-medium text-white text-center italic">
-                  "Você não precisa estudar por anos para começar a ver retorno."
-                </p>
+                <p className="text-gray-400 text-center">Através dos nossos 4 pilares você irá aprender com estratégia.</p>
+              </div>
+              <div className="mt-20 grid grid-cols-1 md:grid-cols-2 gap-8 max-w-screen-2xl mx-auto px-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="bg-zinc-900/50 p-6 rounded-xl border border-white/10"
+                >
+                  <div className="w-12 h-12 bg-yellow-400/10 rounded-lg flex items-center justify-center mb-4">
+                    <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Negócios</h3>
+                  <p className="text-gray-400">Na Nova Era, programadores também criam seus próprios negócios.</p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="bg-zinc-900/50 p-6 rounded-xl border border-white/10"
+                >
+                  <div className="w-12 h-12 bg-yellow-400/10 rounded-lg flex items-center justify-center mb-4">
+                    <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Programação</h3>
+                  <p className="text-gray-400">Sim, hoje muito se pode fazer com IA, mas aprender fundamentos é muito importante.</p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="bg-zinc-900/50 p-6 rounded-xl border border-white/10"
+                >
+                  <div className="w-12 h-12 bg-yellow-400/10 rounded-lg flex items-center justify-center mb-4">
+                    <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Inovação</h3>
+                  <p className="text-gray-400">Continuar inovando com inteligência artificial para te dar mais velocidade.</p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="bg-zinc-900/50 p-6 rounded-xl border border-white/10"
+                >
+                  <div className="w-12 h-12 bg-yellow-400/10 rounded-lg flex items-center justify-center mb-4">
+                    <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Networking</h3>
+                  <p className="text-gray-400">Se conectar com pessoas que estão onde você quer chegar pode te economizar muito tempo.</p>
+                </motion.div>
               </div>
             </motion.div>
-
           </div>
         </div>
       </section>

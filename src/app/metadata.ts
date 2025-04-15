@@ -1,6 +1,25 @@
-import type { Metadata } from "next";
+import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: "Nova Era Tech School",
-  description: "Transformando vidas através da programação",
-}; 
+  title: 'Nova Era Tech',
+  description: 'Aprenda programação com estratégia',
+  icons: {
+    icon: [
+      {
+        url: '/images/logo.png',
+        type: 'image/png',
+        sizes: '32x32',
+      },
+      {
+        url: '/images/logo.png',
+        type: 'image/png',
+        sizes: '16x16',
+      }
+    ],
+    apple: {
+      url: '/images/logo.png',
+      type: 'image/png',
+      sizes: '180x180',
+    },
+  },
+} 
