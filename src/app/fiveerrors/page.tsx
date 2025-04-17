@@ -84,7 +84,7 @@ export default function FiveErrorsPage() {
                 transition={{ duration: 0.6 }}
                 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight"
               >
-                5 Erros Que Todo <span className="text-yellow-500">Iniciante</span> Comete na Programação
+                <span className="text-yellow-500">Não</span> cometa esses erros se quiser aprender da forma certa!
               </motion.h1>
               
               <motion.p
@@ -93,7 +93,7 @@ export default function FiveErrorsPage() {
                 transition={{ duration: 0.6, delay: 0.2 }}
                 className="text-xl text-gray-300 mb-8"
               >
-                Descubra os erros mais comuns que podem estar atrasando seu progresso e aprenda como evitá-los para acelerar sua jornada na programação.
+                Um ebook simples, mas com conteúdo que com certeza vai fazer toda diferença no seu aprendizado. Leia com atenção e aplique o que aprendeu.
               </motion.p>
 
               <motion.div
