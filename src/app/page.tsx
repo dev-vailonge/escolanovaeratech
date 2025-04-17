@@ -582,8 +582,8 @@ export default function Home() {
                 <div className="flex gap-4">
                   <a 
                     href="https://instagram.com/escolanovaeratech" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
+          target="_blank"
+          rel="noopener noreferrer"
                     className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 hover:bg-yellow-400/10 hover:text-yellow-400 transition-all"
                   >
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
