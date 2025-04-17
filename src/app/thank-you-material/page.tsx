@@ -3,9 +3,9 @@
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 
-export default function ThankYouMaterial() {
+function ThankYouMaterialContent() {
   const searchParams = useSearchParams()
   const [materialLink, setMaterialLink] = useState('')
   const [materialTitle, setMaterialTitle] = useState('')
@@ -101,5 +101,17 @@ export default function ThankYouMaterial() {
         </motion.div>
       </motion.div>
     </main>
+  )
+}
+
+export default function ThankYouMaterial() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-black text-white">
+        <div className="animate-pulse">Carregando...</div>
+      </div>
+    }>
+      <ThankYouMaterialContent />
+    </Suspense>
   )
 } 
