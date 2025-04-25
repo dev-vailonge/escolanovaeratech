@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import LeadsGraph from '@/components/LeadsGraph'
 import { UserIcon } from '@/components/icons/UserIcon'
 import { supabase } from '@/lib/supabase'
@@ -27,6 +27,7 @@ const menuItems = [
 export default function DashboardPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const pathname = usePathname()
+  const router = useRouter()
   const [stats, setStats] = useState({
     totalLeads: 0,
     monthlyLeads: 0,
@@ -98,6 +99,11 @@ export default function DashboardPage() {
     }
   }
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/')
+  }
+
   useEffect(() => {
     fetchStats()
   }, [])
@@ -138,7 +144,7 @@ export default function DashboardPage() {
 
           <div className="border-t border-white/10 pt-4">
             <button
-              onClick={() => {/* TODO: Implement logout */}}
+              onClick={handleLogout}
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:bg-white/5 hover:text-white transition-colors w-full"
             >
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
