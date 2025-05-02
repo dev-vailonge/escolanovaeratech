@@ -11,6 +11,7 @@
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@stripe/stripe-js": "^6.0.0",
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/supabase-js": "^2.49.4",
     "chart.js": "^4.4.9",
     "framer-motion": "^12.6.3",
