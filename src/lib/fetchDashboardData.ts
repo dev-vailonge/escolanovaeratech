@@ -29,6 +29,8 @@ export async function fetchDashboardData(page = 1, itemsPerPage = 20) {
     const { data: iscasRes } = await supabase.from('iscas').select('*')
     waitingList = waitingListRes || []
     iscas = iscasRes || []
+    console.log('Total fetched from waiting_list:', waitingList.length)
+    console.log('Total fetched from iscas:', iscas.length)
   } catch (error) {
     console.error('Error fetching data from Supabase:', error)
     return {
@@ -88,5 +90,30 @@ export async function fetchDashboardData(page = 1, itemsPerPage = 20) {
   ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   const leadsTable = allLeads.slice((page - 1) * itemsPerPage, page * itemsPerPage)
 
-  return { stats, leadsGraph, topSources, topAffiliates, leadsTable }
+  // Monthly Comparison (last 12 months)
+  const monthlyComparison = []
+  const monthNames = [
+    'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+    'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+  ]
+  
+  for (let i = 11; i >= 0; i--) {
+    const date = new Date()
+    date.setMonth(date.getMonth() - i)
+    const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1)
+    const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+    
+    const monthLeads = waitingList.filter(l => 
+      l.created_at >= startOfMonth.toISOString() && l.created_at <= endOfMonth.toISOString()
+    ).length + iscas.filter(l => 
+      l.created_at >= startOfMonth.toISOString() && l.created_at <= endOfMonth.toISOString()
+    ).length
+    
+    monthlyComparison.push({
+      month: monthNames[date.getMonth()],
+      total: monthLeads
+    })
+  }
+
+  return { stats, leadsGraph, topSources, topAffiliates, leadsTable, monthlyComparison }
 } 

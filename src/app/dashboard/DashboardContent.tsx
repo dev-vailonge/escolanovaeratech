@@ -6,6 +6,7 @@ import LeadsGraph from '@/components/LeadsGraph'
 import LeadsTable from '@/components/LeadsTable'
 import TopSourcesChart from '@/components/TopSourcesChart'
 import TopAffiliatesChart from '@/components/TopAffiliatesChart'
+import MonthlyComparisonChart from '@/components/MonthlyComparisonChart'
 
 interface DashboardContentProps {
   stats: {
@@ -17,9 +18,10 @@ interface DashboardContentProps {
   topAffiliates: { affiliate: string; count: number }[]
   leadsGraph: { date: string; iscas: number; waiting_list: number }[]
   leadsTable: any[]
+  monthlyComparison: { month: string; total: number }[]
 }
 
-export default function DashboardContent({ stats, topSources, topAffiliates, leadsGraph, leadsTable }: DashboardContentProps) {
+export default function DashboardContent({ stats, topSources, topAffiliates, leadsGraph, leadsTable, monthlyComparison }: DashboardContentProps) {
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -108,13 +110,14 @@ export default function DashboardContent({ stats, topSources, topAffiliates, lea
       >
         <LeadsGraph data={leadsGraph} />
       </motion.div>
-      {/* Leads Table */}
+      {/* Monthly Comparison Chart */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
+        className="mb-6"
       >
-        <LeadsTable data={leadsTable} />
+        <MonthlyComparisonChart data={monthlyComparison} />
       </motion.div>
     </>
   )
