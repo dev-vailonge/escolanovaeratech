@@ -60,6 +60,10 @@ async function getKiwifyToken(): Promise<string | null> {
   const CLIENT_SECRET = process.env.KIWIFY_CLIENT_SECRET
 
   if (!CLIENT_ID || !CLIENT_SECRET) {
+    console.error('Missing Kiwify credentials:', { 
+      hasClientId: !!CLIENT_ID, 
+      hasClientSecret: !!CLIENT_SECRET 
+    })
     return null
   }
 
@@ -76,12 +80,14 @@ async function getKiwifyToken(): Promise<string | null> {
     })
 
     if (!tokenResponse.ok) {
+      console.error('Kiwify OAuth failed:', tokenResponse.status)
       return null
     }
 
     const tokenData: OAuthResponse = await tokenResponse.json()
     return tokenData.access_token
   } catch (error) {
+    console.error('Kiwify OAuth error:', error)
     return null
   }
 }
@@ -90,12 +96,14 @@ async function fetchKiwifySales(page = 1, pageSize = 100): Promise<KiwifyRespons
   const accessToken = await getKiwifyToken()
   
   if (!accessToken) {
+    console.error('Failed to get Kiwify access token')
     return { pagination: { count: 0, page_number: 1, page_size: 10 }, data: [] }
   }
 
   const KIWIFY_ACCOUNT_ID = process.env.KIWIFY_ACCOUNT_ID
   
   if (!KIWIFY_ACCOUNT_ID) {
+    console.error('Missing KIWIFY_ACCOUNT_ID')
     return { pagination: { count: 0, page_number: 1, page_size: 10 }, data: [] }
   }
 
@@ -117,12 +125,14 @@ async function fetchKiwifySales(page = 1, pageSize = 100): Promise<KiwifyRespons
     })
 
     if (!response.ok) {
+      console.error('Kiwify sales API failed:', response.status)
       return { pagination: { count: 0, page_number: 1, page_size: 10 }, data: [] }
     }
 
     const data: KiwifyResponse = await response.json()
     return data
   } catch (error) {
+    console.error('Kiwify sales fetch error:', error)
     return { pagination: { count: 0, page_number: 1, page_size: 10 }, data: [] }
   }
 }
@@ -218,7 +228,7 @@ export async function GET(request: NextRequest) {
     // Get top products
     const productSales: Record<string, { sales: number; revenue: number }> = {}
     sales.forEach((sale: KiwifySale) => {
-      const productName = sale.product.name
+      const productName = sale.product?.name || 'Unknown Product'
       const amountInCents = Number(sale.net_amount) || 0
       const amountInCurrency = amountInCents / 100
       
@@ -276,7 +286,15 @@ export async function GET(request: NextRequest) {
       sales
     })
   } catch (error) {
-    console.error('Error processing sales data:', error)
-    return NextResponse.json({ error: 'Failed to fetch sales data' }, { status: 500 })
+    console.error('Sales API Error:', error)
+    return NextResponse.json({ 
+      error: 'Failed to fetch sales data',
+      stats: { totalSales: 0, totalRevenueBRL: 0, totalRevenueUSD: 0, totalRevenue: 0, conversionRate: 0 },
+      dailySales: [],
+      monthlySales: [],
+      topProducts: [],
+      topPaymentMethods: [],
+      sales: []
+    }, { status: 500 })
   }
 } 
