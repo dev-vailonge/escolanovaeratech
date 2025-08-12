@@ -96,14 +96,6 @@ export default function LogicaPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-yellow-400/10 to-transparent"></div>
         <div className="container mx-auto px-4 relative">
           <div className="max-w-4xl mx-auto text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="inline-block mb-6 px-4 py-1 rounded-full bg-yellow-400/10 text-yellow-400 text-sm font-medium"
-            >
-              Curso Gratuito
-            </motion.div>
-            
             <motion.h1 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
