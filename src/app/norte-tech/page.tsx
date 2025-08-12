@@ -86,7 +86,7 @@ export default function NorteTechPage() {
               Não sabe por onde começar? A gente te mostra o caminho.
             </h2>
             <p className="text-xl text-gray-300 max-w-4xl mx-auto">
-              O Norte Tech apresenta as principais áreas da tecnologia — Mobile, Web, Dados, Backend, Inteligência Artificial, Carreira e Freelance — com aulas rápidas e projetos práticos. Assim você descobre onde quer atuar e decide seu próximo passo com clareza.
+              O Norte Tech apresenta as principais áreas da tecnologia, Mobile, Web, Backend, Inteligência Artificial e Carreira com aulas rápidas e projetos práticos. Assim você descobre onde quer atuar e decide seu próximo passo com clareza.
             </p>
           </div>
 
@@ -147,18 +147,13 @@ export default function NorteTechPage() {
             </div>
 
             <div className="bg-zinc-900 p-6 rounded-lg shadow-lg border border-zinc-800">
-              <h3 className="text-xl font-bold text-white mb-3">Dados</h3>
-              <p className="text-gray-300">Visualize informações com dashboards.</p>
-            </div>
-
-            <div className="bg-zinc-900 p-6 rounded-lg shadow-lg border border-zinc-800">
               <h3 className="text-xl font-bold text-white mb-3">Backend</h3>
               <p className="text-gray-300">Conheça o poder das APIs.</p>
             </div>
 
             <div className="bg-zinc-900 p-6 rounded-lg shadow-lg border border-zinc-800">
-              <h3 className="text-xl font-bold text-white mb-3">Freelancer</h3>
-              <p className="text-gray-300">Como começar a trabalhar por conta própria.</p>
+              <h3 className="text-xl font-bold text-white mb-3">Carreira</h3>
+              <p className="text-gray-300">Como começar a trabalhar na área de tecnologia.</p>
             </div>
 
             <div className="bg-zinc-900 p-6 rounded-lg shadow-lg border border-zinc-800 md:col-span-2 lg:col-span-1">
@@ -187,7 +182,7 @@ export default function NorteTechPage() {
                 Mais Popular
               </div>
 
-              <h3 className="text-2xl font-bold text-white mb-6">Template + Curso</h3>
+              <h3 className="text-2xl font-bold text-white mb-6">Curso</h3>
               
               <div className="mb-6">
                 <p className="text-gray-400 line-through text-lg">R$ 297</p>
@@ -284,14 +279,6 @@ export default function NorteTechPage() {
               </p>
             </div>
 
-            <div className="bg-zinc-800 p-6 rounded-lg">
-              <h3 className="text-xl font-semibold text-white mb-2">
-                Como funciona o cashback?
-              </h3>
-              <p className="text-gray-300">
-                Você recebe R$ 73,50 de crédito para usar em qualquer outro curso da Nova Era em até 60 dias.
-              </p>
-            </div>
           </div>
         </div>
       </section>

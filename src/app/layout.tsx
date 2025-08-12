@@ -1,5 +1,6 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/lib/AuthContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -14,7 +15,9 @@ export default function RootLayout({
         <link rel="icon" href="/images/logo.png" />
       </head>
       <body className={`${inter.className} antialiased`}>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

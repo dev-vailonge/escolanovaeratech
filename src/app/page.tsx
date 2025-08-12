@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { supabase } from '@/lib/supabase'
 
 export default function Home() {
   const [email, setEmail] = useState('')
@@ -13,6 +12,29 @@ export default function Home() {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
   const [selectedType, setSelectedType] = useState('Todos')
+  const [currentSlide, setCurrentSlide] = useState(0)
+
+  const carouselImages = [
+    '/images/carrossel1.png',
+    '/images/carrossel2.png', 
+    '/images/carrossel3.png'
+  ]
+
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % carouselImages.length)
+  }
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + carouselImages.length) % carouselImages.length)
+  }
+
+  // Auto-advance carousel every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      nextSlide()
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     // Get source from URL parameters
@@ -33,21 +55,30 @@ export default function Home() {
       const formData = {
         email: email.toLowerCase().trim(),
         name: name.trim(),
-        phone: phone.trim() || undefined,
-        source: source || undefined
+        phone: phone.trim() || '',
+        source: source || 'landing-page'
       }
 
-      const { error: supabaseError } = await supabase
-        .from('waiting_list')
-        .insert([formData])
-      
-      if (supabaseError) throw supabaseError
-      
+      const response = await fetch('/api/submit-form', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao enviar formulário')
+      }
+
       // Redirect to thank you page
       window.location.href = '/thank-you'
+
     } catch (err: any) {
       console.error('Error:', err)
-      if (err?.message?.includes('duplicate')) {
+      if (err?.message?.includes('duplicate') || err?.message?.includes('already exists')) {
         setError('Este e-mail já está cadastrado na lista de espera.')
       } else {
         setError('Ocorreu um erro ao salvar seus dados. Por favor, tente novamente.')
@@ -63,9 +94,17 @@ export default function Home() {
 
   const courses = [
     {
+      type: 'Programação',
+      title: 'Norte Tech',
+      description: 'Curso indicado para quem nunca teve contato com programação e precisa ter um norte sobre as principais linguagens e áreas de tecnologia.',
+      image: '/images/norte-tech.png',
+      isAvailable: true,
+      link: '/norte-tech'
+    },
+    {
       type: 'Negócios',
       title: 'MVP - Espresso',
-      description: 'Lance suas ideias no mercado em poucos dias com um template pronto para você.',
+      description: 'Ganhe dinheiro ainda enquanto estuda, lance suas ideias no mercado em poucos dias com um template pronto para você. Aprenda a validar suas ideias.',
       image: '/images/mvp.png',
       isAvailable: true,
       link: 'https://www.mvpespresso.dev/'
@@ -73,7 +112,7 @@ export default function Home() {
     {
       type: 'Programação',
       title: 'Lógica de Programação',
-      description: 'Aprenda a programar do absuluto zero com exemplos práticos e exercídios de fixação.',
+      description: 'Aprenda a programar em Python do absuluto zero com exemplos práticos e exercídios de fixação. Indicado para quem quer começar a programar.',
       image: '/images/tech.png',
       isAvailable: true,
       link: '/logica'
@@ -81,91 +120,20 @@ export default function Home() {
     {
       type: 'Programação',
       title: 'Mobile',
-      description: 'Desenvolva apps para Android e iOS com Kotlin Multiplatform Mobile.',
+      description: 'Desenvolva apps para Android e iOS com Kotlin Multiplatform Mobile. Um curso 100% com foco em requisitos do mercado, para te ajudar a criar um portfólio de apps.',
       image: '/images/mobile.png',
-      isAvailable: true,
+      isAvailable: false,
       link: '/mobile'
     },
     {
       type: 'Programação',
       title: 'Web',
-      description: 'Aprenda os fundamentos da web com HTML, CSS e JavaScript.',
+      description: 'Aprenda os fundamentos da web com HTML, CSS e JavaScript. Crie sites para seu negócio ou para você mesmo. Monte um portfólio de sites para te ajudar a conseguir um emprego.',
       image: '/images/web.png',
-      isAvailable: true,
+      isAvailable: false,
       link: '/web'
     }
-    ,
-    {
-      type: 'Inovação',
-      title: 'Inteligência Artificial',
-      description: 'Domine Inteligência Artificial desde o zero com exemplos práticos e exercídios.',
-      image: '/images/ai.png',
-      isAvailable: false,
-      link: '/ai'
-    }
-    ,
-    {
-      type: 'Negócios',
-      title: 'Negócio Independente',
-      description: 'Aprenda a criar uma empresa de uma pessoa só com muita tecnologia.',
-      image: '/images/onepersoncompany.png',
-      isAvailable: false,
-      link: '/onepersoncompany'
-    }
-    ,
-    {
-      type: 'Inovação',
-      title: 'Criação de Audiência',
-      description: 'Aprenda a criar seus projetos em público e construir uma audiência para seu negócio.',
-      image: '/images/maker.png',
-      isAvailable: false,
-      link: '/maker'
-    }
-    ,
-    {
-      type: 'Inovação',
-      title: 'Automação de Processos com IA',
-      description: 'Aprenda a automatizar seus processos com IA, economizando tempo e aumentando a eficiência.',
-      image: '/images/automation.png',
-      isAvailable: false,
-      link: '/automation'
-    }
-    ,
-    {
-      type: 'Programação',
-      title: 'Orientação a Objetos',
-      description: 'Aprenda a programar orientado a objetos com Java, uma das linguagens mais usadas no mundo.',
-      image: '/images/oop.png',
-      isAvailable: false,
-      link: '/oop'
-    }
-    ,
-    {
-      type: 'Programação',
-      title: 'Estrutura de dados e algoritmos',
-      description: 'Fundamental para quem busca emprego fora do Brasil ou em big techs.',
-      image: '/images/dsa.png',
-      isAvailable: false,
-      link: '/dsa'
-    }
-    ,
-    {
-      type: 'Programação',
-      title: 'Freelancer',
-      description: 'Aprenda a ser um freelancer de sucesso com estratégia e tenha clientes sempre.',
-      image: '/images/freelancer.png',
-      isAvailable: false,
-      link: '/freelancer'
-    }
-    ,
-    {
-      type: 'Programação',
-      title: 'Carreira Global',
-      description: 'Aprenda a ter uma carreira global com estratégia e destrave processos seletivos ao redor do mundo.',
-      image: '/images/global.png',
-      isAvailable: false,
-      link: '/global'
-    }
+   
     
   ]
 
@@ -184,217 +152,193 @@ export default function Home() {
       </header>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20">
+      <section className="pt-32 pb-20 bg-gradient-to-b from-yellow-500/20 via-yellow-400/10 to-black">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Left side - Content */}
-            <div className="space-y-6">
-              <motion.h2 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-4xl md:text-6xl font-bold text-white leading-tight"
-              >
-                Aprenda programação com estratégia.
-              </motion.h2>
-              <motion.p 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="text-xl text-gray-400"
-              >
-                Em breve lançaremos nosso primeiro curso de lógica de programação{' '}
-                <span className="relative inline-block">
-                  <span className="relative z-10">100% grátis por tempo limitado</span>
-                  <span className="absolute -bottom-1 left-0 w-full h-1 bg-yellow-400"></span>
-                </span>
-                .
-              </motion.p>
-            </div>
-
-            {/* Right side - Form */}
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 }}
-              className="bg-zinc-900/50 backdrop-blur-sm rounded-2xl p-8 max-w-md mx-auto w-full border border-white/10"
+          <div className="max-w-6xl mx-auto text-center">
+            {/* Title */}
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-4xl md:text-6xl font-bold text-white mb-8 leading-tight"
             >
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <label htmlFor="name" className="block text-sm text-gray-400 mb-2">
-                    Nome completo
-                  </label>
-                  <input
-                    id="name"
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Digite seu nome"
-                    className="w-full px-4 py-3 rounded-xl bg-black/50 text-white border border-white/10 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all"
-                    required
-                    minLength={3}
+              Aprenda programação e{' '}
+              <span className="text-yellow-400">transforme sua vida</span>
+            </motion.h1>
+
+            {/* Description */}
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-xl md:text-2xl text-gray-300 mb-12 max-w-4xl mx-auto leading-relaxed"
+            >
+              Estude com profissionais experientes que estão no mercado de trabalho, seguem um método comprovado e têm um único objetivo: garantir que você seja contratado e mude de vida,{' '}
+              <span className="relative inline-block">
+                <span className="relative z-10">mesmo começando do zero.</span>
+                <span className="absolute -bottom-1 left-0 w-full h-1 bg-yellow-400"></span>
+              </span>
+            </motion.p>
+
+            {/* Image */}
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="flex justify-center"
+            >
+              <div className="relative max-w-4xl w-full">
+                <div className="bg-gray-800 rounded-2xl p-8 shadow-2xl">
+                  <img 
+                    src="/images/landingpage-image.jpeg" 
+                    alt="Nova Era Platform Preview" 
+                    className="w-full h-auto rounded-lg"
                   />
                 </div>
-
-                <div>
-                  <label htmlFor="email" className="block text-sm text-gray-400 mb-2">
-                    E-mail
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Digite seu melhor e-mail"
-                    className="w-full px-4 py-3 rounded-xl bg-black/50 text-white border border-white/10 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="phone" className="block text-sm text-gray-400 mb-2">
-                    Celular
-                  </label>
-                  <input
-                    id="phone"
-                    type="tel"
-                    value={phone}
-                    onChange={handlePhoneChange}
-                    placeholder="+55 11 98765-4321"
-                    className="w-full px-4 py-3 rounded-xl bg-black/50 text-white border border-white/10 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all"
-                  />
-                  <p className="mt-2 text-sm text-gray-500">
-                    Exemplo: +55 para Brasil, +1 para EUA/Canadá
-                  </p>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-yellow-400 text-black font-semibold py-3 px-6 rounded-xl hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:ring-offset-2 focus:ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  {isLoading ? 'Enviando...' : 'Quero ser avisado'}
-                </button>
-
-                {error && (
-                  <p className="text-red-400 text-sm text-center">{error}</p>
-                )}
-
-                {success && (
-                  <p className="text-green-400 text-sm text-center">
-                    Cadastro realizado com sucesso! Em breve você receberá novidades.
-                  </p>
-                )}
-              </form>
+              </div>
             </motion.div>
           </div>
         </div>
       </section>
 
-      {/* About Section */}
-      <section className="py-32 bg-gradient-to-b from-black to-zinc-900/50">
+            {/* Beginner Courses Section */}
+            <section className="py-20 bg-black">
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center justify-center gap-4 mb-16">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="w-12 h-12 rounded-xl bg-yellow-400 flex items-center justify-center"
-              >
-                <svg className="w-6 h-6 text-black" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2L1 21h22L12 2zm0 3.516L20.297 19H3.703L12 5.516zM11 16h2v2h-2v-2zm0-7h2v5h-2V9z"/>
-                </svg>
-              </motion.div>
-              <motion.h2 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-5xl md:text-6xl font-extrabold text-white tracking-tight"
-              >
-                A Nova Era chegou.
-              </motion.h2>
-            </div>
-
-            <motion.div 
+          <div className="max-w-4xl mx-auto text-center mb-12">
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-3xl md:text-4xl font-bold text-white mb-6"
+            >
+              Cursos para iniciantes
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-lg md:text-xl text-gray-300 mb-4"
+            >
+              Quer começar estudar programação, mas não sabe por onde? Qual linguagem estudar? Qual área seguir?
+            </motion.p>
+            <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="space-y-12 text-gray-300 text-lg md:text-xl leading-relaxed"
+              className="text-lg md:text-xl text-gray-300"
             >
-              <div className="space-y-8">
-                <p className="relative pl-6 border-l-2 border-yellow-400">
-                  Acreditamos que os estudos abrem portas, e por isso criamos a Nova Era. Uma escola de programação com foco em IA e empreendedorismo.
-                </p>
-                <p>
-                  Chega de enrolação. Vamos direto ao ponto: te ensinamos a programar com propósito, 
-                  aplicar seus aprendizados em projetos reais e usar a{' '}
-                  <span className="text-white font-medium relative">
-                    inteligência artificial ao seu favor
-                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-yellow-400/50"></span>
-                  </span>{' '}
-                  seja para conquistar sua primeira vaga na área ou para construir sua independência com programação.
-                </p>
-                <p className="text-gray-400 text-center">Através dos nossos 4 pilares você irá aprender com estratégia.</p>
+              <span className="text-yellow-400 font-medium">Dê seu primeiro passo com segurança, comece por aqui com cursos que cabem no seu bolso</span> 👇
+            </motion.p>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex justify-center"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+              {/* Beginner Course 1 */}
+              <div className="bg-black border border-white/10 rounded-lg overflow-hidden group">
+                <div className="aspect-[4/3] relative overflow-hidden">
+                  <div className="absolute inset-0"></div>
+                  <img 
+                    src="/images/norte-tech.png" 
+                    alt="Introdução à Programação"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-3 right-3">
+                    <span className="bg-green-500 text-black text-xs font-medium px-2 py-1 rounded-full">
+                      Disponível
+                    </span>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-gray-400">Iniciante</span>
+                    <span className="text-green-400 text-xs">R$ 147</span>
+                  </div>
+                  <h3 className="text-lg font-bold text-white mt-2 mb-2">Norte Tech</h3>
+                  <p className="text-gray-400 text-xs mb-4">Crie um projeto  para cada área, mobile, web, backend. Você terá contato com as principais linguagens de programação do mercado. Indicado para quem nunca teve contato com programação.</p>
+                  <button 
+                    className="w-full px-4 py-2 rounded-full font-medium transition-all text-sm bg-yellow-500 text-black hover:bg-yellow-400"
+                    onClick={() => window.location.href = '/norte-tech'}
+                  >
+                    Começar agora
+                  </button>
+                </div>
               </div>
-              <div className="mt-20 grid grid-cols-1 md:grid-cols-2 gap-8 max-w-screen-2xl mx-auto px-6">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="bg-zinc-900/50 p-6 rounded-xl border border-white/10"
-                >
-                  <div className="w-12 h-12 bg-yellow-400/10 rounded-lg flex items-center justify-center mb-4">
-                    <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">Negócios</h3>
-                  <p className="text-gray-400">Na Nova Era, programadores também criam seus próprios negócios.</p>
-                </motion.div>
 
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="bg-zinc-900/50 p-6 rounded-xl border border-white/10"
-                >
-                  <div className="w-12 h-12 bg-yellow-400/10 rounded-lg flex items-center justify-center mb-4">
-                    <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                    </svg>
+              {/* Beginner Course 2 */}
+              <div className="bg-black border border-white/10 rounded-lg overflow-hidden group">
+                <div className="aspect-[4/3] relative overflow-hidden">
+                  <div className="absolute inset-0"></div>
+                  <img 
+                    src="/images/web.png" 
+                    alt="Web Development Básico"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-3 right-3">
+                    <span className="bg-green-500 text-black text-xs font-medium px-2 py-1 rounded-full">
+                      Disponível
+                    </span>
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-2">Programação</h3>
-                  <p className="text-gray-400">Sim, hoje muito se pode fazer com IA, mas aprender fundamentos é muito importante.</p>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="bg-zinc-900/50 p-6 rounded-xl border border-white/10"
-                >
-                  <div className="w-12 h-12 bg-yellow-400/10 rounded-lg flex items-center justify-center mb-4">
-                    <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-gray-400">Iniciante</span>
+                    <span className="text-green-400 text-xs">R$ 97</span>
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-2">Inovação</h3>
-                  <p className="text-gray-400">Continuar inovando com inteligência artificial para te dar mais velocidade.</p>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="bg-zinc-900/50 p-6 rounded-xl border border-white/10"
-                >
-                  <div className="w-12 h-12 bg-yellow-400/10 rounded-lg flex items-center justify-center mb-4">
-                    <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">Networking</h3>
-                  <p className="text-gray-400">Se conectar com pessoas que estão onde você quer chegar pode te economizar muito tempo.</p>
-                </motion.div>
+                  <h3 className="text-lg font-bold text-white mt-2 mb-2">Lógica de Programação</h3>
+                  <p className="text-gray-400 text-xs mb-4">Caso você queira aprender python, comece por aqui, aprenda lógica de programação com exercícios práticos. Indicado para quem quer começar a programar.</p>
+                  <button 
+                    className="w-full px-4 py-2 rounded-full font-medium transition-all text-sm bg-yellow-500 text-black hover:bg-yellow-400"
+                    onClick={() => window.location.href = '/logica-de-programacao'}
+                  >
+                    Começar agora
+                  </button>
+                </div>
               </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Projetos de Alunos Section */}
+      <section className="py-20 px-4 md:px-8 lg:px-16 bg-black">
+        <div className="max-w-7xl mx-auto">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-3xl md:text-4xl font-bold text-white text-center mb-12"
+          >
+            Projetos de Alunos
+          </motion.h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-[#1E293B] rounded-xl overflow-hidden"
+            >
+              <img src="/images/aluno1.png" alt="Projeto de aluno 1" className="w-full" />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-[#1E293B] rounded-xl overflow-hidden"
+            >
+              <img src="/images/aluno2.png" alt="Projeto de aluno 2" className="w-full" />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-[#1E293B] rounded-xl overflow-hidden"
+            >
+              <img src="/images/aluno3.png" alt="Projeto de aluno 3" className="w-full" />
             </motion.div>
           </div>
         </div>
@@ -424,7 +368,7 @@ export default function Home() {
             ))}
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {filteredCourses.map((course, index) => (
               <div key={index} className="bg-black border border-white/10 rounded-lg overflow-hidden group">
                 <div className="aspect-[4/3] relative overflow-hidden">
@@ -435,24 +379,24 @@ export default function Home() {
                     className="w-full h-full object-cover"
                   />
                   {!course.isAvailable && (
-                    <div className="absolute top-4 right-4">
-                      <span className="bg-[#FFD700] text-black text-xs font-medium px-3 py-1 rounded-full">
+                    <div className="absolute top-3 right-3">
+                      <span className="bg-[#FFD700] text-black text-xs font-medium px-2 py-1 rounded-full">
                         Em breve
                       </span>
                     </div>
                   )}
                 </div>
-                <div className="p-6">
+                <div className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-400">{course.type}</span>
+                    <span className="text-xs text-gray-400">{course.type}</span>
                     {!course.isAvailable && (
-                      <span className="text-[#FFD700] text-sm">Em breve</span>
+                      <span className="text-[#FFD700] text-xs">Em breve</span>
                     )}
                   </div>
-                  <h3 className="text-xl font-bold text-white mt-2 mb-3">{course.title}</h3>
-                  <p className="text-gray-400 text-sm mb-6">{course.description}</p>
+                  <h3 className="text-lg font-bold text-white mt-2 mb-2">{course.title}</h3>
+                  <p className="text-gray-400 text-xs mb-4">{course.description}</p>
                   <button 
-                    className={`w-full px-6 py-3 rounded-full font-medium transition-all ${
+                    className={`w-full px-4 py-2 rounded-full font-medium transition-all text-sm ${
                       course.isAvailable 
                         ? 'bg-[#FFD700] text-black hover:bg-opacity-90' 
                         : 'bg-white/5 text-white/50 cursor-not-allowed'
@@ -564,6 +508,230 @@ export default function Home() {
                 </div>
               </motion.div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Carousel Section */}
+      <section className="py-20 bg-black">
+        <div className="container mx-auto px-4">
+          <div className="max-w-6xl mx-auto text-center">
+            {/* Title */}
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-3xl md:text-4xl font-bold text-white mb-6"
+            >
+              Nossa comunidade
+            </motion.h2>
+
+            {/* Description */}
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-lg md:text-xl text-gray-300 mb-12 max-w-3xl mx-auto"
+            >
+              Você não estará sozinho! Aprenda junto com uma comunidade com pessoas de diferentes áreas, países e idades, todas com o mesmo objetivo: dominar a programação e transformar suas vidas.
+            </motion.p>
+
+            {/* Carousel */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="relative mb-8"
+            >
+              <div className="flex overflow-hidden rounded-2xl">
+                <div 
+                  className="flex transition-transform duration-500 ease-in-out"
+                  style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+                >
+                  {carouselImages.map((image, index) => (
+                    <div key={index} className="w-full flex-shrink-0">
+                      <img 
+                        src={image} 
+                        alt={`Projeto ${index + 1}`} 
+                        className="w-full h-auto object-contain"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Navigation Arrows */}
+              <button className="absolute left-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-all" onClick={prevSlide}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button className="absolute right-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-all" onClick={nextSlide}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </motion.div>
+
+            {/* Dot Counter */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="flex justify-center gap-2 mb-8"
+            >
+              {carouselImages.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentSlide(index)}
+                  className={`w-3 h-3 rounded-full transition-all ${
+                    index === currentSlide ? 'bg-yellow-400' : 'bg-gray-600 hover:bg-gray-500'
+                  }`}
+                />
+              ))}
+            </motion.div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* Signup Form Section */}
+      <section className="py-20 bg-black">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="bg-zinc-900/50 backdrop-blur-sm rounded-2xl p-8 border border-white/10"
+            >
+              <div className="text-center mb-8">
+                <h2 className="text-3xl font-bold text-white mb-4">
+                  Quer ser avisado quando lançarmos?
+                </h2>
+                <p className="text-gray-400">
+                  Cadastre-se na lista de espera e seja o primeiro a saber sobre nossos cursos
+                </p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <label htmlFor="name2" className="block text-sm text-gray-400 mb-2">
+                    Nome completo
+                  </label>
+                  <input
+                    id="name2"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Digite seu nome"
+                    className="w-full px-4 py-3 rounded-xl bg-black/50 text-white border border-white/10 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all"
+                    required
+                    minLength={3}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="email2" className="block text-sm text-gray-400 mb-2">
+                    E-mail
+                  </label>
+                  <input
+                    id="email2"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Digite seu melhor e-mail"
+                    className="w-full px-4 py-3 rounded-xl bg-black/50 text-white border border-white/10 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="phone2" className="block text-sm text-gray-400 mb-2">
+                    Celular
+                  </label>
+                  <input
+                    id="phone2"
+                    type="tel"
+                    value={phone}
+                    onChange={handlePhoneChange}
+                    placeholder="+55 11 98765-4321"
+                    className="w-full px-4 py-3 rounded-xl bg-black/50 text-white border border-white/10 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all"
+                  />
+                  <p className="mt-2 text-sm text-gray-500">
+                    Exemplo: +55 para Brasil, +1 para EUA/Canadá
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-semibold py-3 px-6 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:ring-offset-2 focus:ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  {isLoading ? 'Enviando...' : 'Quero ser avisado'}
+                </button>
+
+                {error && (
+                  <p className="text-red-400 text-sm text-center">{error}</p>
+                )}
+
+                {success && (
+                  <p className="text-green-400 text-sm text-center">
+                    Cadastro realizado com sucesso! Em breve você receberá novidades.
+                  </p>
+                )}
+              </form>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Free Materials Section */}
+      <section className="py-20 bg-zinc-900/50">
+        <div className="container mx-auto px-4">
+          <div className="max-w-6xl mx-auto text-center">
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-3xl md:text-4xl font-bold text-white mb-6"
+            >
+              Materiais Gratuitos
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-lg md:text-xl text-gray-300 mb-12 max-w-3xl mx-auto"
+            >
+              Comece sua jornada na programação com nossos materiais gratuitos. Aprenda no seu ritmo e descubra se programação é para você.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="flex justify-center"
+            >
+              <div className="max-w-md">
+                {/* Free Material 1 */}
+                <div className="bg-black border border-white/10 rounded-xl p-6 hover:border-yellow-400/50 transition-all">
+                  <div className="w-12 h-12 bg-yellow-400/10 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                    <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-3">E-book: 5 Erros Comuns</h3>
+                  <p className="text-gray-400 mb-4">
+                    Descubra os 5 erros mais comuns que iniciantes cometem ao aprender programação e como evitá-los.
+                  </p>
+                  <a
+                    href="/fiveerrors"
+                    className="inline-block bg-yellow-500 hover:bg-yellow-400 text-black font-semibold py-2 px-4 rounded-lg transition-all"
+                  >
+                    Baixar Grátis
+                  </a>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
