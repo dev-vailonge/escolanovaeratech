@@ -13,12 +13,19 @@ export default function Home() {
   const [error, setError] = useState('')
   const [selectedType, setSelectedType] = useState('Todos')
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [isMobile, setIsMobile] = useState(false)
 
-  const carouselImages = [
-    '/images/carrossel1.png',
-    '/images/carrossel2.png', 
-    '/images/carrossel3.png'
-  ]
+  const carouselImages = isMobile 
+    ? [
+        '/images/carrossel-mobile1.png',
+        '/images/carrossel-mobile2.png', 
+        '/images/carrossel-mobile3.png'
+      ]
+    : [
+        '/images/carrossel1.png',
+        '/images/carrossel2.png', 
+        '/images/carrossel3.png'
+      ]
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % carouselImages.length)
@@ -43,6 +50,21 @@ export default function Home() {
     if (sourceParam) {
       setSource(sourceParam)
     }
+  }, [])
+
+  useEffect(() => {
+    // Check if device is mobile
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    
+    // Check on mount
+    checkMobile()
+    
+    // Check on resize
+    window.addEventListener('resize', checkMobile)
+    
+    return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -186,12 +208,12 @@ export default function Home() {
               transition={{ delay: 0.3 }}
               className="flex justify-center"
             >
-              <div className="relative max-w-4xl w-full">
-                <div className="bg-gray-800 rounded-2xl p-8 shadow-2xl">
+              <div className="relative w-full max-w-4xl px-4 md:px-0">
+                <div className="bg-gray-800 rounded-xl md:rounded-2xl p-4 md:p-8 shadow-2xl">
                   <img 
                     src="/images/landingpage-image.jpeg" 
                     alt="Nova Era Platform Preview" 
-                    className="w-full h-auto rounded-lg"
+                    className="w-full h-auto rounded-lg object-cover max-h-[300px] md:max-h-none"
                   />
                 </div>
               </div>
