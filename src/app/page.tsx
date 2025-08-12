@@ -257,7 +257,7 @@ export default function Home() {
                     <span className="text-green-400 text-xs">R$ 147</span>
                   </div>
                   <h3 className="text-lg font-bold text-white mt-2 mb-2">Norte Tech</h3>
-                  <p className="text-gray-400 text-xs mb-4">Crie um projeto  para cada área, mobile, web, backend. Você terá contato com as principais linguagens de programação do mercado. Indicado para quem nunca teve contato com programação.</p>
+                  <p className="text-gray-400 text-base mb-4">Crie um projeto  para cada área, mobile, web, backend. Você terá contato com as principais linguagens de programação do mercado. Indicado para quem nunca teve contato com programação.</p>
                   <button 
                     className="w-full px-4 py-2 rounded-full font-medium transition-all text-sm bg-yellow-500 text-black hover:bg-yellow-400"
                     onClick={() => window.location.href = '/norte-tech'}
@@ -288,7 +288,7 @@ export default function Home() {
                     <span className="text-green-400 text-xs">R$ 97</span>
                   </div>
                   <h3 className="text-lg font-bold text-white mt-2 mb-2">Lógica de Programação</h3>
-                  <p className="text-gray-400 text-xs mb-4">Caso você queira aprender python, comece por aqui, aprenda lógica de programação com exercícios práticos. Indicado para quem quer começar a programar.</p>
+                  <p className="text-gray-400 text-base mb-4">Caso você queira aprender python, comece por aqui, aprenda lógica de programação com exercícios práticos. Indicado para quem quer começar a programar.</p>
                   <button 
                     className="w-full px-4 py-2 rounded-full font-medium transition-all text-sm bg-yellow-500 text-black hover:bg-yellow-400"
                     onClick={() => window.location.href = '/logica'}
@@ -394,7 +394,7 @@ export default function Home() {
                     )}
                   </div>
                   <h3 className="text-lg font-bold text-white mt-2 mb-2">{course.title}</h3>
-                  <p className="text-gray-400 text-xs mb-4">{course.description}</p>
+                  <p className="text-gray-400 text-base mb-4">{course.description}</p>
                   <button 
                     className={`w-full px-4 py-2 rounded-full font-medium transition-all text-sm ${
                       course.isAvailable 
