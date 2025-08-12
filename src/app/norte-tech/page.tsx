@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 
-export default function NorteTechPage() {
+function NorteTechContent() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -375,5 +375,13 @@ export default function NorteTechPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function NorteTechPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <NorteTechContent />
+    </Suspense>
   )
 } 
