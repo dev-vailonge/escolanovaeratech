@@ -1,19 +1,33 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useAuth } from '@/lib/AuthContext'
 
 export default function SignInPage() {
   const router = useRouter()
+  const { user, loading, initializeAuth } = useAuth()
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    // Initialize auth when page loads
+    initializeAuth()
+  }, [initializeAuth])
+
+  useEffect(() => {
+    // If user is already authenticated, redirect to dashboard
+    if (user && !loading) {
+      router.push('/dashboard')
+    }
+  }, [user, loading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

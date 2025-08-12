@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/AuthContext'
 import { UserIcon } from '@/components/icons/UserIcon'
 
 const menuItems = [
@@ -30,11 +31,28 @@ export default function ClientSidebar({ children }: { children: React.ReactNode 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const pathname = usePathname()
   const router = useRouter()
+  const { user, loading, signOut, initializeAuth } = useAuth()
+
+  useEffect(() => {
+    // Initialize auth when component loads
+    initializeAuth()
+  }, [initializeAuth])
+
+  useEffect(() => {
+    // If not loading and no user, redirect to signin
+    if (!loading && !user) {
+      router.push('/signin')
+    }
+  }, [user, loading, router])
 
   const handleLogout = async () => {
-    // If you use Supabase auth, you can import and call signOut here
-    // await supabase.auth.signOut()
-    router.push('/')
+    try {
+      await signOut()
+      router.push('/signin')
+    } catch (error) {
+      console.error('Error logging out:', error)
+      router.push('/signin')
+    }
   }
 
   return (
