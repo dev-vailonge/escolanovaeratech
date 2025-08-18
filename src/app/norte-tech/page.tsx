@@ -186,7 +186,7 @@ function NorteTechContent() {
               
               <div className="mb-6">
                 <p className="text-gray-400 line-through text-lg">R$ 297</p>
-                <p className="text-3xl font-bold text-white">12x R$ 13,80</p>
+                <p className="text-3xl font-bold text-white">12x R$ 15,20</p>
                 <p className="text-white text-sm">ou 147 à vista</p>
               </div>
 
