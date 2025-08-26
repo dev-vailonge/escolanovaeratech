@@ -276,7 +276,7 @@ export default function Home() {
                 <div className="p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-gray-400">Iniciante</span>
-                    <span className="text-green-400 text-xs">R$ 147</span>
+                    <span className="text-green-400 text-xs">R$ 297</span>
                   </div>
                   <h3 className="text-lg font-bold text-white mt-2 mb-2">Norte Tech</h3>
                   <p className="text-gray-400 text-base mb-4">Crie um projeto  para cada área, mobile, web, backend. Você terá contato com as principais linguagens de programação do mercado. Indicado para quem nunca teve contato com programação.</p>

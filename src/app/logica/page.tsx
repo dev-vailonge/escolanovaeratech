@@ -65,19 +65,9 @@ export default function LogicaPage() {
         'Loops e iterações',
         'Arrays e coleções',
         'Funções e modularização',
-        'Debugging básico'
       ]
     },
-    {
-      title: 'Prática com Projetos',
-      description: 'Aplique seus conhecimentos em projetos do mundo real.',
-      topics: [
-        'Projeto: Calculadora',
-        'Projeto: Todo List',
-        'Projeto: Jogo simples',
-        'Boas práticas de código'
-      ]
-    }
+   
   ]
 
   return (
@@ -122,10 +112,10 @@ export default function LogicaPage() {
               className="flex justify-center"
             >
               <button
-                onClick={() => setIsDialogOpen(true)}
+                onClick={() => window.open('https://pay.kiwify.com.br/SrvjHY0', '_blank')}
                 className="px-8 py-4 rounded-xl bg-yellow-400 text-black font-semibold hover:bg-yellow-300 transition-all"
               >
-                Quero ser avisado
+                Adquirir agora
               </button>
             </motion.div>
           </div>

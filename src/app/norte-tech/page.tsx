@@ -45,18 +45,6 @@ function NorteTechContent() {
       {/* Hero Section */}
       <section className="relative py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          {/* Logo */}
-          <div className="mb-8">
-            <div className="inline-flex items-center justify-center">
-              <Image
-                src="/images/norte-tech-logo.png"
-                alt="Norte Tech Logo"
-                width={64}
-                height={64}
-                className="w-16 h-16"
-              />
-            </div>
-          </div>
 
           {/* Headline */}
           <h1 className="text-5xl md:text-6xl font-bold text-yellow-400 mb-6">
@@ -70,10 +58,10 @@ function NorteTechContent() {
 
           {/* CTA Button */}
           <button
-            onClick={() => setIsFormOpen(true)}
+            onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
             className="bg-yellow-400 text-black px-8 py-4 rounded-lg text-xl font-bold hover:bg-yellow-300 transition-colors"
           >
-            Garantir acesso pré-venda
+            Garantir acesso
           </button>
         </div>
       </section>
@@ -165,13 +153,14 @@ function NorteTechContent() {
       </section>
 
       {/* Oferta Reforço */}
-      <section className="py-20 px-4 bg-black">
+      <section id="pricing" className="py-20 px-4 bg-black">
         <div className="max-w-6xl mx-auto text-center">
           <h2 className="text-4xl font-bold text-white mb-4">
-            Oferta especial para membros fundadores
+          Acesse agora a Escola Nova Era Tech
           </h2>
           <p className="text-yellow-400 text-lg mb-12">
-            Garanta seu acesso com 50% de desconto e cashback para seu próximo curso!
+          Comece sua carreira em tecnologia com nosso programa completo.
+          Invista no seu futuro e entre para a comunidade que vai transformar sua jornada na programação!
           </p>
 
           <div className="flex justify-center max-w-4xl mx-auto">
@@ -185,9 +174,8 @@ function NorteTechContent() {
               <h3 className="text-2xl font-bold text-white mb-6">Curso</h3>
               
               <div className="mb-6">
-                <p className="text-gray-400 line-through text-lg">R$ 297</p>
-                <p className="text-3xl font-bold text-white">12x R$ 15,20</p>
-                <p className="text-white text-sm">ou 147 à vista</p>
+                <p className="text-3xl font-bold text-white">12x R$ 30,70</p>
+                <p className="text-white text-sm">ou 297 à vista</p>
               </div>
 
               <ul className="space-y-3 mb-8 text-left">
@@ -208,22 +196,32 @@ function NorteTechContent() {
                   <svg className="w-5 h-5 text-yellow-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
                   </svg>
+                  <span className="text-gray-300">Plano de estudos</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-yellow-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-gray-300">Roadmap de carreira</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-yellow-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
                   <span className="text-gray-300">Todas as novas atualizações</span>
                 </li>
               </ul>
 
               <button
-                onClick={() => setIsFormOpen(true)}
+                onClick={() => window.open('https://pay.kiwify.com.br/9KCFZO6', '_blank')}
                 className="w-full bg-yellow-400 text-black py-3 rounded-lg font-bold hover:bg-yellow-300 transition-colors"
               >
-                Entrar para o grupo
+                Adquirir agora
               </button>
             </div>
           </div>
 
-          <p className="text-white text-sm mt-8">
-            *Entre para o grupo e fique por dentro das atualizações do lançamento
-          </p>
+         
         </div>
       </section>
 
