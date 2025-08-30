@@ -103,7 +103,7 @@ function NorteTechContent() {
 
               {/* Subheadline */}
               <p className="text-xl md:text-2xl text-gray-300 leading-relaxed max-w-lg">
-                Um curso acessível, feito para quem quer dar o primeiro passo na programação sem gastar milhares de reais.
+                Um curso acessível, feito para quem quer dar o primeiro passo na programação sem gastar muito.
               </p>
 
               {/* Call to Action */}
