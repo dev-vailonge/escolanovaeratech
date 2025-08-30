@@ -506,7 +506,7 @@ function NorteTechContent() {
                     Comunidade Discord
                   </h3>
                   <p className="text-xl text-gray-300 leading-relaxed">
-                    alunos ativos, networking e suporte direto dos professores em tempo real
+                    alunos ativos, networking e muita troca de conhecimento.
                   </p>
                 </div>
               </div>
