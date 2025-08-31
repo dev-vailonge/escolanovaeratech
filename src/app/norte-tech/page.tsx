@@ -108,7 +108,7 @@ function NorteTechContent() {
         {/* Content Container */}
         <div className="relative z-10 max-w-4xl mx-auto px-4 py-20 w-full text-center">
           <div className="space-y-8">
-            {/* Headline */}
+          {/* Headline */}
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
               <span className="bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500 bg-clip-text text-transparent">
                 Descubra se programação
@@ -117,9 +117,9 @@ function NorteTechContent() {
               <span className="text-white">
                 realmente é para você.
               </span>
-            </h1>
+          </h1>
 
-            {/* Subheadline */}
+          {/* Subheadline */}
             <p className="text-xl md:text-2xl text-gray-300 leading-relaxed max-w-3xl mx-auto">
               Um curso acessível, feito para quem quer dar o primeiro passo na programação sem gastar muito.
             </p>
@@ -131,7 +131,7 @@ function NorteTechContent() {
               </p>
               
               <div className="flex justify-center gap-4 flex-wrap">
-                <button
+          <button
                   onClick={() => scrollToElement('pricing')}
                   className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-black bg-gradient-to-r from-yellow-400 to-yellow-300 rounded-lg overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-yellow-400/25"
                 >
@@ -144,8 +144,8 @@ function NorteTechContent() {
                   className="inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-yellow-400 border-2 border-yellow-400 rounded-lg transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/25"
                 >
                   Assistir aula grátis
-                </button>
-              </div>
+          </button>
+        </div>
             </div>
           </div>
         </div>
@@ -315,8 +315,8 @@ function NorteTechContent() {
                   className="object-contain"
                   priority
                 />
-              </div>
-              
+            </div>
+
               {/* Content Section */}
               <div className="p-6">
                 {/* Numbered Circle and Line */}
@@ -325,8 +325,8 @@ function NorteTechContent() {
                     <span className="text-white font-bold text-xs">1</span>
                   </div>
                   <div className="flex-1 h-px bg-white/20"></div>
-                </div>
-                
+            </div>
+
                 {/* Title */}
                 <h3 className="text-xl font-bold text-white mb-3">
                   Introdução à Programação
@@ -350,15 +350,15 @@ function NorteTechContent() {
                   className="object-contain"
                   priority
                 />
-              </div>
-              
+            </div>
+
               {/* Content Section */}
               <div className="p-6">
                 {/* Numbered Circle and Line */}
                 <div className="flex items-center mb-4">
                   <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center mr-3">
                     <span className="text-white font-bold text-xs">2</span>
-                  </div>
+            </div>
                   <div className="flex-1 h-px bg-white/20"></div>
                 </div>
                 
@@ -620,11 +620,11 @@ function NorteTechContent() {
               {/* Badge Mais Popular */}
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                 <span className="bg-yellow-400 text-black px-4 py-1 rounded-full text-sm font-bold">
-                  Mais Popular
+                Mais Popular
                 </span>
               </div>
               <p className="text-4xl font-bold text-white mb-4">Avulso</p>
-
+              
               <div className="mb-6">
                 <p className="text-2xl font-bold text-white">12x R$ 30,72</p>
                 <p className="text-white text-sm">ou 297 à vista</p>
@@ -665,7 +665,7 @@ function NorteTechContent() {
               </ul>
 
               <div className="mt-auto flex justify-center">
-                <button
+              <button
                   onClick={() => {
                     const url = 'https://pay.kiwify.com.br/9KCFZO6'
                     const newWindow = window.open(url, '_blank', 'noopener,noreferrer')
@@ -674,11 +674,11 @@ function NorteTechContent() {
                     }
                   }}
                   className="bg-yellow-400 text-black py-3 px-8 rounded-lg font-bold hover:bg-yellow-300 transition-colors"
-                >
-                  Adquirir agora
-                </button>
-              </div>
+              >
+                Adquirir agora
+              </button>
             </div>
+          </div>
 
             {/* Plano Assinatura */}
             <div className="bg-zinc-900/50 border border-gray-600 rounded-lg p-8 relative flex flex-col opacity-60">

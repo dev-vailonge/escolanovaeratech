@@ -294,8 +294,8 @@ export default function Home() {
                 <div className="aspect-[4/3] relative overflow-hidden">
                   <div className="absolute inset-0"></div>
                   <img 
-                    src="/images/web.png" 
-                    alt="Web Development Básico"
+                    src="/images/tech.png" 
+                    alt="Lógica de Programação"
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute top-3 right-3">
