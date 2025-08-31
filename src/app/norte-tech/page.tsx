@@ -8,6 +8,7 @@ import { motion } from 'framer-motion'
 
 function NorteTechContent() {
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [showVideoModal, setShowVideoModal] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -85,61 +86,45 @@ function NorteTechContent() {
           }}></div>
         </div>
         {/* Content Container */}
-        <div className="relative z-10 max-w-7xl mx-auto px-4 py-20 w-full">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            
-            {/* Left Column - Text Content */}
-            <div className="space-y-8">
-              {/* Headline */}
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
-                <span className="bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500 bg-clip-text text-transparent">
-                  Descubra se programação
-                </span>
-                <br />
-                <span className="text-white">
-                  realmente é para você.
-                </span>
-              </h1>
+        <div className="relative z-10 max-w-4xl mx-auto px-4 py-20 w-full text-center">
+          <div className="space-y-8">
+            {/* Headline */}
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
+              <span className="bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500 bg-clip-text text-transparent">
+                Descubra se programação
+              </span>
+              <br />
+              <span className="text-white">
+                realmente é para você.
+              </span>
+            </h1>
 
-              {/* Subheadline */}
-              <p className="text-xl md:text-2xl text-gray-300 leading-relaxed max-w-lg">
-                Um curso acessível, feito para quem quer dar o primeiro passo na programação sem gastar muito.
+            {/* Subheadline */}
+            <p className="text-xl md:text-2xl text-gray-300 leading-relaxed max-w-3xl mx-auto">
+              Um curso acessível, feito para quem quer dar o primeiro passo na programação sem gastar muito.
+            </p>
+
+            {/* Call to Action */}
+            <div className="space-y-6">
+              <p className="text-lg text-yellow-400 font-medium">
+                👉 Coloque a mão no código, experimente as principais áreas e descubra qual combina com você.
               </p>
-
-              {/* Call to Action */}
-              <div className="space-y-4 text-center lg:text-left">
-                <p className="text-lg text-yellow-400 font-medium">
-                  👉 Coloque a mão no código, experimente as principais áreas e descubra qual combina com você.
-                </p>
+              
+              <div className="flex justify-center gap-4 flex-wrap">
+                <button
+                  onClick={() => scrollToElement('pricing')}
+                  className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-black bg-gradient-to-r from-yellow-400 to-yellow-300 rounded-lg overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-yellow-400/25"
+                >
+                  <span className="relative z-10">Quero começar agora</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-300 to-yellow-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </button>
                 
-                <div className="flex justify-center lg:justify-start">
-                  <button
-                    onClick={() => scrollToElement('pricing')}
-                    className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-black bg-gradient-to-r from-yellow-400 to-yellow-300 rounded-lg overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-yellow-400/25"
-                  >
-                    <span className="relative z-10">Quero começar agora</span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-300 to-yellow-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column - Header Image */}
-            <div className="relative flex justify-center lg:justify-end">
-              <div className="relative w-full max-w-md lg:max-w-lg">
-                                {/* Futuristic Container */}
-                <div className="relative bg-gradient-to-br from-zinc-900/50 to-zinc-800/30 border border-yellow-400/20 rounded-2xl p-6 shadow-2xl">
-                  {/* Main Image */}
-                  <Image
-                    src="/images/norte-tech-header-image.png"
-                    alt="Norte Tech Header Image"
-                    width={800}
-                    height={600}
-                    className="w-full h-auto rounded-xl object-contain"
-                    priority
-                  />
-                  
-                 </div>
+                <button
+                  onClick={() => setShowVideoModal(true)}
+                  className="inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-yellow-400 border-2 border-yellow-400 rounded-lg transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/25"
+                >
+                  Assistir aula grátis
+                </button>
               </div>
             </div>
           </div>
@@ -572,12 +557,20 @@ function NorteTechContent() {
           Invista no seu futuro e entre para a comunidade que vai transformar sua jornada na programação!
           </p>
 
-          <div className="flex justify-center max-w-4xl mx-auto">
-            {/* Template + Curso */}
-            <div className="bg-zinc-900 border border-yellow-400 rounded-lg p-8 relative w-full max-w-md">
+                    <div className="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto">
+                        {/* Plano Avulso */}
+              
+            <div className="bg-zinc-900 border border-yellow-400 rounded-lg p-8 relative flex flex-col">
+              {/* Badge Mais Popular */}
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                <span className="bg-yellow-400 text-black px-4 py-1 rounded-full text-sm font-bold">
+                  Mais Popular
+                </span>
+              </div>
+              <p className="text-4xl font-bold text-white mb-4">Avulso</p>
 
               <div className="mb-6">
-                <p className="text-3xl font-bold text-white">12x R$ 30,70</p>
+                <p className="text-2xl font-bold text-white">12x R$ 30,70</p>
                 <p className="text-white text-sm">ou 297 à vista</p>
               </div>
 
@@ -615,18 +608,110 @@ function NorteTechContent() {
                 </li>
               </ul>
 
-              <button
-                onClick={() => {
-                  const url = 'https://pay.kiwify.com.br/9KCFZO6'
-                  const newWindow = window.open(url, '_blank', 'noopener,noreferrer')
-                  if (newWindow) {
-                    newWindow.opener = null
-                  }
-                }}
-                className="w-full bg-yellow-400 text-black py-3 rounded-lg font-bold hover:bg-yellow-300 transition-colors"
-              >
-                Adquirir agora
-              </button>
+              <div className="mt-auto flex justify-center">
+                <button
+                  onClick={() => {
+                    const url = 'https://pay.kiwify.com.br/9KCFZO6'
+                    const newWindow = window.open(url, '_blank', 'noopener,noreferrer')
+                    if (newWindow) {
+                      newWindow.opener = null
+                    }
+                  }}
+                  className="bg-yellow-400 text-black py-3 px-8 rounded-lg font-bold hover:bg-yellow-300 transition-colors"
+                >
+                  Adquirir agora
+                </button>
+              </div>
+            </div>
+
+            {/* Plano Assinatura */}
+            <div className="bg-zinc-900/50 border border-gray-600 rounded-lg p-8 relative flex flex-col opacity-60">
+
+              <p className="text-4xl font-bold text-gray-400 mb-4">Assinatura</p>
+
+              <div className="mb-6">
+                <p className="text-2xl font-bold text-gray-400">12x R$ 157,20</p>
+                <p className="text-gray-500 text-sm">ou 1497 à vista</p>
+              </div>
+
+              <ul className="space-y-3 mb-8 text-left">
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-gray-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-gray-500">Tudo do plano avulso</span>
+                </li>
+                
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-gray-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-gray-500">Acesso vitalício a todos os cursos</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-gray-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-gray-500">Plano de estudos individual</span>
+                </li>
+              </ul>
+
+              <div className="mt-auto flex flex-col items-center space-y-3">
+                <div className="bg-gray-600 text-gray-300 py-3 px-8 rounded-lg font-bold cursor-not-allowed">
+                  Em breve
+                </div>
+                <p className="text-gray-500 text-sm text-center">
+                  Lançamento oficial em novembro
+                </p>
+              </div>
+            </div>
+
+            {/* Plano VIP */}
+            <div className="bg-zinc-900/50 border border-gray-600 rounded-lg p-8 relative flex flex-col opacity-60">
+
+              <p className="text-4xl font-bold text-gray-400 mb-4">VIP</p>
+
+              <div className="mb-6">
+                <p className="text-2xl font-bold text-gray-400">12x R$ 298,70</p>
+                <p className="text-gray-500 text-sm">ou 2997 à vista</p>
+              </div>
+
+              <ul className="space-y-3 mb-8 text-left">
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-gray-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-gray-500">Tudo do plano assinatura</span>
+                </li>
+                
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-gray-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-gray-500">Mentorias individuais</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-gray-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-gray-500">Suporte Individual</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-gray-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-gray-500">Acesso ao clube do livro</span>
+                </li>
+              </ul>
+
+              <div className="mt-auto flex flex-col items-center space-y-3">
+                <div className="bg-gray-600 text-gray-300 py-3 px-8 rounded-lg font-bold cursor-not-allowed">
+                  Em breve
+                </div>
+                <p className="text-gray-500 text-sm text-center">
+                  Lançamento oficial em novembro
+                </p>
+              </div>
             </div>
           </div>
 
@@ -1059,7 +1144,7 @@ function NorteTechContent() {
                 Nova Era Tech
               </div>
               <p className="text-gray-400 text-sm mt-2">
-                © 2024 Nova Era Tech. Todos os direitos reservados.
+                © 2025 Nova Era Tech. Todos os direitos reservados.
               </p>
             </div>
             
@@ -1074,6 +1159,36 @@ function NorteTechContent() {
           </div>
         </div>
       </footer>
+
+      {/* Video Modal */}
+      {showVideoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="relative bg-zinc-900 border border-yellow-400 rounded-lg p-6 max-w-4xl w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-2xl font-bold text-white">Aula Grátis - Norte Tech</h3>
+              <button
+                onClick={() => setShowVideoModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+              <iframe
+                src="https://www.youtube.com/embed/_hLe_ecppp4?autoplay=1"
+                title="Aula Grátis Norte Tech"
+                className="absolute top-0 left-0 w-full h-full rounded-lg"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Form Dialog */}
       {isFormOpen && (
