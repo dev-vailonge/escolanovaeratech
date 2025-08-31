@@ -9,12 +9,32 @@ import { motion } from 'framer-motion'
 function NorteTechContent() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [showVideoModal, setShowVideoModal] = useState(false)
+  const [currentProfessor, setCurrentProfessor] = useState(0)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: ''
   })
   const [currentSlide, setCurrentSlide] = useState(0)
+
+  const professores = [
+    {
+      nome: "João Silva",
+      descricao: "Especialista em desenvolvimento web com mais de 8 anos de experiência. Já formou mais de 2.000 alunos em programação."
+    },
+    {
+      nome: "Maria Santos",
+      descricao: "Desenvolvedora full-stack e instrutora apaixonada por ensinar. Especialista em React, Node.js e metodologias ágeis."
+    },
+    {
+      nome: "Carlos Oliveira",
+      descricao: "Especialista em Python e inteligência artificial. Mestre em Ciência da Computação e mentor de startups de tecnologia."
+    },
+    {
+      nome: "Ana Costa",
+      descricao: "Desenvolvedora mobile e UX/UI Designer. Especialista em React Native e design de interfaces intuitivas."
+    }
+  ]
   const searchParams = useSearchParams()
 
   const carouselImages = [
@@ -546,6 +566,42 @@ function NorteTechContent() {
       </section>
 
     
+      {/* Mercado da Programação */}
+      <section className="py-20 px-4 bg-black relative">
+        {/* Smooth transition gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-yellow-600/20 via-yellow-600/10 to-black pointer-events-none"></div>
+        
+        <div className="relative z-10 max-w-6xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            
+            {/* Left Column - Text Content */}
+            <div className="space-y-6">
+              <h2 className="text-4xl md:text-5xl font-bold text-white leading-tight">
+                O Mercado da Programação
+              </h2>
+              
+              <p className="text-xl text-gray-300 leading-relaxed">
+                Bill Gates disse que somente 3 áreas irão sobreviver a inteligência artificial e uma delas é programação.
+              </p>
+            </div>
+
+            {/* Right Column - Image */}
+            <div className="flex justify-center lg:justify-end">
+              <div className="relative w-full max-w-md">
+                <Image
+                  src="/images/norte-tech-bill-gates.png"
+                  alt="Bill Gates sobre programação e inteligência artificial"
+                  width={500}
+                  height={400}
+                  className="w-full h-auto rounded-xl shadow-2xl"
+                  priority
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Oferta Reforço */}
       <section id="pricing" className="py-20 px-4 bg-black">
         <div className="max-w-6xl mx-auto text-center">
@@ -570,7 +626,7 @@ function NorteTechContent() {
               <p className="text-4xl font-bold text-white mb-4">Avulso</p>
 
               <div className="mb-6">
-                <p className="text-2xl font-bold text-white">12x R$ 30,70</p>
+                <p className="text-2xl font-bold text-white">12x R$ 30,72</p>
                 <p className="text-white text-sm">ou 297 à vista</p>
               </div>
 
@@ -669,7 +725,7 @@ function NorteTechContent() {
             {/* Plano VIP */}
             <div className="bg-zinc-900/50 border border-gray-600 rounded-lg p-8 relative flex flex-col opacity-60">
 
-              <p className="text-4xl font-bold text-gray-400 mb-4">VIP</p>
+              <p className="text-4xl font-bold text-gray-400 mb-4">Assinatura + Mentoria</p>
 
               <div className="mb-6">
                 <p className="text-2xl font-bold text-gray-400">12x R$ 298,70</p>
