@@ -171,7 +171,7 @@ export default function JornadaZeroDev() {
                 </motion.div>
 
                 <h1 className="text-4xl md:text-6xl font-bold text-white mb-8 leading-tight">
-                  Jornada do Zero ao Dev ao{' '}
+                  Jornada do Zero ao {' '}
                   <span className="text-yellow-400">Emprego</span>
                 </h1>
 
