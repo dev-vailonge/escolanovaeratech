@@ -3,14 +3,15 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 
 export default function JornadaZeroDev() {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     name: '',
     email: ''
   })
   const [isLoading, setIsLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
@@ -53,7 +54,6 @@ export default function JornadaZeroDev() {
     e.preventDefault()
     setIsLoading(true)
     setError('')
-    setSuccess(false)
     
     try {
       const response = await fetch('/api/submit-form', {
@@ -73,8 +73,8 @@ export default function JornadaZeroDev() {
         throw new Error(result.error || 'Erro ao enviar formulário')
       }
 
-      setSuccess(true)
-      setFormData({ name: '', email: '' })
+      // Redirect to thank you page
+      router.push('/thank-you')
 
     } catch (err: any) {
       // console.error('Error:', err) // Removed for security
@@ -171,8 +171,8 @@ export default function JornadaZeroDev() {
                 </motion.div>
 
                 <h1 className="text-4xl md:text-6xl font-bold text-white mb-8 leading-tight">
-                  Jornada do Zero ao Dev –{' '}
-                  <span className="text-yellow-400">Android</span>
+                  Jornada do Zero ao Dev ao{' '}
+                  <span className="text-yellow-400">Emprego</span>
                 </h1>
 
                 <p className="text-xl md:text-2xl text-gray-300 mb-8 leading-relaxed">
@@ -239,17 +239,6 @@ export default function JornadaZeroDev() {
                   <p className="text-red-400 text-sm text-center mt-4">{error}</p>
                 )}
 
-                {success && (
-                  <p className="text-green-400 text-sm text-center mt-4">
-                    Inscrição realizada com sucesso! Verifique seu e-mail.
-                  </p>
-                )}
-
-                <div className="mt-6 text-center">
-                  <p className="text-gray-400 text-sm">
-                    🎁 Bônus: Plano de estudos completo (valor: R$ 197)
-                  </p>
-                </div>
               </motion.div>
             </div>
           </div>
@@ -267,10 +256,10 @@ export default function JornadaZeroDev() {
               className="text-center mb-16"
             >
               <h2 className="text-4xl font-bold text-white mb-6">
-                O que você vai descobrir na Jornada
+                Vem aprender com quem chegou lá.
               </h2>
               <p className="text-xl text-gray-300">
-                Uma semana intensiva para transformar sua vida através da programação Android
+                Um dia intensivo para transformar sua vida através da programação Android
               </p>
             </motion.div>
 
@@ -283,10 +272,16 @@ export default function JornadaZeroDev() {
                 className="bg-zinc-900/50 border border-zinc-700 rounded-xl overflow-hidden"
               >
                 <div className="w-full h-48 bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 flex items-center justify-center">
-                  <span className="text-4xl">📚</span>
+                  <Image
+                    src="/images/oqueestudar.png"
+                    alt="O que estudar para programação"
+                    width={200}
+                    height={200}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="p-6">
-                  <h3 className="text-lg font-bold text-white mb-3">O que estudar para quem está começando do zero</h3>
+                  <h3 className="text-lg font-bold text-white mb-3">O que estudar.</h3>
                   <p className="text-gray-300 text-sm">Descubra exatamente quais tecnologias e conceitos você precisa dominar para se tornar um desenvolvedor Android.</p>
                 </div>
               </motion.div>
@@ -299,11 +294,17 @@ export default function JornadaZeroDev() {
                 className="bg-zinc-900/50 border border-zinc-700 rounded-xl overflow-hidden"
               >
                 <div className="w-full h-48 bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 flex items-center justify-center">
-                  <span className="text-4xl">🎯</span>
+                  <Image
+                    src="/images/requisitovaga.png"
+                    alt="Como organizar estudos"
+                    width={200}
+                    height={200}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="p-6">
-                  <h3 className="text-lg font-bold text-white mb-3">Como organizar seus estudos e não se perder</h3>
-                  <p className="text-gray-300 text-sm">Aprenda a criar uma rotina de estudos eficiente que vai acelerar seu aprendizado e manter sua motivação.</p>
+                  <h3 className="text-lg font-bold text-white mb-3">Requisitos das vagas</h3>
+                  <p className="text-gray-300 text-sm">Aprenda quais são os requisitos das vagas para se tornar um desenvolvedor Android.</p>
                 </div>
               </motion.div>
 
@@ -315,11 +316,17 @@ export default function JornadaZeroDev() {
                 className="bg-zinc-900/50 border border-zinc-700 rounded-xl overflow-hidden"
               >
                 <div className="w-full h-48 bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 flex items-center justify-center">
-                  <span className="text-4xl">🌍</span>
+                  <Image
+                    src="/images/cincoerros.png"
+                    alt="Carreira internacional"
+                    width={200}
+                    height={200}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="p-6">
-                  <h3 className="text-lg font-bold text-white mb-3">Como eu conquistei minha carreira no Brasil e no exterior</h3>
-                  <p className="text-gray-300 text-sm">Histórias reais e estratégias práticas que funcionaram para mim e podem funcionar para você também.</p>
+                  <h3 className="text-lg font-bold text-white mb-3">5 Erros</h3>
+                  <p className="text-gray-300 text-sm">Aprenda quais são os 5 erros que você precisa evitar para se tornar um desenvolvedor Android.</p>
                 </div>
               </motion.div>
 
@@ -331,11 +338,17 @@ export default function JornadaZeroDev() {
                 className="bg-zinc-900/50 border border-zinc-700 rounded-xl overflow-hidden"
               >
                 <div className="w-full h-48 bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 flex items-center justify-center">
-                  <span className="text-4xl">🗺️</span>
+                  <Image
+                    src="/images/passoscomecar.png"
+                    alt="Passo a passo para carreira"
+                    width={200}
+                    height={200}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="p-6">
-                  <h3 className="text-lg font-bold text-white mb-3">O passo a passo que vai te dar clareza sobre qual caminho seguir</h3>
-                  <p className="text-gray-300 text-sm">Um roteiro detalhado para você não se perder e saber exatamente qual direção tomar em cada etapa.</p>
+                  <h3 className="text-lg font-bold text-white mb-3">3 Passos para começar</h3>
+                  <p className="text-gray-300 text-sm">Aprenda quais são os 3 passos para começar a programar Android.</p>
                 </div>
               </motion.div>
             </div>
@@ -357,17 +370,14 @@ export default function JornadaZeroDev() {
                   Minha História
                 </h2>
                 <p className="text-lg text-gray-300 mb-6 leading-relaxed">
-                  Comecei do zero, sem dinheiro e sem conhecimento técnico. Trabalhei como autônomo, 
-                  construí minha carreira no Spotify e hoje vivo a independência financeira morando no exterior.
+                  Comecei do zero, sem dinheiro e sem conhecimento técnico. Trabalhei como freelancer para conseguir pagar meus estudos, 
+                  construí minha carreira no Spotify e hoje vivo o que sempre sonhei: ser um desenvolvedor Android.
                 </p>
                 <p className="text-lg text-gray-300 mb-6 leading-relaxed">
                   Eu já estive no seu lugar e sei como é começar perdido. Agora quero encurtar seu caminho 
                   e te ajudar a conquistar os mesmos resultados que eu consegui.
                 </p>
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-yellow-400/10 rounded-full flex items-center justify-center">
-                    <span className="text-2xl">🚀</span>
-                  </div>
                   <div>
                     <p className="text-yellow-400 font-bold">+12 anos de experiência</p>
                     <p className="text-gray-400 text-sm">Desenvolvimento Android</p>
@@ -383,8 +393,14 @@ export default function JornadaZeroDev() {
               >
                 <div className="relative">
                   <div className="w-80 h-80 bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 rounded-full flex items-center justify-center">
-                    <div className="w-64 h-64 bg-black rounded-full flex items-center justify-center">
-                      <span className="text-6xl">👨‍💻</span>
+                    <div className="w-64 h-64 bg-black rounded-full overflow-hidden">
+                      <Image
+                        src="/images/roque.png"
+                        alt="Roque - Instrutor da Jornada"
+                        width={256}
+                        height={256}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   </div>
                 </div>
@@ -637,11 +653,10 @@ export default function JornadaZeroDev() {
               </div>
               <h3 className="text-2xl font-bold text-white mb-4">Bônus Exclusivo</h3>
               <p className="text-lg text-gray-300 mb-6">
-                Plano de estudos completo e detalhado para você seguir durante os próximos 3 meses. 
+                Plano de estudos completo e detalhado para você seguir durante os próximos meses. 
                 Um roteiro passo a passo que vai te economizar meses de tempo perdido.
               </p>
               <div className="inline-flex items-center gap-2 bg-yellow-500 text-black px-4 py-2 rounded-full font-bold">
-                <span>Valor: R$ 197</span>
                 <span className="text-sm">→ GRÁTIS para participantes</span>
               </div>
             </motion.div>
@@ -812,7 +827,6 @@ export default function JornadaZeroDev() {
               </h2>
               <p className="text-xl text-gray-300 mb-8">
                 Não perca essa oportunidade de transformar sua vida através da programação Android. 
-                A jornada é gratuita e o bônus vale R$ 197.
               </p>
               
               <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-4">
@@ -846,12 +860,6 @@ export default function JornadaZeroDev() {
 
               {error && (
                 <p className="text-red-400 text-sm text-center mt-4">{error}</p>
-              )}
-
-              {success && (
-                <p className="text-green-400 text-sm text-center mt-4">
-                  Inscrição realizada com sucesso! Verifique seu e-mail.
-                </p>
               )}
             </motion.div>
           </div>

@@ -99,7 +99,7 @@ export default function Home() {
       window.location.href = '/thank-you'
 
     } catch (err: any) {
-      console.error('Error:', err)
+      // console.error('Error:', err) // Removed for security
       if (err?.message?.includes('duplicate') || err?.message?.includes('already exists')) {
         setError('Este e-mail já está cadastrado na lista de espera.')
       } else {

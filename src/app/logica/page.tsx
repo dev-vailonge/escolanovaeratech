@@ -36,7 +36,7 @@ export default function LogicaPage() {
       // Redirect to thank you page
       window.location.href = '/thank-you'
     } catch (err: any) {
-      console.error('Error:', err)
+      // console.error('Error:', err) // Removed for security
       if (err?.message?.includes('duplicate')) {
         setError('Este e-mail já está cadastrado na lista de espera.')
       } else {

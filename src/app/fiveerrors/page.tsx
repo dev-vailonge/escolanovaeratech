@@ -51,7 +51,7 @@ export default function FiveErrorsPage() {
       // Redirect to thank you material page
       window.location.href = '/thank-you-material?material=fiveerrors'
     } catch (err: any) {
-      console.error('Error:', err)
+      // console.error('Error:', err) // Removed for security
       if (err?.message?.includes('duplicate')) {
         setError('Este e-mail já está cadastrado.')
       } else {

@@ -49,7 +49,7 @@ export default function SignInPage() {
         router.push('/dashboard')
       }
     } catch (err: any) {
-      console.error('Error:', err)
+      // console.error('Error:', err) // Removed for security
       if (err?.message?.includes('Invalid login credentials')) {
         setError('Email ou senha inválidos.')
       } else {
