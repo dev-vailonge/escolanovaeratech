@@ -51,7 +51,7 @@ export default function SalesDashboard() {
         const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido ao carregar dados'
         setError(errorMessage)
         setShowErrorPopup(true)
-        console.error('Sales data fetch error:', err)
+        // Sales data fetch error
       } finally {
         setIsLoading(false)
       }

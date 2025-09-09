@@ -29,7 +29,7 @@ export default function ExportSalesButton() {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (error) {
-      console.error('Error exporting sales data:', error)
+      // Error exporting sales data
       alert('Erro ao exportar dados de vendas')
     } finally {
       setIsLoading(false)

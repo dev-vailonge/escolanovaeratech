@@ -23,7 +23,6 @@ export async function getSession() {
     const sessionInfo = await SecureSessionManager.getSessionFromCookies()
     
     if (!sessionInfo?.isValid) {
-      console.log('No valid session found')
       return null
     }
 
@@ -33,12 +32,10 @@ export async function getSession() {
     const { data: { session }, error } = await supabase.auth.getSession()
     
     if (error) {
-      console.error('Error getting session from Supabase:', error)
       return null
     }
     
     if (!session) {
-      console.log('No session returned from Supabase')
       return null
     }
 
@@ -48,7 +45,6 @@ export async function getSession() {
       refresh_token: session.refresh_token
     }
   } catch (error) {
-    console.error('Error in getSession:', error)
     return null
   }
 }
@@ -58,14 +54,11 @@ export async function requireAuth() {
     const session = await getSession()
     
     if (!session) {
-      console.log('Authentication required - redirecting to signin')
       redirect('/signin')
     }
     
-    console.log('User authenticated:', session.user?.email)
     return session
   } catch (error) {
-    console.error('Error in requireAuth:', error)
     redirect('/signin')
   }
 }

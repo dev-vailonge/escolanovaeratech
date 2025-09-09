@@ -15,7 +15,7 @@ export function useAuth() {
         const { data: { session } } = await supabase.auth.getSession()
         setUser(session?.user ?? null)
       } catch (error) {
-        console.error('Error getting session:', error)
+        // Error getting session
         setUser(null)
       } finally {
         setLoading(false)
@@ -46,7 +46,7 @@ export function useAuth() {
       // Also sign out from Supabase client
       await supabase.auth.signOut()
     } catch (error) {
-      console.error('Error signing out:', error)
+      // Error signing out
     }
   }
 

@@ -26,10 +26,10 @@ export default function ExportButton() {
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
       } else {
-        console.error('Export failed')
+        // Export failed
       }
     } catch (error) {
-      console.error('Export error:', error)
+      // Export error
     } finally {
       setIsExporting(false)
     }

@@ -7,36 +7,54 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = createServerComponentClient({ cookies })
     
-    // Fetch all leads data
-    const { data: waitingList } = await supabase.from('waiting_list').select('*')
-    const { data: iscas } = await supabase.from('iscas').select('*')
+    // Fetch all leads data with pagination
+    let allLeads: any[] = []
+    let page = 0
+    const pageSize = 1000
     
-    // Combine and format data
-    const allLeads = [
-      ...(waitingList || []).map(lead => ({
-        ...lead,
-        table: 'waiting_list',
-        created_at: new Date(lead.created_at).toLocaleString('pt-BR')
-      })),
-      ...(iscas || []).map(lead => ({
-        ...lead,
-        table: 'iscas',
-        created_at: new Date(lead.created_at).toLocaleString('pt-BR')
-      }))
-    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    while (true) {
+      const { data: leadsRes, error: leadsError } = await supabase
+        .from('leads')
+        .select('*')
+        .range(page * pageSize, (page + 1) * pageSize - 1)
+        .order('created_at', { ascending: false })
+      
+      if (leadsError) {
+        throw leadsError
+      }
+      
+      if (!leadsRes || leadsRes.length === 0) {
+        break
+      }
+      
+      allLeads = allLeads.concat(leadsRes)
+      
+      if (leadsRes.length < pageSize) {
+        break
+      }
+      
+      page++
+    }
+    
+    // Format data
+    const formattedLeads = allLeads.map(lead => ({
+      ...lead,
+      created_at: new Date(lead.created_at).toLocaleString('pt-BR')
+    }))
 
     // Create workbook and worksheet
     const workbook = XLSX.utils.book_new()
     
     // Format data for Excel
-    const excelData = allLeads.map(lead => ({
+    const excelData = formattedLeads.map(lead => ({
       'ID': lead.id,
-      'Nome': lead.name || lead.nome || '',
+      'Nome': lead.name || '',
       'Email': lead.email || '',
-      'Telefone': lead.phone || lead.telefone || lead.celphone || '',
+      'Telefone': lead.phone || '',
       'Fonte': lead.source || 'Não informado',
-      'Afiliado': lead.affiliate || 'Não informado',
-      'Tabela': lead.table === 'waiting_list' ? 'Lista de Espera' : 'Iscas',
+      'UTM Source': lead.utm_source || 'Não informado',
+      'UTM Medium': lead.utm_medium || 'Não informado',
+      'UTM Campaign': lead.utm_campaign || 'Não informado',
       'Data de Criação': lead.created_at,
       'Atualizado em': lead.updated_at ? new Date(lead.updated_at).toLocaleString('pt-BR') : ''
     }))
@@ -50,8 +68,9 @@ export async function POST(request: NextRequest) {
       { wch: 30 }, // Email
       { wch: 15 }, // Telefone
       { wch: 20 }, // Fonte
-      { wch: 20 }, // Afiliado
-      { wch: 15 }, // Tabela
+      { wch: 20 }, // UTM Source
+      { wch: 20 }, // UTM Medium
+      { wch: 20 }, // UTM Campaign
       { wch: 20 }, // Data de Criação
       { wch: 20 }, // Atualizado em
     ]
@@ -72,7 +91,6 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Export error:', error)
     return NextResponse.json({ error: 'Failed to export leads' }, { status: 500 })
   }
 } 

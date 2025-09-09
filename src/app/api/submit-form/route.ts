@@ -9,7 +9,7 @@ const supabase = createClient(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, email, phone, source, course } = body
+    const { name, email, phone, source, course, utm_source, utm_medium, utm_campaign } = body
 
     // Validate required fields
     if (!name || !email) {
@@ -19,15 +19,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Insert into waiting_list table
+    // Insert into leads table
     const { data, error } = await supabase
-      .from('waiting_list')
+      .from('leads')
       .insert([
         {
           name,
           email,
           phone: phone || 'Não informado',
-          source: source || 'landing-page'
+          source: source || 'landing-page',
+          utm_source: utm_source || '',
+          utm_medium: utm_medium || '',
+          utm_campaign: utm_campaign || ''
         }
       ])
 

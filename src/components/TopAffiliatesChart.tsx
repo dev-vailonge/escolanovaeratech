@@ -20,21 +20,21 @@ ChartJS.register(
   Legend
 )
 
-interface AffiliateCount {
-  affiliate: string
+interface UTMSourceCount {
+  utmSource: string
   count: number
 }
 
 interface TopAffiliatesChartProps {
-  data: AffiliateCount[]
+  data: UTMSourceCount[]
 }
 
 export default function TopAffiliatesChart({ data }: TopAffiliatesChartProps) {
   const chartData = {
-    labels: data.map(item => item.affiliate),
+    labels: data.map(item => item.utmSource),
     datasets: [
       {
-        label: 'Leads por Afiliado',
+        label: 'Leads por UTM Source',
         data: data.map(item => item.count),
         backgroundColor: 'rgba(234, 179, 8, 0.8)',
         borderColor: 'rgb(234, 179, 8)',
@@ -53,7 +53,7 @@ export default function TopAffiliatesChart({ data }: TopAffiliatesChartProps) {
       },
       title: {
         display: true,
-        text: 'Top 5 Afiliados',
+        text: 'Top 5 UTM Sources',
         color: 'rgb(255, 255, 255)',
         font: {
           size: 16

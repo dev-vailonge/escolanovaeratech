@@ -22,32 +22,53 @@ export async function fetchDashboardData(page = 1, itemsPerPage = 20) {
   startDate.setDate(startDate.getDate() - 14)
   const formatDate = (date: Date) => date.toISOString().split('T')[0]
 
-  let waitingList = []
-  let iscas = []
+  let leads = []
   try {
-    const { data: waitingListRes } = await supabase.from('waiting_list').select('*')
-    const { data: iscasRes } = await supabase.from('iscas').select('*')
-    waitingList = waitingListRes || []
-    iscas = iscasRes || []
-    console.log('Total fetched from waiting_list:', waitingList.length)
-    console.log('Total fetched from iscas:', iscas.length)
+    // Fetch all leads with pagination to handle large datasets
+    let allLeads: any[] = []
+    let page = 0
+    const pageSize = 1000
+    
+    while (true) {
+      const { data: leadsRes, error: leadsError } = await supabase
+        .from('leads')
+        .select('*')
+        .range(page * pageSize, (page + 1) * pageSize - 1)
+        .order('created_at', { ascending: false })
+      
+      if (leadsError) {
+        throw leadsError
+      }
+      
+      if (!leadsRes || leadsRes.length === 0) {
+        break
+      }
+      
+      allLeads = allLeads.concat(leadsRes)
+      
+      if (leadsRes.length < pageSize) {
+        break
+      }
+      
+      page++
+    }
+    
+    leads = allLeads || []
   } catch (error) {
-    console.error('Error fetching data from Supabase:', error)
     return {
       stats: { totalLeads: 0, monthlyLeads: 0, weeklyLeads: 0 },
       leadsGraph: [],
       topSources: [],
       topAffiliates: [],
-      leadsTable: []
+      leadsTable: [],
+      monthlyComparison: []
     }
   }
 
   // Stats
-  const totalLeads = waitingList.length + iscas.length
-  const monthlyLeads = waitingList.filter(l => l.created_at >= startOfMonth.toISOString() && l.created_at <= endOfMonth.toISOString()).length +
-    iscas.filter(l => l.created_at >= startOfMonth.toISOString() && l.created_at <= endOfMonth.toISOString()).length
-  const weeklyLeads = waitingList.filter(l => l.created_at >= startOfWeek.toISOString() && l.created_at <= endOfWeek.toISOString()).length +
-    iscas.filter(l => l.created_at >= startOfWeek.toISOString() && l.created_at <= endOfWeek.toISOString()).length
+  const totalLeads = leads.length
+  const monthlyLeads = leads.filter(l => l.created_at >= startOfMonth.toISOString() && l.created_at <= endOfMonth.toISOString()).length
+  const weeklyLeads = leads.filter(l => l.created_at >= startOfWeek.toISOString() && l.created_at <= endOfWeek.toISOString()).length
   const stats = { totalLeads, monthlyLeads, weeklyLeads }
 
   // Leads Graph (last 15 days)
@@ -56,13 +77,12 @@ export async function fetchDashboardData(page = 1, itemsPerPage = 20) {
     const date = new Date()
     date.setDate(date.getDate() - (14 - i))
     const dateStr = formatDate(date)
-    const iscasCount = iscas.filter((item) => item.created_at?.split('T')[0] === dateStr).length
-    const waitingListCount = waitingList.filter((item) => item.created_at?.split('T')[0] === dateStr).length
-    leadsGraph.push({ date: dateStr, iscas: iscasCount, waiting_list: waitingListCount })
+    const leadsCount = leads.filter((item) => item.created_at?.split('T')[0] === dateStr).length
+    leadsGraph.push({ date: dateStr, leads: leadsCount })
   }
 
   // Top Sources
-  const allSources = [...waitingList, ...iscas].map(item => item.source || 'Não informado')
+  const allSources = leads.map(item => item.source || 'Não informado')
   const sourceCounts = allSources.reduce((acc, source) => {
     acc[source] = (acc[source] || 0) + 1
     return acc
@@ -72,23 +92,20 @@ export async function fetchDashboardData(page = 1, itemsPerPage = 20) {
     .sort((a, b) => Number(b.count) - Number(a.count))
     .slice(0, 5)
 
-  // Top Affiliates
-  const allAffiliates = [...waitingList, ...iscas].map(item => item.affiliate || 'Não informado')
-  const affiliateCounts = allAffiliates.reduce((acc, affiliate) => {
-    acc[affiliate] = (acc[affiliate] || 0) + 1
+  // Top UTM Sources
+  const allUtmSources = leads.map(item => item.utm_source || 'Não informado')
+  const utmSourceCounts = allUtmSources.reduce((acc, utmSource) => {
+    acc[utmSource] = (acc[utmSource] || 0) + 1
     return acc
   }, {} as Record<string, number>)
-  const topAffiliates = Object.entries(affiliateCounts)
-    .map(([affiliate, count]) => ({ affiliate, count: Number(count) }))
+  const topAffiliates = Object.entries(utmSourceCounts)
+    .map(([utmSource, count]) => ({ utmSource, count: Number(count) }))
     .sort((a, b) => Number(b.count) - Number(a.count))
     .slice(0, 5)
 
   // Leads Table (paginated, sorted by created_at desc)
-  const allLeads = [
-    ...waitingList.map(lead => ({ ...lead, table: 'waiting_list' })),
-    ...iscas.map(lead => ({ ...lead, table: 'iscas' }))
-  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-  const leadsTable = allLeads.slice((page - 1) * itemsPerPage, page * itemsPerPage)
+  const sortedLeads = leads.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  const leadsTable = sortedLeads.slice((page - 1) * itemsPerPage, page * itemsPerPage)
 
   // Monthly Comparison (last 12 months)
   const monthlyComparison = []
@@ -103,9 +120,7 @@ export async function fetchDashboardData(page = 1, itemsPerPage = 20) {
     const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1)
     const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0)
     
-    const monthLeads = waitingList.filter(l => 
-      l.created_at >= startOfMonth.toISOString() && l.created_at <= endOfMonth.toISOString()
-    ).length + iscas.filter(l => 
+    const monthLeads = leads.filter(l => 
       l.created_at >= startOfMonth.toISOString() && l.created_at <= endOfMonth.toISOString()
     ).length
     

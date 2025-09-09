@@ -25,8 +25,7 @@ ChartJS.register(
 
 interface LeadData {
   date: string
-  iscas: number
-  waiting_list: number
+  leads: number
 }
 
 interface LeadsGraphProps {
@@ -38,17 +37,10 @@ export default function LeadsGraph({ data }: LeadsGraphProps) {
     labels: data.map((item) => item.date),
     datasets: [
       {
-        label: 'Iscas',
-        data: data.map((item) => item.iscas),
+        label: 'Leads',
+        data: data.map((item) => item.leads),
         borderColor: 'rgb(234, 179, 8)', // yellow-400
         backgroundColor: 'rgba(234, 179, 8, 0.1)',
-        tension: 0.4
-      },
-      {
-        label: 'Lista de Espera',
-        data: data.map((item) => item.waiting_list),
-        borderColor: 'rgb(34, 197, 94)', // green-500
-        backgroundColor: 'rgba(34, 197, 94, 0.1)',
         tension: 0.4
       }
     ]

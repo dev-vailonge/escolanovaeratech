@@ -50,7 +50,7 @@ export default function ClientSidebar({ children }: { children: React.ReactNode 
       await signOut()
       router.push('/signin')
     } catch (error) {
-      console.error('Error logging out:', error)
+      // Error logging out
       router.push('/signin')
     }
   }

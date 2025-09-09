@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null)
       setInitialized(true)
     } catch (error) {
-      console.error('Error getting initial session:', error)
+      // Error getting initial session
       setUser(null)
       setInitialized(true)
     } finally {
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: { session } } = await supabase.auth.getSession()
       setUser(session?.user ?? null)
     } catch (error) {
-      console.error('Error refreshing session:', error)
+      // Error refreshing session
       setUser(null)
     } finally {
       setLoading(false)
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await supabase.auth.signOut()
       setUser(null)
     } catch (error) {
-      console.error('Error signing out:', error)
+      // Error signing out
     }
   }
 
@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (mounted && initialized) {
-          console.log('Auth state changed:', event, session?.user?.email)
+          // Auth state changed
           setUser(session?.user ?? null)
         }
       }

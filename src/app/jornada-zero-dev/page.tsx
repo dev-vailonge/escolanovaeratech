@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function JornadaZeroDev() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [formData, setFormData] = useState({
     name: '',
     email: ''
@@ -19,6 +20,27 @@ export default function JornadaZeroDev() {
     minutes: 0,
     seconds: 0
   })
+  const [utmParams, setUtmParams] = useState({
+    utm_source: '',
+    utm_medium: '',
+    utm_campaign: '',
+    source: ''
+  })
+
+  // Capture UTM parameters from URL
+  useEffect(() => {
+    const utm_source = searchParams.get('utm_source') || ''
+    const utm_medium = searchParams.get('utm_medium') || ''
+    const utm_campaign = searchParams.get('utm_campaign') || ''
+    const source = searchParams.get('source') || ''
+    
+    setUtmParams({
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      source
+    })
+  }, [searchParams])
 
   // Countdown timer - set to September 21st, 2025 at 17:00hrs
   useEffect(() => {
@@ -63,7 +85,8 @@ export default function JornadaZeroDev() {
         },
         body: JSON.stringify({
           ...formData,
-          source: 'jornada-zero-dev'
+          ...utmParams,
+          source: utmParams.source || 'jornada-zero-dev'
         })
       })
 

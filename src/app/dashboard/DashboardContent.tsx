@@ -15,8 +15,8 @@ interface DashboardContentProps {
     weeklyLeads: number
   }
   topSources: { source: string; count: number }[]
-  topAffiliates: { affiliate: string; count: number }[]
-  leadsGraph: { date: string; iscas: number; waiting_list: number }[]
+  topAffiliates: { utmSource: string; count: number }[]
+  leadsGraph: { date: string; leads: number }[]
   leadsTable: any[]
   monthlyComparison: { month: string; total: number }[]
 }
