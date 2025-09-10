@@ -1,13 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function JornadaZeroDev() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [formData, setFormData] = useState({
     name: '',
     email: ''
@@ -27,20 +26,18 @@ export default function JornadaZeroDev() {
     source: ''
   })
 
-  // Capture UTM parameters from URL
-  useEffect(() => {
-    const utm_source = searchParams.get('utm_source') || ''
-    const utm_medium = searchParams.get('utm_medium') || ''
-    const utm_campaign = searchParams.get('utm_campaign') || ''
-    const source = searchParams.get('source') || ''
-    
-    setUtmParams({
-      utm_source,
-      utm_medium,
-      utm_campaign,
-      source
-    })
-  }, [searchParams])
+  // Suspense-wrapped UTM capture component
+  function UTMCapture({ onParams }: { onParams: (p: { utm_source: string; utm_medium: string; utm_campaign: string; source: string }) => void }) {
+    const searchParams = useSearchParams()
+    useEffect(() => {
+      const utm_source = searchParams.get('utm_source') || ''
+      const utm_medium = searchParams.get('utm_medium') || ''
+      const utm_campaign = searchParams.get('utm_campaign') || ''
+      const source = searchParams.get('source') || ''
+      onParams({ utm_source, utm_medium, utm_campaign, source })
+    }, [searchParams, onParams])
+    return null
+  }
 
   // Countdown timer - set to September 21st, 2025 at 17:00hrs
   useEffect(() => {
@@ -120,6 +117,9 @@ export default function JornadaZeroDev() {
 
   return (
     <main className="min-h-screen bg-black">
+      <Suspense fallback={null}>
+        <UTMCapture onParams={setUtmParams} />
+      </Suspense>
       {/* Fixed Countdown Timer */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-sm border-b border-yellow-400/30">
         <div className="container mx-auto px-4 py-3">
