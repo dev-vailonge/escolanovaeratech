@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 
 export default function JornadaZeroDev() {
   const router = useRouter()
@@ -26,18 +26,26 @@ export default function JornadaZeroDev() {
     source: ''
   })
 
-  // Suspense-wrapped UTM capture component
-  function UTMCapture({ onParams }: { onParams: (p: { utm_source: string; utm_medium: string; utm_campaign: string; source: string }) => void }) {
-    const searchParams = useSearchParams()
-    useEffect(() => {
-      const utm_source = searchParams.get('utm_source') || ''
-      const utm_medium = searchParams.get('utm_medium') || ''
-      const utm_campaign = searchParams.get('utm_campaign') || ''
-      const source = searchParams.get('source') || ''
-      onParams({ utm_source, utm_medium, utm_campaign, source })
-    }, [searchParams, onParams])
-    return null
-  }
+  // Capture UTM params once on mount using window.location
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const sp = new URLSearchParams(window.location.search)
+    const next = {
+      utm_source: sp.get('utm_source') || '',
+      utm_medium: sp.get('utm_medium') || '',
+      utm_campaign: sp.get('utm_campaign') || '',
+      source: sp.get('source') || ''
+    }
+    if (
+      next.utm_source !== utmParams.utm_source ||
+      next.utm_medium !== utmParams.utm_medium ||
+      next.utm_campaign !== utmParams.utm_campaign ||
+      next.source !== utmParams.source
+    ) {
+      setUtmParams(next)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Countdown timer - set to September 21st, 2025 at 17:00hrs
   useEffect(() => {
@@ -97,7 +105,6 @@ export default function JornadaZeroDev() {
       router.push('/thank-you')
 
     } catch (err: any) {
-      // console.error('Error:', err) // Removed for security
       if (err?.message?.includes('duplicate') || err?.message?.includes('already exists')) {
         setError('Este e-mail já está cadastrado na jornada.')
       } else {
@@ -117,9 +124,7 @@ export default function JornadaZeroDev() {
 
   return (
     <main className="min-h-screen bg-black">
-      <Suspense fallback={null}>
-        <UTMCapture onParams={setUtmParams} />
-      </Suspense>
+      {/* UTM params captured on mount */}
       {/* Fixed Countdown Timer */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-sm border-b border-yellow-400/30">
         <div className="container mx-auto px-4 py-3">
@@ -155,6 +160,7 @@ export default function JornadaZeroDev() {
             src="/images/mobile.png"
             alt="Background"
             fill
+            priority
             className="object-cover"
             style={{ objectPosition: 'center right' }}
           />
