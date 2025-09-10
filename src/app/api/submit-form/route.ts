@@ -11,44 +11,59 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, email, phone, source, course, utm_source, utm_medium, utm_campaign } = body
 
+    // Normalize inputs
+    const normalizedName = typeof name === 'string' ? name.trim() : ''
+    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : ''
+    const normalizedPhone = typeof phone === 'string' ? phone.trim() : ''
+    const normalizedSource = typeof source === 'string' ? source.trim() : ''
+
     // Validate required fields
-    if (!name || !email) {
+    if (!normalizedName || !normalizedEmail) {
       return NextResponse.json(
         { error: 'Nome e email são obrigatórios' },
         { status: 400 }
       )
     }
 
-    // Insert into leads table
+    // logs removidos
+
+    // Idempotent behavior: if email already exists, treat as success and skip insert
+    const { data: existing } = await supabase
+      .from('leads')
+      .select('id')
+      .eq('email', normalizedEmail)
+      .maybeSingle()
+
+    if (existing?.id) {
+      return NextResponse.json({ success: true, alreadyExists: true })
+    }
+
+    // Insert new lead (no id provided)
     const { data, error } = await supabase
       .from('leads')
       .insert([
         {
-          name,
-          email,
-          phone: phone || 'Não informado',
-          source: source || 'landing-page',
+          name: normalizedName,
+          email: normalizedEmail,
+          phone: normalizedPhone || 'Não informado',
+          source: normalizedSource || 'landing-page',
           utm_source: utm_source || '',
           utm_medium: utm_medium || '',
-          utm_campaign: utm_campaign || ''
+          utm_campaign: (typeof utm_campaign === 'string' && utm_campaign.trim()) || 'jzt'
         }
       ])
 
     if (error) {
-      if (error.code === '23505') { // Unique constraint violation
-        return NextResponse.json(
-          { error: 'Este e-mail já está cadastrado na lista de espera.' },
-          { status: 400 }
-        )
-      }
+      // erro suprimido em produção
       return NextResponse.json(
-        { error: 'Erro ao salvar dados' },
+        { error: (error as any)?.message || 'Erro ao salvar dados' },
         { status: 500 }
       )
     }
 
     return NextResponse.json({ success: true, data })
   } catch (error) {
+    // erro suprimido em produção
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

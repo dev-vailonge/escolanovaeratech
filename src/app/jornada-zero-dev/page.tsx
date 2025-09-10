@@ -91,6 +91,7 @@ export default function JornadaZeroDev() {
         body: JSON.stringify({
           ...formData,
           ...utmParams,
+          utm_campaign: (utmParams.utm_campaign && utmParams.utm_campaign.trim()) || 'jzt',
           source: utmParams.source || 'jornada-zero-dev'
         })
       })
@@ -98,18 +99,14 @@ export default function JornadaZeroDev() {
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || 'Erro ao enviar formulário')
+        throw new Error(result?.error || JSON.stringify(result) || 'Erro ao enviar formulário')
       }
 
       // Redirect to thank you page
       router.push('/thank-you')
 
     } catch (err: any) {
-      if (err?.message?.includes('duplicate') || err?.message?.includes('already exists')) {
-        setError('Este e-mail já está cadastrado na jornada.')
-      } else {
-        setError('Ocorreu um erro ao salvar seus dados. Por favor, tente novamente.')
-      }
+      setError(err?.message || 'Erro ao enviar formulário')
     } finally {
       setIsLoading(false)
     }
