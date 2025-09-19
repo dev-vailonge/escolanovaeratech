@@ -75,7 +75,7 @@ function ThankYouMaterialContent() {
                 Aproveite para entrar no nosso grupo do WhatsApp para tirar dúvidas e receber mais conteúdos!
               </p>
               <a
-                href="https://chat.whatsapp.com/E2q04eXAR7PLDf1J1KTPMw"
+                href="https://chat.whatsapp.com/CuZ45ZDhpYp5CNkabJ0gWI?mode=ems_copy_h_t"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
