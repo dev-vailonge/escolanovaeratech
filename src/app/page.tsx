@@ -141,11 +141,11 @@ export default function Home() {
     },
     {
       type: 'Programação',
-      title: 'Mobile',
-      description: 'Desenvolva apps para Android e iOS com Kotlin Multiplatform Mobile. Um curso 100% com foco em requisitos do mercado, para te ajudar a criar um portfólio de apps.',
+      title: 'Android',
+      description: 'Desenvolva mais de 15 aplicativos utizando a linguagem de programação Kotlin, crie um portfólio com requisitos de vagas de desenvolvimento mobile.',
       image: '/images/mobile.png',
-      isAvailable: false,
-      link: '/mobile'
+      isAvailable: true,
+      link: '/android'
     },
     {
       type: 'Programação',
