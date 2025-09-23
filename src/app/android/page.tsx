@@ -185,6 +185,27 @@ export default function AndroidCoursePage() {
         </div>
       </section>
 
+      {/* Video Section */}
+      <section className="py-12 bg-black">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto text-center">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Veja essa oportunidade</h2>
+            <p className="text-lg text-gray-300 mb-8">Assista essa vídeo para entender o que tem dentro do curso e a oportunidade que está na sua frente.</p>
+
+            <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+              <iframe
+                src="https://www.youtube.com/embed/tI3FAnzXYOY"
+                title="Veja essa oportunidade"
+                className="absolute top-0 left-0 w-full h-full rounded-xl border border-white/10"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              ></iframe>
+            </div>
+          </div>
+        </div>
+      </section>
+
 
       {/* Big Numbers (course stats) */}
       <section className="py-12 bg-yellow-400/10">
@@ -571,7 +592,7 @@ export default function AndroidCoursePage() {
                       <img
                         src={src}
                         alt={`Projeto app ${i + 1}`}
-                        className="block h-auto w-auto max-h-[520px]"
+                        className="block h-auto max-w-full w-auto max-h-[520px] object-contain mx-auto"
                         loading="lazy"
                         onLoad={recalcProjectsMetrics}
                       />
