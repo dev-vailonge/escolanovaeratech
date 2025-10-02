@@ -134,7 +134,7 @@ export default function FreeMaterialsPage() {
                     </button>
                   ) : (
                     <Link
-                      href={material.link}
+                      href={material.link!}
                       className="inline-flex items-center bg-yellow-500 hover:bg-yellow-400 text-black font-semibold py-1.5 px-3 rounded-md transition-all group-hover:shadow-lg group-hover:shadow-yellow-500/25 text-xs"
                     >
                       {material.buttonText}
