@@ -20,6 +20,10 @@ function ThankYouMaterialContent() {
         setMaterialLink('https://drive.google.com/uc?export=download&id=1jLDmi60wZS0LqTOsQg4WKIV3vF-oL9Sf')
         setMaterialTitle('5 Erros Que Todo Iniciante Comete na Programação')
         break
+      case 'studyplan':
+        setMaterialLink('https://devspacecommunity.notion.site/Plano-Do-ZERO-ao-EMPREGO-e8888c97d3454d06b6f27c113271dfa7')
+        setMaterialTitle('Plano de Estudos Grátis')
+        break
       // Add more cases for other materials
       default:
         // Default if material type not specified

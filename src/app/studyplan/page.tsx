@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 
-export default function FiveErrorsPage() {
+export default function StudyPlanPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -43,8 +43,8 @@ export default function FiveErrorsPage() {
           name: formData.name.trim(),
           email: formData.email.toLowerCase().trim(),
           phone: formData.phone.trim() || '',
-          source: urlParams.source || 'fiveerrors',
-          course: 'fiveerrors'
+          source: urlParams.source || 'studyplan',
+          course: 'studyplan'
         })
       })
 
@@ -55,7 +55,7 @@ export default function FiveErrorsPage() {
       }
 
       // Redirect to thank you material page
-      window.location.href = '/thank-you-material?material=fiveerrors'
+      window.location.href = '/thank-you-material?material=studyplan'
     } catch (err: any) {
       // console.error('Error:', err) // Removed for security
       if (err?.message?.includes('duplicate') || err?.message?.includes('already exists')) {
@@ -79,7 +79,7 @@ export default function FiveErrorsPage() {
         </div>
       </header>
 
-      {/* Hero Section with Ebook Preview */}
+      {/* Hero Section with Study Plan Preview */}
       <section className="py-20 md:py-32 min-h-screen flex items-center">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-10 items-center">
@@ -90,7 +90,7 @@ export default function FiveErrorsPage() {
                 transition={{ duration: 0.6 }}
                 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight"
               >
-                <span className="text-yellow-500">Não</span> cometa esses erros se quiser aprender da forma certa!
+                <span className="text-yellow-500">Plano de Estudos</span> completo para desenvolvimento de apps!
               </motion.h1>
               
               <motion.p
@@ -99,7 +99,7 @@ export default function FiveErrorsPage() {
                 transition={{ duration: 0.6, delay: 0.2 }}
                 className="text-xl text-gray-300 mb-8"
               >
-                Um ebook simples, mas com conteúdo que com certeza vai fazer toda diferença no seu aprendizado. Leia com atenção e aplique o que aprendeu.
+                Tenha acesso a um plano de estudos 100% grátis e estruturado para te guiar nos estudos de desenvolvimento de aplicativos. Do básico ao avançado, tudo organizado para você.
               </motion.p>
 
               <motion.div
@@ -111,9 +111,9 @@ export default function FiveErrorsPage() {
                   className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 px-8 rounded-lg transition-colors mb-4"
                   onClick={() => setIsDialogOpen(true)}
                 >
-                  Download Agora!
+                  Acessar Grátis!
                 </button>
-                <p className="text-sm text-gray-400">*Disponível em PDF, compatível com todos os dispositivos.</p>
+                <p className="text-sm text-gray-400">*Plano completo com cronograma e recursos.</p>
               </motion.div>
             </div>
             
@@ -121,15 +121,15 @@ export default function FiveErrorsPage() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.3 }}
-              className="relative h-[400px] md:h-[500px] flex justify-center items-center"
+              className="relative h-[600px] md:h-[700px] flex justify-center items-center"
             >
               <div className="absolute inset-0 bg-yellow-500/20 blur-3xl rounded-full opacity-30"></div>
-              <div className="relative z-10 transform rotate-12 hover:rotate-0 transition-transform duration-500">
+              <div className="relative z-10">
                 <Image
-                  src="/images/ebook-fireerrors-preview.png"
-                  alt="Ebook: 5 Erros Que Todo Iniciante Comete na Programação"
-                  width={350}
-                  height={500}
+                  src="/images/android-plano.png"
+                  alt="Plano de Estudos para Desenvolvimento Android"
+                  width={600}
+                  height={700}
                   className="object-contain drop-shadow-2xl"
                   priority
                 />
@@ -157,7 +157,7 @@ export default function FiveErrorsPage() {
             </button>
 
             <h2 className="text-2xl font-bold text-center mb-6">
-              Preencha para receber o E-book
+              Preencha para receber o Plano de Estudos
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -214,7 +214,7 @@ export default function FiveErrorsPage() {
                 disabled={isLoading}
                 className="w-full bg-yellow-500 text-black font-semibold py-3 px-6 rounded-xl hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:ring-offset-2 focus:ring-offset-black disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                {isLoading ? 'Enviando...' : 'Receber E-book Agora'}
+                {isLoading ? 'Enviando...' : 'Receber Plano de Estudos Agora'}
               </button>
 
               {error && (
@@ -226,4 +226,4 @@ export default function FiveErrorsPage() {
       )}
     </main>
   )
-} 
+}

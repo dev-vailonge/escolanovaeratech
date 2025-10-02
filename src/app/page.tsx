@@ -168,8 +168,14 @@ export default function Home() {
     <main className="min-h-screen bg-black">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-sm border-b border-white/10">
-        <nav className="container mx-auto px-4 py-4">
+        <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-white">Nova Era</h1>
+          <a 
+            href="/materiais-gratuitos"
+            className="text-yellow-400 hover:text-yellow-300 transition-colors font-medium"
+          >
+            Materiais Gratuitos
+          </a>
         </nav>
       </header>
 
@@ -321,48 +327,6 @@ export default function Home() {
               </div>
             </div>
           </motion.div>
-        </div>
-      </section>
-
-      {/* Projetos de Alunos Section */}
-      <section className="py-20 px-4 md:px-8 lg:px-16 bg-black">
-        <div className="max-w-7xl mx-auto">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-3xl md:text-4xl font-bold text-white text-center mb-12"
-          >
-            Projetos de Alunos
-          </motion.h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-[#1E293B] rounded-xl overflow-hidden"
-            >
-              <img src="/images/aluno1.png" alt="Projeto de aluno 1" className="w-full" />
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-[#1E293B] rounded-xl overflow-hidden"
-            >
-              <img src="/images/aluno2.png" alt="Projeto de aluno 2" className="w-full" />
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="bg-[#1E293B] rounded-xl overflow-hidden"
-            >
-              <img src="/images/aluno3.png" alt="Projeto de aluno 3" className="w-full" />
-            </motion.div>
-          </div>
         </div>
       </section>
 
@@ -707,54 +671,89 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Free Materials Section */}
-      <section className="py-20 bg-zinc-900/50">
+      {/* Free Materials Entry Point */}
+      <section className="py-20 bg-gradient-to-b from-black to-zinc-900">
         <div className="container mx-auto px-4">
-          <div className="max-w-6xl mx-auto text-center">
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-3xl md:text-4xl font-bold text-white mb-6"
-            >
-              Materiais Gratuitos
-            </motion.h2>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-lg md:text-xl text-gray-300 mb-12 max-w-3xl mx-auto"
-            >
-              Comece sua jornada na programação com nossos materiais gratuitos. Aprenda no seu ritmo e descubra se programação é para você.
-            </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-center max-w-4xl mx-auto"
+          >
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+              <span className="text-yellow-500">Materiais Gratuitos</span> para acelerar sua jornada
+            </h2>
+            
+            <p className="text-xl text-gray-300 mb-8">
+              Acesse nossos materiais 100% gratuitos e comece sua jornada no desenvolvimento de aplicativos hoje mesmo.
+            </p>
+
+            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-12">
+              {/* E-book Card */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="bg-zinc-900 border border-white/10 rounded-xl p-6 hover:border-yellow-400/50 transition-all"
+              >
+                <div className="w-12 h-12 bg-yellow-400/10 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                  <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">E-book: 5 Erros Comuns</h3>
+                <p className="text-gray-400 mb-4">
+                  Descubra os 5 erros mais comuns que iniciantes cometem ao aprender programação e como evitá-los.
+                </p>
+                <a
+                  href="/fiveerrors"
+                  className="inline-block bg-yellow-500 hover:bg-yellow-400 text-black font-semibold py-2 px-4 rounded-lg transition-all"
+                >
+                  Baixar Grátis
+                </a>
+              </motion.div>
+
+              {/* Study Plan Card */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+                className="bg-zinc-900 border border-white/10 rounded-xl p-6 hover:border-yellow-400/50 transition-all"
+              >
+                <div className="w-12 h-12 bg-yellow-400/10 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                  <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">Plano de Estudos Grátis</h3>
+                <p className="text-gray-400 mb-4">
+                  Tenha acesso a um plano de estudos 100% grátis para te guiar nos estudos de desenvolvimento de aplicativos.
+                </p>
+                <a
+                  href="/studyplan"
+                  className="inline-block bg-yellow-500 hover:bg-yellow-400 text-black font-semibold py-2 px-4 rounded-lg transition-all"
+                >
+                  Acessar Grátis
+                </a>
+              </motion.div>
+            </div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="flex justify-center"
+              transition={{ duration: 0.6, delay: 0.6 }}
             >
-              <div className="max-w-md">
-                {/* Free Material 1 */}
-                <div className="bg-black border border-white/10 rounded-xl p-6 hover:border-yellow-400/50 transition-all">
-                  <div className="w-12 h-12 bg-yellow-400/10 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                    <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-3">E-book: 5 Erros Comuns</h3>
-                  <p className="text-gray-400 mb-4">
-                    Descubra os 5 erros mais comuns que iniciantes cometem ao aprender programação e como evitá-los.
-                  </p>
-                  <a
-                    href="/fiveerrors"
-                    className="inline-block bg-yellow-500 hover:bg-yellow-400 text-black font-semibold py-2 px-4 rounded-lg transition-all"
-                  >
-                    Baixar Grátis
-                  </a>
-                </div>
-              </div>
+              <a
+                href="/materiais-gratuitos"
+                className="inline-flex items-center bg-transparent border-2 border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-black font-semibold py-3 px-8 rounded-lg transition-all"
+              >
+                Ver Todos os Materiais
+                <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </a>
             </motion.div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
