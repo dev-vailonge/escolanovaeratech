@@ -102,7 +102,7 @@ export default function Black2026Page() {
               {/* CTA Form */}
               <div className="bg-black/80 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                 <h3 className="text-lg font-bold mb-3 text-center text-white">
-                  Quero me cadastrar gratuitamente para a Black Friday 2026
+                 Cadastre-se gratuitamente
                 </h3>
                 
                 {success ? (
