@@ -313,12 +313,12 @@ export default function Black2026Page() {
             <div className="text-white ml-0 md:ml-8">
               {/* Headline */}
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 leading-tight">
-                Estude <span className="text-yellow-400">trabalhando</span> em projetos reais
+                Entre nas áreas mais  <span className="text-yellow-400">bem pagas</span> da programação.
               </h2>
               
               {/* Description */}
               <p className="text-lg text-white/90 mb-8">
-                Ninguém aguenta mais somente aulas gravadas, o mercado pede por experiência real. Então é isso que você vai aprender. Vem aprender com quem chegou onde você quer chegar.
+                Pare de estudar e comece a trabalhar, estudo direcionado com foco em requisitos do mercado, vem ter uma experiência real que já garantiu emprego para centenas de alunos.
               </p>
             </div>
 
@@ -465,6 +465,9 @@ export default function Black2026Page() {
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Veja o que você aprenderá:
             </h2>
+            <p className="text-lg text-white/90 max-w-4xl mx-auto">
+              Em apenas UMA aula, você aprenderá sobre as áreas mais bem pagas da programação, e entenderá como se posicionar para ser uma pessoa desejada pelo mercado de trabalho, <span className="underline decoration-yellow-400 decoration-2">aumentando seus resultados em 200%</span>.
+            </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
