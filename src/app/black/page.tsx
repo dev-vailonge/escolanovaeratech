@@ -9,14 +9,228 @@ export default function Black2026Page() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: ''
+    phone: '',
+    countryCode: '+55'
   })
+
+  const countryCodes = [
+    { code: '+55', country: 'Brasil', flag: '🇧🇷' },
+    { code: '+1', country: 'Estados Unidos', flag: '🇺🇸' },
+    { code: '+1', country: 'Canadá', flag: '🇨🇦' },
+    { code: '+54', country: 'Argentina', flag: '🇦🇷' },
+    { code: '+56', country: 'Chile', flag: '🇨🇱' },
+    { code: '+57', country: 'Colômbia', flag: '🇨🇴' },
+    { code: '+51', country: 'Peru', flag: '🇵🇪' },
+    { code: '+598', country: 'Uruguai', flag: '🇺🇾' },
+    { code: '+591', country: 'Bolívia', flag: '🇧🇴' },
+    { code: '+58', country: 'Venezuela', flag: '🇻🇪' },
+    { code: '+593', country: 'Equador', flag: '🇪🇨' },
+    { code: '+595', country: 'Paraguai', flag: '🇵🇾' },
+    { code: '+34', country: 'Espanha', flag: '🇪🇸' },
+    { code: '+351', country: 'Portugal', flag: '🇵🇹' },
+    { code: '+39', country: 'Itália', flag: '🇮🇹' },
+    { code: '+33', country: 'França', flag: '🇫🇷' },
+    { code: '+49', country: 'Alemanha', flag: '🇩🇪' },
+    { code: '+44', country: 'Reino Unido', flag: '🇬🇧' },
+    { code: '+7', country: 'Rússia', flag: '🇷🇺' },
+    { code: '+86', country: 'China', flag: '🇨🇳' },
+    { code: '+81', country: 'Japão', flag: '🇯🇵' },
+    { code: '+82', country: 'Coreia do Sul', flag: '🇰🇷' },
+    { code: '+91', country: 'Índia', flag: '🇮🇳' },
+    { code: '+61', country: 'Austrália', flag: '🇦🇺' },
+    { code: '+27', country: 'África do Sul', flag: '🇿🇦' },
+    { code: '+52', country: 'México', flag: '🇲🇽' },
+    { code: '+506', country: 'Costa Rica', flag: '🇨🇷' },
+    { code: '+502', country: 'Guatemala', flag: '🇬🇹' },
+    { code: '+504', country: 'Honduras', flag: '🇭🇳' },
+    { code: '+505', country: 'Nicarágua', flag: '🇳🇮' },
+    { code: '+503', country: 'El Salvador', flag: '🇸🇻' },
+    { code: '+507', country: 'Panamá', flag: '🇵🇦' },
+    { code: '+30', country: 'Grécia', flag: '🇬🇷' },
+    { code: '+31', country: 'Holanda', flag: '🇳🇱' },
+    { code: '+32', country: 'Bélgica', flag: '🇧🇪' },
+    { code: '+41', country: 'Suíça', flag: '🇨🇭' },
+    { code: '+43', country: 'Áustria', flag: '🇦🇹' },
+    { code: '+45', country: 'Dinamarca', flag: '🇩🇰' },
+    { code: '+46', country: 'Suécia', flag: '🇸🇪' },
+    { code: '+47', country: 'Noruega', flag: '🇳🇴' },
+    { code: '+48', country: 'Polônia', flag: '🇵🇱' },
+    { code: '+90', country: 'Turquia', flag: '🇹🇷' },
+    { code: '+92', country: 'Paquistão', flag: '🇵🇰' },
+    { code: '+93', country: 'Afeganistão', flag: '🇦🇫' },
+    { code: '+94', country: 'Sri Lanka', flag: '🇱🇰' },
+    { code: '+95', country: 'Myanmar', flag: '🇲🇲' },
+    { code: '+98', country: 'Irã', flag: '🇮🇷' },
+    { code: '+212', country: 'Marrocos', flag: '🇲🇦' },
+    { code: '+213', country: 'Argélia', flag: '🇩🇿' },
+    { code: '+216', country: 'Tunísia', flag: '🇹🇳' },
+    { code: '+218', country: 'Líbia', flag: '🇱🇾' },
+    { code: '+220', country: 'Gâmbia', flag: '🇬🇲' },
+    { code: '+221', country: 'Senegal', flag: '🇸🇳' },
+    { code: '+222', country: 'Mauritânia', flag: '🇲🇷' },
+    { code: '+223', country: 'Mali', flag: '🇲🇱' },
+    { code: '+224', country: 'Guiné', flag: '🇬🇳' },
+    { code: '+225', country: 'Costa do Marfim', flag: '🇨🇮' },
+    { code: '+226', country: 'Burkina Faso', flag: '🇧🇫' },
+    { code: '+227', country: 'Níger', flag: '🇳🇪' },
+    { code: '+228', country: 'Togo', flag: '🇹🇬' },
+    { code: '+229', country: 'Benin', flag: '🇧🇯' },
+    { code: '+230', country: 'Maurício', flag: '🇲🇺' },
+    { code: '+231', country: 'Libéria', flag: '🇱🇷' },
+    { code: '+232', country: 'Serra Leoa', flag: '🇸🇱' },
+    { code: '+233', country: 'Gana', flag: '🇬🇭' },
+    { code: '+234', country: 'Nigéria', flag: '🇳🇬' },
+    { code: '+235', country: 'Chade', flag: '🇹🇩' },
+    { code: '+236', country: 'República Centro-Africana', flag: '🇨🇫' },
+    { code: '+237', country: 'Camarões', flag: '🇨🇲' },
+    { code: '+238', country: 'Cabo Verde', flag: '🇨🇻' },
+    { code: '+239', country: 'São Tomé e Príncipe', flag: '🇸🇹' },
+    { code: '+240', country: 'Guiné Equatorial', flag: '🇬🇶' },
+    { code: '+241', country: 'Gabão', flag: '🇬🇦' },
+    { code: '+242', country: 'República do Congo', flag: '🇨🇬' },
+    { code: '+243', country: 'República Democrática do Congo', flag: '🇨🇩' },
+    { code: '+244', country: 'Angola', flag: '🇦🇴' },
+    { code: '+245', country: 'Guiné-Bissau', flag: '🇬🇼' },
+    { code: '+246', country: 'Território Britânico do Oceano Índico', flag: '🇮🇴' },
+    { code: '+248', country: 'Seicheles', flag: '🇸🇨' },
+    { code: '+249', country: 'Sudão', flag: '🇸🇩' },
+    { code: '+250', country: 'Ruanda', flag: '🇷🇼' },
+    { code: '+251', country: 'Etiópia', flag: '🇪🇹' },
+    { code: '+252', country: 'Somália', flag: '🇸🇴' },
+    { code: '+253', country: 'Djibuti', flag: '🇩🇯' },
+    { code: '+254', country: 'Quênia', flag: '🇰🇪' },
+    { code: '+255', country: 'Tanzânia', flag: '🇹🇿' },
+    { code: '+256', country: 'Uganda', flag: '🇺🇬' },
+    { code: '+257', country: 'Burundi', flag: '🇧🇮' },
+    { code: '+258', country: 'Moçambique', flag: '🇲🇿' },
+    { code: '+260', country: 'Zâmbia', flag: '🇿🇲' },
+    { code: '+261', country: 'Madagáscar', flag: '🇲🇬' },
+    { code: '+262', country: 'Reunião', flag: '🇷🇪' },
+    { code: '+263', country: 'Zimbábue', flag: '🇿🇼' },
+    { code: '+264', country: 'Namíbia', flag: '🇳🇦' },
+    { code: '+265', country: 'Malawi', flag: '🇲🇼' },
+    { code: '+266', country: 'Lesoto', flag: '🇱🇸' },
+    { code: '+267', country: 'Botswana', flag: '🇧🇼' },
+    { code: '+268', country: 'Suazilândia', flag: '🇸🇿' },
+    { code: '+269', country: 'Comores', flag: '🇰🇲' },
+    { code: '+290', country: 'Santa Helena', flag: '🇸🇭' },
+    { code: '+291', country: 'Eritreia', flag: '🇪🇷' },
+    { code: '+297', country: 'Aruba', flag: '🇦🇼' },
+    { code: '+298', country: 'Ilhas Faroé', flag: '🇫🇴' },
+    { code: '+299', country: 'Groenlândia', flag: '🇬🇱' },
+    { code: '+350', country: 'Gibraltar', flag: '🇬🇮' },
+    { code: '+352', country: 'Luxemburgo', flag: '🇱🇺' },
+    { code: '+353', country: 'Irlanda', flag: '🇮🇪' },
+    { code: '+354', country: 'Islândia', flag: '🇮🇸' },
+    { code: '+355', country: 'Albânia', flag: '🇦🇱' },
+    { code: '+356', country: 'Malta', flag: '🇲🇹' },
+    { code: '+357', country: 'Chipre', flag: '🇨🇾' },
+    { code: '+358', country: 'Finlândia', flag: '🇫🇮' },
+    { code: '+359', country: 'Bulgária', flag: '🇧🇬' },
+    { code: '+370', country: 'Lituânia', flag: '🇱🇹' },
+    { code: '+371', country: 'Letônia', flag: '🇱🇻' },
+    { code: '+372', country: 'Estônia', flag: '🇪🇪' },
+    { code: '+373', country: 'Moldávia', flag: '🇲🇩' },
+    { code: '+374', country: 'Armênia', flag: '🇦🇲' },
+    { code: '+375', country: 'Bielorrússia', flag: '🇧🇾' },
+    { code: '+376', country: 'Andorra', flag: '🇦🇩' },
+    { code: '+377', country: 'Mônaco', flag: '🇲🇨' },
+    { code: '+378', country: 'San Marino', flag: '🇸🇲' },
+    { code: '+380', country: 'Ucrânia', flag: '🇺🇦' },
+    { code: '+381', country: 'Sérvia', flag: '🇷🇸' },
+    { code: '+382', country: 'Montenegro', flag: '🇲🇪' },
+    { code: '+383', country: 'Kosovo', flag: '🇽🇰' },
+    { code: '+385', country: 'Croácia', flag: '🇭🇷' },
+    { code: '+386', country: 'Eslovênia', flag: '🇸🇮' },
+    { code: '+387', country: 'Bósnia e Herzegovina', flag: '🇧🇦' },
+    { code: '+389', country: 'Macedônia do Norte', flag: '🇲🇰' },
+    { code: '+420', country: 'República Tcheca', flag: '🇨🇿' },
+    { code: '+421', country: 'Eslováquia', flag: '🇸🇰' },
+    { code: '+423', country: 'Liechtenstein', flag: '🇱🇮' },
+    { code: '+500', country: 'Ilhas Malvinas', flag: '🇫🇰' },
+    { code: '+501', country: 'Belize', flag: '🇧🇿' },
+    { code: '+502', country: 'Guatemala', flag: '🇬🇹' },
+    { code: '+503', country: 'El Salvador', flag: '🇸🇻' },
+    { code: '+504', country: 'Honduras', flag: '🇭🇳' },
+    { code: '+505', country: 'Nicarágua', flag: '🇳🇮' },
+    { code: '+506', country: 'Costa Rica', flag: '🇨🇷' },
+    { code: '+507', country: 'Panamá', flag: '🇵🇦' },
+    { code: '+508', country: 'Saint Pierre e Miquelon', flag: '🇵🇲' },
+    { code: '+509', country: 'Haiti', flag: '🇭🇹' },
+    { code: '+590', country: 'Guadalupe', flag: '🇬🇵' },
+    { code: '+591', country: 'Bolívia', flag: '🇧🇴' },
+    { code: '+592', country: 'Guiana', flag: '🇬🇾' },
+    { code: '+593', country: 'Equador', flag: '🇪🇨' },
+    { code: '+594', country: 'Guiana Francesa', flag: '🇬🇫' },
+    { code: '+595', country: 'Paraguai', flag: '🇵🇾' },
+    { code: '+596', country: 'Martinica', flag: '🇲🇶' },
+    { code: '+597', country: 'Suriname', flag: '🇸🇷' },
+    { code: '+598', country: 'Uruguai', flag: '🇺🇾' },
+    { code: '+599', country: 'Antilhas Holandesas', flag: '🇧🇶' },
+    { code: '+670', country: 'Timor-Leste', flag: '🇹🇱' },
+    { code: '+672', country: 'Antártica', flag: '🇦🇶' },
+    { code: '+673', country: 'Brunei', flag: '🇧🇳' },
+    { code: '+674', country: 'Nauru', flag: '🇳🇷' },
+    { code: '+675', country: 'Papua Nova Guiné', flag: '🇵🇬' },
+    { code: '+676', country: 'Tonga', flag: '🇹🇴' },
+    { code: '+677', country: 'Ilhas Salomão', flag: '🇸🇧' },
+    { code: '+678', country: 'Vanuatu', flag: '🇻🇺' },
+    { code: '+679', country: 'Fiji', flag: '🇫🇯' },
+    { code: '+680', country: 'Palau', flag: '🇵🇼' },
+    { code: '+681', country: 'Wallis e Futuna', flag: '🇼🇫' },
+    { code: '+682', country: 'Ilhas Cook', flag: '🇨🇰' },
+    { code: '+683', country: 'Niue', flag: '🇳🇺' },
+    { code: '+684', country: 'Samoa Americana', flag: '🇦🇸' },
+    { code: '+685', country: 'Samoa', flag: '🇼🇸' },
+    { code: '+686', country: 'Kiribati', flag: '🇰🇮' },
+    { code: '+687', country: 'Nova Caledônia', flag: '🇳🇨' },
+    { code: '+688', country: 'Tuvalu', flag: '🇹🇻' },
+    { code: '+689', country: 'Polinésia Francesa', flag: '🇵🇫' },
+    { code: '+690', country: 'Tokelau', flag: '🇹🇰' },
+    { code: '+691', country: 'Micronésia', flag: '🇫🇲' },
+    { code: '+692', country: 'Ilhas Marshall', flag: '🇲🇭' },
+    { code: '+850', country: 'Coreia do Norte', flag: '🇰🇵' },
+    { code: '+852', country: 'Hong Kong', flag: '🇭🇰' },
+    { code: '+853', country: 'Macau', flag: '🇲🇴' },
+    { code: '+855', country: 'Camboja', flag: '🇰🇭' },
+    { code: '+856', country: 'Laos', flag: '🇱🇦' },
+    { code: '+880', country: 'Bangladesh', flag: '🇧🇩' },
+    { code: '+886', country: 'Taiwan', flag: '🇹🇼' },
+    { code: '+960', country: 'Maldivas', flag: '🇲🇻' },
+    { code: '+961', country: 'Líbano', flag: '🇱🇧' },
+    { code: '+962', country: 'Jordânia', flag: '🇯🇴' },
+    { code: '+963', country: 'Síria', flag: '🇸🇾' },
+    { code: '+964', country: 'Iraque', flag: '🇮🇶' },
+    { code: '+965', country: 'Kuwait', flag: '🇰🇼' },
+    { code: '+966', country: 'Arábia Saudita', flag: '🇸🇦' },
+    { code: '+967', country: 'Iêmen', flag: '🇾🇪' },
+    { code: '+968', country: 'Omã', flag: '🇴🇲' },
+    { code: '+970', country: 'Palestina', flag: '🇵🇸' },
+    { code: '+971', country: 'Emirados Árabes Unidos', flag: '🇦🇪' },
+    { code: '+972', country: 'Israel', flag: '🇮🇱' },
+    { code: '+973', country: 'Bahrein', flag: '🇧🇭' },
+    { code: '+974', country: 'Catar', flag: '🇶🇦' },
+    { code: '+975', country: 'Butão', flag: '🇧🇹' },
+    { code: '+976', country: 'Mongólia', flag: '🇲🇳' },
+    { code: '+977', country: 'Nepal', flag: '🇳🇵' },
+    { code: '+992', country: 'Tajiquistão', flag: '🇹🇯' },
+    { code: '+993', country: 'Turcomenistão', flag: '🇹🇲' },
+    { code: '+994', country: 'Azerbaijão', flag: '🇦🇿' },
+    { code: '+995', country: 'Geórgia', flag: '🇬🇪' },
+    { code: '+996', country: 'Quirguistão', flag: '🇰🇬' },
+    { code: '+998', country: 'Uzbequistão', flag: '🇺🇿' }
+  ].sort((a, b) => a.country.localeCompare(b.country))
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [urlParams, setUrlParams] = useState({
     source: '',
-    affiliate: ''
+    affiliate: '',
+    utm_source: '',
+    utm_campaign: '',
+    utm_medium: '',
+    utm_content: '',
+    utm_term: ''
   })
 
   useEffect(() => {
@@ -24,7 +238,12 @@ export default function Black2026Page() {
     const params = new URLSearchParams(window.location.search)
     setUrlParams({
       source: params.get('source') || '',
-      affiliate: params.get('affiliate') || ''
+      affiliate: params.get('affiliate') || '',
+      utm_source: params.get('utm_source') || '',
+      utm_campaign: params.get('utm_campaign') || '',
+      utm_medium: params.get('utm_medium') || '',
+      utm_content: params.get('utm_content') || '',
+      utm_term: params.get('utm_term') || ''
     })
   }, [])
 
@@ -43,9 +262,14 @@ export default function Black2026Page() {
         body: JSON.stringify({
           name: formData.name.trim(),
           email: formData.email.toLowerCase().trim(),
-          phone: formData.phone.trim() || '',
-          source: urlParams.source || 'black-2026',
-          course: 'black-2026'
+          phone: `${formData.countryCode}${formData.phone.trim()}`,
+          source: urlParams.source || 'black',
+          course: 'black',
+          utm_source: urlParams.utm_source,
+          utm_campaign: urlParams.utm_campaign,
+          utm_medium: urlParams.utm_medium,
+          utm_content: urlParams.utm_content,
+          utm_term: urlParams.utm_term
         })
       })
 
@@ -55,7 +279,8 @@ export default function Black2026Page() {
         throw new Error(result.error || 'Erro ao enviar formulário')
       }
 
-      setSuccess(true)
+      // Redirect to thank you page
+      window.location.href = '/black/thank-you'
     } catch (err: any) {
       if (err?.message?.includes('duplicate') || err?.message?.includes('already exists')) {
         setError('Este e-mail já está cadastrado na lista VIP.')
@@ -83,9 +308,9 @@ export default function Black2026Page() {
         {/* Hero Section */}
       <section className="pt-16 pb-8 bg-gradient-to-b from-black via-black to-yellow-500/5 min-h-[70vh] flex items-center relative" style={{background: 'radial-gradient(ellipse at right, rgba(234, 179, 8, 0.3) 0%, rgba(234, 179, 8, 0.1) 30%, rgba(0, 0, 0, 1) 70%)'}}>
         <div className="container mx-auto px-4 max-w-none">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
             {/* Left Section - Text Only */}
-            <div className="text-white ml-8">
+            <div className="text-white ml-0 md:ml-8">
               {/* Headline */}
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 leading-tight">
                 Estude <span className="text-yellow-400">trabalhando</span> em projetos reais
@@ -98,21 +323,21 @@ export default function Black2026Page() {
             </div>
 
             {/* Right Section - Form */}
-            <div className="text-white">
+            <div className="text-white w-full">
               {/* CTA Form */}
-              <div className="bg-black/80 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+              <div className="bg-black/80 backdrop-blur-sm rounded-xl p-4 border border-white/10 w-full">
                 <h3 className="text-lg font-bold mb-3 text-center text-white">
                  Cadastre-se gratuitamente
                 </h3>
                 
                 {success ? (
                   <div className="text-center">
-                    <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-12 h-12 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <svg className="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
-                    <h4 className="text-base font-bold text-green-500 mb-2">Você está na lista VIP!</h4>
+                    <h4 className="text-base font-bold text-yellow-500 mb-2">Você está na lista VIP!</h4>
                     <p className="text-gray-300 text-xs">Você será notificado sobre o lançamento e receberá benefícios exclusivos.</p>
                   </div>
                 ) : (
@@ -150,15 +375,31 @@ export default function Black2026Page() {
                       <label className="block text-xs text-white mb-1">
                         Celular
                       </label>
-                      <input
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                        placeholder="+55 11 98765-4321"
-                        className="w-full px-3 py-2 rounded-lg bg-zinc-800 text-white border border-zinc-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all text-sm"
-                      />
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        {/* Country Code Dropdown */}
+                        <select
+                          value={formData.countryCode}
+                          onChange={(e) => setFormData(prev => ({ ...prev, countryCode: e.target.value }))}
+                          className="px-3 py-2 rounded-lg bg-zinc-800 text-white border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all text-sm w-full sm:min-w-[120px] sm:w-auto"
+                        >
+                          {countryCodes.map((country, index) => (
+                            <option key={index} value={country.code} className="bg-zinc-800 text-white whitespace-nowrap">
+                              {country.flag} {country.country} ({country.code})
+                            </option>
+                          ))}
+                        </select>
+                        
+                        {/* Phone Number Input */}
+                        <input
+                          type="tel"
+                          value={formData.phone}
+                          onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                          placeholder="11 98765-4321"
+                          className="flex-1 px-3 py-2 rounded-lg bg-zinc-800 text-white border border-zinc-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all text-sm"
+                        />
+                      </div>
                       <p className="mt-1 text-xs text-gray-400">
-                        Exemplo: +55 para Brasil, +1 para EUA/Canadá
+                        Selecione seu país e digite apenas o número
                       </p>
                     </div>
 
@@ -324,7 +565,7 @@ export default function Black2026Page() {
                 
                 <div className="text-lg text-gray-300 space-y-4">
                   <p>Eu sou <span className="text-yellow-500 font-semibold">Roque</span>, programador e educador.</p>
-                  <p>Depois de anos ensinando milhares de alunos e trabalhando no <span className="text-green-500 font-semibold">Spotify</span>, percebi uma coisa:</p>
+                  <p>Depois de anos ensinando milhares de alunos e trabalhando no <span className="text-yellow-500 font-semibold">Spotify</span>, percebi uma coisa:</p>
                   <p className="text-xl text-yellow-500 font-semibold">👉 As pessoas não precisam de mais cursos,<br />elas precisam de experiência real.</p>
                   <p>E é exatamente isso que a Nova Era vai entregar.</p>
                 </div>

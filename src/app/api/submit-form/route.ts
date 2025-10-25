@@ -9,7 +9,7 @@ const supabase = createClient(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, email, phone, source, course, utm_source, utm_medium, utm_campaign } = body
+    const { name, email, phone, source, course, utm_source, utm_medium, utm_campaign, utm_content, utm_term } = body
 
     // Normalize inputs
     const normalizedName = typeof name === 'string' ? name.trim() : ''
@@ -49,7 +49,9 @@ export async function POST(request: NextRequest) {
           source: normalizedSource || 'landing-page',
           utm_source: utm_source || '',
           utm_medium: utm_medium || '',
-          utm_campaign: (typeof utm_campaign === 'string' && utm_campaign.trim()) || 'jzt'
+          utm_campaign: (typeof utm_campaign === 'string' && utm_campaign.trim()) || 'jzt',
+          utm_content: utm_content || '',
+          utm_term: utm_term || ''
         }
       ])
 
