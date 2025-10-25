@@ -354,6 +354,7 @@ export default function Black2026Page() {
                         className="w-full px-3 py-2 rounded-lg bg-zinc-800 text-white border border-zinc-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all text-sm"
                         required
                         minLength={3}
+                        maxLength={100}
                       />
                     </div>
 
@@ -368,6 +369,7 @@ export default function Black2026Page() {
                         placeholder="Digite seu melhor e-mail"
                         className="w-full px-3 py-2 rounded-lg bg-zinc-800 text-white border border-zinc-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all text-sm"
                         required
+                        maxLength={100}
                       />
                     </div>
 
@@ -396,6 +398,7 @@ export default function Black2026Page() {
                           onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                           placeholder="11 98765-4321"
                           className="flex-1 px-3 py-2 rounded-lg bg-zinc-800 text-white border border-zinc-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all text-sm"
+                          maxLength={100}
                         />
                       </div>
                       <p className="mt-1 text-xs text-gray-400">
