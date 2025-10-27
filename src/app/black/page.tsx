@@ -311,6 +311,13 @@ export default function Black2026Page() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
             {/* Left Section - Text Only */}
             <div className="text-white ml-0 md:ml-8">
+              {/* Date Chip */}
+              <div className="flex justify-center md:justify-start mb-6">
+                <div className="inline-flex items-center bg-yellow-400/10 border border-yellow-400/30 rounded-full px-4 py-2">
+                  <span className="text-yellow-400 font-semibold text-sm">09/11 às 17h 🇧🇷</span>
+                </div>
+              </div>
+              
               {/* Headline */}
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 leading-tight">
                 Entre nas áreas mais  <span className="text-yellow-400">bem pagas</span> da programação.
