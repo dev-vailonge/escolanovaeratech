@@ -63,6 +63,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Call webhook after successful database insert
+    try {
+      const webhookUrl = process.env.LEADCONNECTOR_WEBHOOK_URL
+      
+      if (!webhookUrl) {
+        return NextResponse.json({ success: true, data })
+      }
+
+      const webhookPayload = {
+        name: normalizedName,
+        email: normalizedEmail,
+        phone: normalizedPhone || 'Não informado',
+        source: normalizedSource || 'landing-page',
+        course: course || '',
+        utm_source: utm_source || '',
+        utm_medium: utm_medium || '',
+        utm_campaign: (typeof utm_campaign === 'string' && utm_campaign.trim()) || 'jzt',
+        utm_content: utm_content || '',
+        utm_term: utm_term || '',
+        timestamp: new Date().toISOString()
+      }
+
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(webhookPayload)
+      })
+    } catch (webhookError) {
+      // Webhook error - don't fail the main request
+    }
+
     return NextResponse.json({ success: true, data })
   } catch (error) {
     // erro suprimido em produção
