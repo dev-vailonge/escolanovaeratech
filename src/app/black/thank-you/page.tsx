@@ -16,8 +16,6 @@ export default function BlackThankYouPage() {
   }, [])
 
   return (
-
-    <>
      <>
       <Script id="facebook-pixel" strategy="afterInteractive">
         {`
