@@ -1,5 +1,6 @@
 'use client'
 
+import Script from 'next/script'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
