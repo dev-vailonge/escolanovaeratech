@@ -8,6 +8,11 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
+
+    console.log("🔍 Checando variável de ambiente...");
+    console.log("ENV webhookUrl presente?", Boolean(process.env.LEADCONNECTOR_WEBHOOK_URL));
+    console.log("Valor parcial (só para debug local):", process.env.LEADCONNECTOR_WEBHOOK_URL?.slice(0, 30) + "...");
+
     const body = await request.json()
     const { name, email, phone, source, course, utm_source, utm_medium, utm_campaign, utm_content, utm_term } = body
 
