@@ -100,7 +100,7 @@ export default function BlackThankYouPage() {
             className="pt-4"
           >
             <a
-              href="https://chat.whatsapp.com/CuZ45ZDhpYp5CNkabJ0gWI"
+              href="https://chat.whatsapp.com/KFl3zL7XYox3p5iuDlUp4Q"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-8 rounded-xl transition-all text-lg shadow-lg hover:shadow-xl"
