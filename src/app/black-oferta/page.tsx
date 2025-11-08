@@ -1,5 +1,6 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import FixedTopbar from '@/components/black-oferta/FixedTopbar'
 import OpportunitiesSection from '@/components/black-oferta/OpportunitiesSection'
@@ -8,8 +9,19 @@ import GuaranteeSection from '@/components/black-oferta/GuaranteeSection'
 import TestimonialsCarousel from '@/components/black-oferta/TestimonialsCarousel'
 import TeamWorkSection from '@/components/black-oferta/TeamWorkSection'
 import CareerTransformationSection from '@/components/black-oferta/CareerTransformationSection'
-import { SplineScene } from '@/components/ui/splite'
 import { Spotlight } from '@/components/ui/spotlight'
+
+const SplineScene = dynamic(
+  () => import('@/components/ui/splite').then((mod) => mod.SplineScene),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+)
 
 export default function BlackOfertaPage() {
   return (
