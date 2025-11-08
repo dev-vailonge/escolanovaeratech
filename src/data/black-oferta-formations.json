@@ -1,0 +1,219 @@
+{
+  "mentor": {
+    "name": "ROQUE",
+    "title": "Como desenvolver a mentalidade certa para crescer",
+    "category": "Desenvolvimento Pessoal",
+    "image": "/images/roque.png"
+  },
+  "formations": [
+    {
+      "id": "android",
+      "title": "Android (Kotlin)",
+      "description": "Desenvolvimento completo de apps nativos Android com Kotlin, UI/UX, APIs, Room, coroutines e publicação na Play Store.",
+      "courses": [
+        {
+          "title": "Lógica de Programação",
+          "price": 197.00
+        },
+        {
+          "title": "Orientação a Objetos",
+          "price": 297.00
+        },
+        {
+          "title": "Git e GitHub",
+          "price": 197.00
+        },
+        {
+          "title": "Figma",
+          "price": 197.00
+        },
+        {
+          "title": "Scrum",
+          "price": 197.00
+        },
+        {
+          "title": "Android Básico",
+          "price": 297.00
+        },
+        {
+          "title": "Android Intermediário",
+          "price": 297.00
+        },
+        {
+          "title": "Android Avançado",
+          "price": 297.00
+        }
+      ]
+    },
+    {
+      "id": "frontend",
+      "title": "Web Frontend (React)",
+      "description": "Domine React e Next.js para criar interfaces modernas e performáticas. Torne-se um desenvolvedor frontend completo.",
+      "courses": [
+        {
+          "title": "Lógica de Programação",
+          "price": 197.00
+        },
+        {
+          "title": "HTML e CSS Avançado",
+          "price": 297.00
+        },
+        {
+          "title": "JavaScript Moderno",
+          "price": 297.00
+        },
+        {
+          "title": "Git e GitHub",
+          "price": 197.00
+        },
+        {
+          "title": "Figma",
+          "price": 197.00
+        },
+        {
+          "title": "React Básico",
+          "price": 297.00
+        },
+        {
+          "title": "React Intermediário",
+          "price": 297.00
+        },
+        {
+          "title": "Next.js Avançado",
+          "price": 297.00
+        }
+      ]
+    },
+    {
+      "id": "backend",
+      "title": "Backend (Node/Java/Kotlin)",
+      "description": "Torne-se desenvolvedor backend completo. Domine APIs REST, autenticação, bancos de dados e deploy em produção.",
+      "courses": [
+        {
+          "title": "Lógica de Programação",
+          "price": 197.00
+        },
+        {
+          "title": "Orientação a Objetos",
+          "price": 297.00
+        },
+        {
+          "title": "Git e GitHub",
+          "price": 197.00
+        },
+        {
+          "title": "Banco de Dados SQL",
+          "price": 297.00
+        },
+        {
+          "title": "Node.js Básico",
+          "price": 297.00
+        },
+        {
+          "title": "APIs REST",
+          "price": 297.00
+        },
+        {
+          "title": "Autenticação e Segurança",
+          "price": 297.00
+        },
+        {
+          "title": "Docker e Deploy",
+          "price": 297.00
+        }
+      ]
+    },
+    {
+      "id": "ios",
+      "title": "iOS (Swift)",
+      "description": "Torne-se desenvolvedor iOS profissional. Domine SwiftUI, Combine e publique seus apps na App Store.",
+      "courses": [
+        {
+          "title": "Lógica de Programação",
+          "price": 197.00
+        },
+        {
+          "title": "Swift Básico",
+          "price": 297.00
+        },
+        {
+          "title": "Git e GitHub",
+          "price": 197.00
+        },
+        {
+          "title": "Figma",
+          "price": 197.00
+        },
+        {
+          "title": "Scrum",
+          "price": 197.00
+        },
+        {
+          "title": "iOS Básico",
+          "price": 297.00
+        },
+        {
+          "title": "SwiftUI Intermediário",
+          "price": 297.00
+        },
+        {
+          "title": "iOS Avançado",
+          "price": 297.00
+        }
+      ]
+    },
+    {
+      "id": "analise-dados",
+      "title": "Análise de Dados (Python)",
+      "description": "Domine análise de dados com Python. Aprenda Pandas, SQL, visualização e crie dashboards profissionais.",
+      "courses": [
+        {
+          "title": "Lógica de Programação",
+          "price": 197.00
+        },
+        {
+          "title": "Python Básico",
+          "price": 297.00
+        },
+        {
+          "title": "Git e GitHub",
+          "price": 197.00
+        },
+        {
+          "title": "SQL para Análise",
+          "price": 297.00
+        },
+        {
+          "title": "Pandas e Manipulação",
+          "price": 297.00
+        },
+        {
+          "title": "Visualização de Dados",
+          "price": 297.00
+        },
+        {
+          "title": "Dashboards Interativos",
+          "price": 297.00
+        },
+        {
+          "title": "Cases Práticos",
+          "price": 297.00
+        }
+      ]
+    }
+  ],
+  "bonuses": [
+    {
+      "title": "Clube do livro",
+      "price": 597.00
+    },
+    {
+      "title": "Meetup mensal",
+      "price": 597.00
+    }
+  ],
+  "totalPrice": 8445.00,
+  "blackFridayPrice": 897.00,
+  "discount": 50
+}
+

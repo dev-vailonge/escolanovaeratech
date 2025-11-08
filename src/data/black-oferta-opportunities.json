@@ -1,0 +1,50 @@
+{
+  "title": "Oportunidades únicas para quem comprar agora",
+  "opportunities": [
+    {
+      "id": "viagem-mentores",
+      "image": "/images/viagem-internacional.jpg",
+      "imageLabel": "VIAGEM INTERNACIONAL",
+      "badge": {
+        "text": "APENAS AGORA",
+        "icon": "clock"
+      },
+      "title": "CONHEÇA SEU MENTOR",
+      "description": "Viagem com tudo pago Europa em 2026 para conhecer o Roque e outros mentores da Nova Era. Você também ganha um ingresso para um grande evento de tecnologia. Garantindo sua vaga nessa turma você se qualifica para concorrer a viagem."
+    },
+    {
+      "id": "workshop-carreira-internacional",
+      "image": "/images/workshop-carreira.JPG",
+      "imageLabel": "WORKSHOP",
+      "badge": {
+        "text": "ATÉ 10.11 ÀS 23:59",
+        "icon": "clock"
+      },
+      "title": "Workshop Carreira Internacional",
+      "description": "Aprenda com quem chegou onde você quer chegar. Workshop exclusivo com programador do Google, Spotify e recrutador do Facebook."
+    },
+    {
+      "id": "workshop-freelancer-ia",
+      "image": "/images/workshop-freelancer.jpg",
+      "imageLabel": "WORKSHOP",
+      "badge": {
+        "text": "ATÉ 12.11 ÀS 23:59",
+        "icon": "clock"
+      },
+      "title": "WorkShop Freelancer + IA",
+      "description": "Descubra como usar inteligência artificial para potencializar seu trabalho como freelancer. Aprenda ferramentas, estratégias e técnicas para aumentar sua produtividade e conquistar mais clientes usando IA."
+    },
+    {
+      "id": "desconto-50-formacoes",
+      "image": "/images/cinco-formacoes.png",
+      "imageLabel": "OFERTA ESPECIAL",
+      "badge": {
+        "text": "BLACK FRIDAY",
+        "icon": "clock"
+      },
+      "title": "Leve 5 Formações pelo Preço de 1",
+      "description": "Aproveite esta oportunidade única! Compre 5 formações completas pelo preço de 1 com 50% de desconto. Acesso imediato a todas as formações, mentoria, comunidade e bônus exclusivos."
+    }
+  ]
+}
+
