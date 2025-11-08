@@ -11,18 +11,18 @@ import TeamWorkSection from '@/components/black-oferta/TeamWorkSection'
 import CareerTransformationSection from '@/components/black-oferta/CareerTransformationSection'
 import { Spotlight } from '@/components/ui/spotlight'
 
+// Direct Spline import with proper error handling
 const SplineScene = dynamic(
-  () => import('@/components/ui/splite').then((mod) => mod.SplineScene).catch((error) => {
-    console.error('Failed to load SplineScene:', error)
-    // Return a fallback component
-    return {
-      default: ({ className }: { className?: string }) => (
-        <div className={className} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-          <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      )
-    }
-  }),
+  () => 
+    import('@splinetool/react-spline/next')
+      .then((mod) => {
+        const Spline = mod.default || mod
+        return Spline
+      })
+      .catch(() => {
+        // Fallback to regular import
+        return import('@splinetool/react-spline').then((mod) => mod.default || mod)
+      }),
   {
     ssr: false,
     loading: () => (
@@ -101,10 +101,12 @@ export default function BlackOfertaPage() {
                 className="flex-1 w-full lg:w-auto"
               >
                 <div className="relative w-full h-[400px] lg:h-[500px]">
-                  <SplineScene
-                    scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
-                    className="w-full h-full"
-                  />
+                  {typeof window !== 'undefined' && (
+                    <SplineScene
+                      scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
+                      className="w-full h-full"
+                    />
+                  )}
                 </div>
               </motion.div>
             </div>
