@@ -12,7 +12,17 @@ import CareerTransformationSection from '@/components/black-oferta/CareerTransfo
 import { Spotlight } from '@/components/ui/spotlight'
 
 const SplineScene = dynamic(
-  () => import('@/components/ui/splite').then((mod) => mod.SplineScene),
+  () => import('@/components/ui/splite').then((mod) => mod.SplineScene).catch((error) => {
+    console.error('Failed to load SplineScene:', error)
+    // Return a fallback component
+    return {
+      default: ({ className }: { className?: string }) => (
+        <div className={className} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+          <div className="w-16 h-16 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      )
+    }
+  }),
   {
     ssr: false,
     loading: () => (
