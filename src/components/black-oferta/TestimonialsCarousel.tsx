@@ -43,7 +43,7 @@ export default function TestimonialsCarousel() {
   }
 
   return (
-    <section className="py-20 bg-black">
+    <section className="py-20 bg-gradient-to-b from-black via-black to-yellow-500/10 relative overflow-hidden">
       <div className="container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
           {/* Section Title */}
@@ -55,7 +55,7 @@ export default function TestimonialsCarousel() {
             className="mb-12 text-center"
           >
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4">
-              Depoimentos de <span className="text-yellow-400">Alunos</span>
+              Projetos de <span className="text-yellow-400">Alunos</span>
             </h2>
             <p className="text-gray-300 text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
               Assim como você, nossos alunos também começaram do absoluto zero e hoje conseguem desenvolver projetos de nível profissional.

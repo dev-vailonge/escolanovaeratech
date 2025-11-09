@@ -205,11 +205,13 @@
   "bonuses": [
     {
       "title": "Clube do livro",
-      "price": 597.00
+      "price": 597.00,
+      "description": "Nesse clube do livro eu vou te passar os principais livros que vão te fazer se destacar no mercado e passar uma imagem inteligente e de alto valor, fugindo dos livros clichês."
     },
     {
       "title": "Meetup mensal",
-      "price": 597.00
+      "price": 597.00,
+      "description": "Nesses encontros ao on-line ao vivo comigo e com profissionais da área, eu vou te passar as principais habilidades que você precisa pra evoluir na sua carreira e conseguir boas oportunidades de ganhar mais ou se posicionar mesmo que você esteja começando do zero"
     }
   ],
   "totalPrice": 8445.00,

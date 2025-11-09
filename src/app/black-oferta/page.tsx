@@ -31,7 +31,7 @@ export default function BlackOfertaPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight"
               >
-                 Back {' '}
+                 Black {' '}
                   <span className="text-yellow-400">Nova Era</span>
               </motion.h1>
 
@@ -42,8 +42,7 @@ export default function BlackOfertaPage() {
                 transition={{ delay: 0.1 }}
                 className="text-xl md:text-2xl text-gray-300 mb-8 max-w-4xl mx-auto leading-relaxed"
               >
-                Uma nova era de aprendizado em programação chegou, e com ela muitos bônus exclusivos para você.
-                <span className="text-yellow-400 font-semibold"> Acesso imediato e garantia de satisfação.</span>
+                Essa é a <span className="border-b-2 border-yellow-400">melhor oportunidade</span> que já liberei em toda minha história aqui na internet!
               </motion.p>
 
               {/* CTA Button */}
@@ -61,7 +60,7 @@ export default function BlackOfertaPage() {
                     }
                   }}
                   data-cta="main"
-                  className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-lg md:text-xl px-8 md:px-12 py-4 md:py-5 rounded-full transition-all shadow-lg shadow-yellow-400/50 hover:shadow-yellow-400/70 transform hover:scale-105"
+                  className="bg-green-500 hover:bg-green-400 text-white font-bold text-lg md:text-xl px-8 md:px-12 py-4 md:py-5 rounded-full transition-all shadow-lg shadow-green-500/50 hover:shadow-green-500/70 transform hover:scale-105"
                 >
                   Garantir minha vaga agora
                 </button>
@@ -110,11 +109,11 @@ export default function BlackOfertaPage() {
       {/* Opportunities Section */}
       <OpportunitiesSection />
 
-      {/* Formations Detail Section */}
-      <FormationsDetailSection />
-
       {/* Testimonials Carousel */}
       <TestimonialsCarousel />
+
+      {/* Formations Detail Section */}
+      <FormationsDetailSection />
 
       {/* Team Work Section */}
       <TeamWorkSection />

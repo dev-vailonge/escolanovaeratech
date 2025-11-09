@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import formationsData from '@/data/black-oferta-formations.json'
+import CountdownTimer from './CountdownTimer'
 
 interface Course {
   title: string
@@ -13,6 +14,12 @@ interface Formation {
   title: string
   description: string
   courses: Course[]
+}
+
+interface Bonus {
+  title: string
+  price: number
+  description?: string
 }
 
 export default function FormationsDetailSection() {
@@ -155,14 +162,21 @@ export default function FormationsDetailSection() {
             className="mt-8 bg-black border border-white/10 rounded-xl p-6 lg:p-8"
           >
             <h3 className="text-2xl font-bold text-white mb-6">BÔNUS DO MENTOR</h3>
-            <div className="space-y-2">
+            <div className="space-y-4">
               {bonuses.map((bonus, index) => (
                 <div
                   key={index}
-                  className="flex justify-between items-center bg-zinc-900/50 rounded-lg px-4 py-3 border border-white/5"
+                  className="bg-zinc-900/50 rounded-lg px-4 py-4 border border-white/5"
                 >
-                  <span className="text-white font-medium">{bonus.title}</span>
-                  <span className="text-yellow-400 font-bold">{formatPrice(bonus.price)}</span>
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-white font-medium">{bonus.title}</span>
+                    <span className="text-yellow-400 font-bold">{formatPrice(bonus.price)}</span>
+                  </div>
+                  {bonus.description && (
+                    <p className="text-gray-400 text-sm leading-relaxed mt-2">
+                      {bonus.description}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -197,7 +211,7 @@ export default function FormationsDetailSection() {
                   
                   <div className="mb-6">
                     <p className="text-gray-400 text-sm mb-2">Valor Total:</p>
-                    <p className="text-2xl line-through text-gray-500 font-bold mb-2">
+                    <p className="text-2xl line-through text-red-500 font-bold mb-2">
                       {formatPrice(calculateGrandTotal())}
                     </p>
                     <div className="text-yellow-400 font-semibold text-sm mb-2">
@@ -258,6 +272,11 @@ export default function FormationsDetailSection() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Countdown Timer */}
+            <div className="flex justify-center mt-8">
+              <CountdownTimer />
             </div>
           </motion.div>
 

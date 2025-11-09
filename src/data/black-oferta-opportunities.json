@@ -9,7 +9,7 @@
         "text": "APENAS AGORA",
         "icon": "clock"
       },
-      "title": "CONHEÇA SEU MENTOR",
+      "title": "VIAGEM PARA EUROPA",
       "description": "Viagem com tudo pago Europa em 2026 para conhecer o Roque e outros mentores da Nova Era. Você também ganha um ingresso para um grande evento de tecnologia. Garantindo sua vaga nessa turma você se qualifica para concorrer a viagem."
     },
     {
@@ -21,7 +21,7 @@
         "icon": "clock"
       },
       "title": "Workshop Carreira Internacional",
-      "description": "Aprenda com quem chegou onde você quer chegar. Workshop exclusivo com programador do Google, Spotify e recrutador do Facebook."
+      "description": "Aprenda com quem chegou onde você quer chegar. Workshop exclusivo com programador do Google, Spotify e recrutador do Facebook. Essas aulas serão 100% online e ficarão gravadas pra ver e rever quando precisar"
     },
     {
       "id": "workshop-freelancer-ia",
@@ -32,7 +32,7 @@
         "icon": "clock"
       },
       "title": "WorkShop Freelancer + IA",
-      "description": "Descubra como usar inteligência artificial para potencializar seu trabalho como freelancer. Aprenda ferramentas, estratégias e técnicas para aumentar sua produtividade e conquistar mais clientes usando IA."
+      "description": "Aprenda como usar IA para potencializar seu trabalho como freelancer. Aqui eu também vou te mostrar como: Atrair clientes, negociar propostas, fechar projetos e como conseguir indicações."
     },
     {
       "id": "desconto-50-formacoes",
@@ -43,7 +43,7 @@
         "icon": "clock"
       },
       "title": "Leve 5 Formações pelo Preço de 1",
-      "description": "Aproveite esta oportunidade única! Compre 5 formações completas pelo preço de 1 com 50% de desconto. Acesso imediato a todas as formações, mentoria, comunidade e bônus exclusivos."
+      "description": "Aproveite esta oportunidade única! Compre 5 formações completas pelo preço de 1 com 50% de desconto. Acesso imediato, comunidade, plano de estudos e bônus exclusivos."
     }
   ]
 }
