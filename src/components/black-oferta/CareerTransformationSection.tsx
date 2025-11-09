@@ -206,7 +206,30 @@ export default function CareerTransformationSection() {
               onClick={() => {
                 const pricingSection = document.getElementById('pricing')
                 if (pricingSection) {
-                  pricingSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  const targetPosition = pricingSection.getBoundingClientRect().top + window.pageYOffset - 100
+                  const startPosition = window.pageYOffset
+                  const distance = targetPosition - startPosition
+                  const duration = 6000 // 6 segundos para visualizar as seções durante o scroll
+                  let start: number | null = null
+
+                  const easeInOutCubic = (t: number) => {
+                    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+                  }
+
+                  const animation = (currentTime: number) => {
+                    if (start === null) start = currentTime
+                    const timeElapsed = currentTime - start
+                    const progress = Math.min(timeElapsed / duration, 1)
+                    const ease = easeInOutCubic(progress)
+
+                    window.scrollTo(0, startPosition + distance * ease)
+
+                    if (timeElapsed < duration) {
+                      requestAnimationFrame(animation)
+                    }
+                  }
+
+                  requestAnimationFrame(animation)
                 }
               }}
               className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-lg md:text-xl px-12 py-5 rounded-full transition-all shadow-lg shadow-yellow-400/50 hover:shadow-yellow-400/70 transform hover:scale-105"

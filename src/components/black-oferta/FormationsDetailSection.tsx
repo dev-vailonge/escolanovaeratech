@@ -223,15 +223,18 @@ export default function FormationsDetailSection() {
                         {formatPrice(1497.00).replace('R$', '').replace(',', '.').trim()}
                       </span>
                     </div>
-                    <p className="text-gray-400 text-sm mt-2">ou 12x de {formatPrice(1497.00 / 12)}</p>
+                    <p className="text-gray-400 text-sm mt-2">ou 12x de {formatPrice(154.82)}</p>
                   </div>
 
-                  <button
+                  <a
+                    href="https://pay.hotmart.com/G102853059R?bid=1762699545049"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     data-cta="pricing_card"
-                    className="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-semibold py-3 px-6 rounded-lg transition-all"
+                    className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-lg md:text-xl py-4 px-8 rounded-lg transition-all text-center block shadow-lg shadow-yellow-400/50 hover:shadow-yellow-400/70 transform hover:scale-105"
                   >
-                    Garantir minha vaga
-                  </button>
+                    ACESSAR OFERTA
+                  </a>
                 </div>
 
                 {/* Right Section - Features */}
