@@ -86,7 +86,7 @@
     },
     {
       "id": "backend",
-      "title": "Backend (Node/Java/Kotlin)",
+      "title": "Backend NodeJs",
       "description": "Torne-se desenvolvedor backend completo. Domine APIs REST, autenticação, bancos de dados e deploy em produção.",
       "courses": [
         {
