@@ -201,6 +201,11 @@ export default function FormationsDetailSection() {
               </p>
             </div>
 
+          {/* Countdown Timer */}
+          <div className="flex justify-center mt-8 mb-8">
+            <CountdownTimer />
+          </div>
+
             {/* Pricing Card */}
             <div className="bg-zinc-900 border border-white/10 rounded-xl overflow-hidden shadow-xl max-w-4xl mx-auto">
               <div className="flex flex-col lg:flex-row">
@@ -275,11 +280,6 @@ export default function FormationsDetailSection() {
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Countdown Timer */}
-            <div className="flex justify-center mt-8">
-              <CountdownTimer />
             </div>
           </motion.div>
 
