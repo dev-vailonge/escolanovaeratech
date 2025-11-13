@@ -13,28 +13,6 @@
       "description": "Viagem com tudo pago Europa em 2026 para conhecer o Roque e outros mentores da Nova Era. Você também ganha um ingresso para um grande evento de tecnologia. Garantindo sua vaga nessa turma você se qualifica para concorrer a viagem."
     },
     {
-      "id": "workshop-carreira-internacional",
-      "image": "/images/workshop-carreira.JPG",
-      "imageLabel": "WORKSHOP",
-      "badge": {
-        "text": "ATÉ 10.11 ÀS 23:59",
-        "icon": "clock"
-      },
-      "title": "Workshop Carreira Internacional",
-      "description": "Aprenda com quem chegou onde você quer chegar. Workshop exclusivo com programador do Google, Spotify e recrutador do Facebook. Essas aulas serão 100% online e ficarão gravadas pra ver e rever quando precisar"
-    },
-    {
-      "id": "workshop-freelancer-ia",
-      "image": "/images/workshop-freelancer.jpg",
-      "imageLabel": "WORKSHOP",
-      "badge": {
-        "text": "ATÉ 12.11 ÀS 23:59",
-        "icon": "clock"
-      },
-      "title": "WorkShop Freelancer + IA",
-      "description": "É possível ganhar dinheiro com programação enquando você estuda. Aprenda como usar IA para potencializar seu trabalho como freelancer. Aqui eu também vou te mostrar como: Atrair clientes, negociar propostas, fechar projetos e como conseguir indicações."
-    },
-    {
       "id": "desconto-50-formacoes",
       "image": "/images/cinco-formacoes.png",
       "imageLabel": "OFERTA ESPECIAL",
