@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import formationsData from '@/data/black-oferta-formations.json'
-import CountdownTimer from './CountdownTimer'
+
 
 interface Course {
   title: string
@@ -200,11 +200,6 @@ export default function FormationsDetailSection() {
                 Ao invés todos os cursos separados, você terá acesso a todas as formações por um preço especial.
               </p>
             </div>
-
-          {/* Countdown Timer */}
-          <div className="flex justify-center mt-8 mb-8">
-            <CountdownTimer />
-          </div>
 
             {/* Pricing Card */}
             <div className="bg-zinc-900 border border-white/10 rounded-xl overflow-hidden shadow-xl max-w-4xl mx-auto">
