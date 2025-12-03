@@ -1,0 +1,266 @@
+'use client'
+
+import { mockPerguntas, mockRespostas } from '@/data/aluno/mockComunidade'
+import { MessageSquare, ThumbsUp, Eye, CheckCircle2, Tag, Search, Plus } from 'lucide-react'
+import { useState } from 'react'
+import { useTheme } from '@/lib/ThemeContext'
+import { cn } from '@/lib/utils'
+
+export default function ComunidadePage() {
+  const [perguntas] = useState(mockPerguntas)
+  const respostas = mockRespostas
+  const { theme } = useTheme()
+
+  const perguntasResolvidas = perguntas.filter(p => p.resolvida).length
+  const perguntasAbertas = perguntas.filter(p => !p.resolvida).length
+
+  return (
+    <div className="space-y-4 md:space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className={cn(
+            "text-2xl md:text-3xl font-bold mb-2",
+            theme === 'dark' ? "text-white" : "text-gray-900"
+          )}>
+            Comunidade
+          </h1>
+          <p className={cn(
+            "text-sm md:text-base",
+            theme === 'dark' ? "text-gray-400" : "text-gray-600"
+          )}>
+            Faça perguntas e ajude outros alunos
+          </p>
+        </div>
+        <button className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto">
+          <Plus className="w-4 h-4 md:w-5 md:h-5" />
+          <span className="text-sm md:text-base">Fazer Pergunta</span>
+        </button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-2 md:gap-4">
+        <div className={cn(
+          "backdrop-blur-md border rounded-xl p-3 md:p-4 transition-colors duration-300",
+          theme === 'dark'
+            ? "bg-black/20 border-white/10"
+            : "bg-white border-yellow-400/90 shadow-md"
+        )}>
+          <div className="flex flex-col md:flex-row items-center md:items-center gap-1 md:gap-3">
+            <MessageSquare className="w-4 h-4 md:w-5 md:h-5 text-blue-500 flex-shrink-0" />
+            <div className="text-center md:text-left">
+              <p className={cn(
+                "text-xl md:text-2xl font-bold",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                {perguntas.length}
+              </p>
+              <p className={cn(
+                "text-xs md:text-sm",
+                theme === 'dark' ? "text-gray-400" : "text-gray-600"
+              )}>
+                Perguntas
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className={cn(
+          "backdrop-blur-md border rounded-xl p-3 md:p-4 transition-colors duration-300",
+          theme === 'dark'
+            ? "bg-black/20 border-white/10"
+            : "bg-white border-yellow-400/90 shadow-md"
+        )}>
+          <div className="flex flex-col md:flex-row items-center md:items-center gap-1 md:gap-3">
+            <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-500 flex-shrink-0" />
+            <div className="text-center md:text-left">
+              <p className={cn(
+                "text-xl md:text-2xl font-bold",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                {perguntasResolvidas}
+              </p>
+              <p className={cn(
+                "text-xs md:text-sm",
+                theme === 'dark' ? "text-gray-400" : "text-gray-600"
+              )}>
+                Resolvidas
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className={cn(
+          "backdrop-blur-md border rounded-xl p-3 md:p-4 transition-colors duration-300",
+          theme === 'dark'
+            ? "bg-black/20 border-white/10"
+            : "bg-white border-yellow-400/90 shadow-md"
+        )}>
+          <div className="flex flex-col md:flex-row items-center md:items-center gap-1 md:gap-3">
+            <MessageSquare className={cn(
+              "w-4 h-4 md:w-5 md:h-5 flex-shrink-0",
+              theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+            )} />
+            <div className="text-center md:text-left">
+              <p className={cn(
+                "text-xl md:text-2xl font-bold",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                {perguntasAbertas}
+              </p>
+              <p className={cn(
+                "text-xs md:text-sm",
+                theme === 'dark' ? "text-gray-400" : "text-gray-600"
+              )}>
+                Abertas
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex-1 relative">
+          <Search className={cn(
+            "absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 md:w-5 md:h-5",
+            theme === 'dark' ? "text-gray-400" : "text-gray-500"
+          )} />
+          <input
+            type="text"
+            placeholder="Buscar perguntas..."
+            className={cn(
+              "w-full pl-9 md:pl-10 pr-4 py-2 text-sm md:text-base backdrop-blur-md border rounded-lg focus:outline-none transition-colors duration-300",
+              theme === 'dark'
+                ? "bg-black/20 border-white/10 text-white placeholder-gray-500 focus:border-yellow-400/50"
+                : "bg-white border-yellow-400/90 text-gray-900 placeholder-gray-400 focus:border-yellow-500 shadow-sm"
+            )}
+          />
+        </div>
+        <select className={cn(
+          "px-3 md:px-4 py-2 text-sm md:text-base backdrop-blur-md border rounded-lg focus:outline-none transition-colors duration-300",
+          theme === 'dark'
+            ? "bg-black/20 border-white/10 text-white focus:border-yellow-400/50"
+            : "bg-white border-yellow-400/90 text-gray-900 focus:border-yellow-500 shadow-sm"
+        )}>
+          <option>Todas</option>
+          <option>Sem resposta</option>
+          <option>Mais votadas</option>
+          <option>Recentes</option>
+        </select>
+      </div>
+
+      {/* Lista de Perguntas */}
+      <div className="space-y-3 md:space-y-4">
+        {perguntas.map((pergunta) => {
+          const respostasDaPergunta = respostas.filter(r => r.perguntaId === pergunta.id)
+          const melhorResposta = respostasDaPergunta.find(r => r.melhorResposta)
+
+          return (
+            <div
+              key={pergunta.id}
+              className={cn(
+                "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-all duration-300",
+                pergunta.resolvida
+                  ? theme === 'dark'
+                    ? "bg-black/20 border-green-500/30 hover:border-green-400/50"
+                    : "bg-green-50 border-green-400/90 shadow-md hover:shadow-lg"
+                  : theme === 'dark'
+                    ? "bg-black/20 border-white/10 hover:border-yellow-400/50"
+                    : "bg-white border-yellow-400/90 shadow-md hover:border-yellow-500 hover:shadow-lg"
+              )}
+            >
+              <div className="flex gap-3 md:gap-4">
+                {/* Votes */}
+                <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                  <div className={cn(
+                    "flex flex-col items-center p-2 md:p-3 backdrop-blur-sm rounded-lg border",
+                    theme === 'dark'
+                      ? "bg-black/30 border-white/10"
+                      : "bg-gray-50 border-gray-200"
+                  )}>
+                    <ThumbsUp className={cn(
+                      "w-4 h-4 md:w-5 md:h-5",
+                      theme === 'dark' ? "text-gray-400" : "text-gray-500"
+                    )} />
+                    <span className={cn(
+                      "font-semibold mt-1 text-xs md:text-sm",
+                      theme === 'dark' ? "text-white" : "text-gray-900"
+                    )}>
+                      {pergunta.votos}
+                    </span>
+                  </div>
+                  {pergunta.resolvida && (
+                    <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
+                  )}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className={cn(
+                      "text-base md:text-lg font-semibold cursor-pointer line-clamp-2 transition-colors",
+                      theme === 'dark'
+                        ? "text-white hover:text-yellow-400"
+                        : "text-gray-900 hover:text-yellow-600"
+                    )}>
+                      {pergunta.titulo}
+                    </h3>
+                  </div>
+                  
+                  <p className={cn(
+                    "text-sm md:text-base mb-3 md:mb-4 line-clamp-2",
+                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                  )}>
+                    {pergunta.descricao}
+                  </p>
+                  
+                  <div className={cn(
+                    "flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm mb-3",
+                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                  )}>
+                    <div className="flex items-center gap-1">
+                      <Eye className="w-3 h-3 md:w-4 md:h-4" />
+                      <span className="whitespace-nowrap">{pergunta.visualizacoes} visualizações</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <MessageSquare className="w-3 h-3 md:w-4 md:h-4" />
+                      <span className="whitespace-nowrap">{pergunta.respostas} respostas</span>
+                    </div>
+                    <span className="flex items-center gap-1 truncate">
+                      <div className={cn(
+                        "w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0",
+                        theme === 'dark'
+                          ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
+                          : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
+                      )}>
+                        {pergunta.autor.nome.charAt(0)}
+                      </div>
+                      <span className="truncate">{pergunta.autor.nome} • Nível {pergunta.autor.nivel}</span>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {pergunta.tags.map((tag, idx) => (
+                      <span
+                        key={idx}
+                        className={cn(
+                          "flex items-center gap-1 px-2 py-1 text-xs rounded border",
+                          theme === 'dark'
+                            ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                            : "bg-blue-100 text-blue-700 border-blue-300"
+                        )}
+                      >
+                        <Tag className="w-3 h-3" />
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+

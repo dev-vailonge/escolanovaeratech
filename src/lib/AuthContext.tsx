@@ -24,11 +24,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     setLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
+      // Verifica se Supabase está configurado antes de usar
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        const { data: { session } } = await supabase.auth.getSession()
+        setUser(session?.user ?? null)
+      } else {
+        // Modo mockado - não há usuário autenticado mas não quebra
+        setUser(null)
+      }
       setInitialized(true)
     } catch (error) {
-      // Error getting initial session
+      // Error getting initial session - modo mockado continua funcionando
       setUser(null)
       setInitialized(true)
     } finally {
@@ -38,8 +44,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshSession = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        const { data: { session } } = await supabase.auth.getSession()
+        setUser(session?.user ?? null)
+      } else {
+        setUser(null)
+      }
     } catch (error) {
       // Error refreshing session
       setUser(null)
@@ -50,29 +60,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut()
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        await supabase.auth.signOut()
+      }
       setUser(null)
     } catch (error) {
       // Error signing out
+      setUser(null)
     }
   }
 
   useEffect(() => {
     let mounted = true
 
-    // Listen for auth changes only after initialization
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (mounted && initialized) {
-          // Auth state changed
-          setUser(session?.user ?? null)
+    // Listen for auth changes only after initialization and if Supabase is configured
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          if (mounted && initialized) {
+            // Auth state changed
+            setUser(session?.user ?? null)
+          }
         }
+      )
+
+      return () => {
+        mounted = false
+        subscription.unsubscribe()
       }
-    )
+    }
 
     return () => {
       mounted = false
-      subscription.unsubscribe()
     }
   }, [initialized])
 

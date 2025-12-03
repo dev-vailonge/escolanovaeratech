@@ -39,4 +39,7 @@ next-env.d.ts
 
 # Logs
 logs
-*.log 
+*.log
+
+# Docs pessoais (não versionados)
+/docs 
