@@ -74,10 +74,11 @@ export default function AlunoHeader() {
           </div>
         </div>
 
-        {/* XP Total - Mobile: segunda linha, full width */}
-        <div className="w-full lg:w-auto lg:flex-none">
+        {/* Stats - Mobile: segunda linha com XP, Coins e Streak | Desktop: todos alinhados à direita */}
+        <div className="flex items-center flex-nowrap gap-2 sm:gap-3 w-full lg:w-auto lg:gap-4 overflow-x-auto">
+          {/* XP Total */}
           <div className={cn(
-            "flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border",
+            "flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border flex-shrink-0",
             theme === 'dark'
               ? "bg-[#0f0f0f] border-white/10"
               : "bg-yellow-500/20 border-yellow-600/30"
@@ -95,10 +96,6 @@ export default function AlunoHeader() {
               {user.xp.toLocaleString('pt-BR')}
             </span>
           </div>
-        </div>
-
-        {/* Stats - Mobile: terceira linha com Coins e Streak */}
-        <div className="flex items-center gap-2 sm:gap-3 w-full lg:w-auto lg:gap-4">
           {/* Coins */}
           <div className={cn(
             "flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border flex-shrink-0",
