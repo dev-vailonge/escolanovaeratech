@@ -1,20 +1,25 @@
 'use client'
 
 import { mockUser } from '@/data/aluno/mockUser'
-import { mockBadges } from '@/data/aluno/mockBadges'
 import { mockStats } from '@/data/aluno/mockStats'
-import { User, Trophy, Calendar, Edit2, Award } from 'lucide-react'
+import { mockCourseProgress } from '@/data/aluno/studyPlan'
+import { Edit2, BookOpen, GraduationCap } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 
 export default function PerfilPage() {
   const user = mockUser
-  const badges = mockBadges
   const stats = mockStats
+  const courses = mockCourseProgress
   const { theme } = useTheme()
 
-  const badgesDesbloqueadas = badges.filter(b => b.desbloqueada)
-  const badgesBloqueadas = badges.filter(b => !b.desbloqueada)
+  // Calcular progresso de estudo
+  const completedLessons = stats.aulasCompletas
+  const activeCourses = courses.length
+  const totalLessons = courses.reduce((sum, course) => sum + course.totalLessons, 0)
+
+  // TODO: Futuramente exibir badges conquistados pelo aluno.
+  // A API ainda não está definida.
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -34,9 +39,9 @@ export default function PerfilPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="space-y-4 md:space-y-6">
         {/* Informações do Usuário */}
-        <div className="lg:col-span-2 space-y-4 md:space-y-6">
+        <div className="space-y-4 md:space-y-6">
           {/* Card de Perfil */}
           <div className={cn(
             "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
@@ -99,7 +104,7 @@ export default function PerfilPage() {
                   "text-xs md:text-sm",
                   theme === 'dark' ? "text-gray-400" : "text-gray-600"
                 )}>
-                  Nível
+                  Nível Atual
                 </p>
                 <p className={cn(
                   "text-xl md:text-2xl font-bold",
@@ -148,6 +153,94 @@ export default function PerfilPage() {
             </div>
           </div>
 
+          {/* Progresso de Estudo */}
+          <div className={cn(
+            "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
+            theme === 'dark'
+              ? "bg-black/20 border-white/10"
+              : "bg-white border-yellow-400/90 shadow-md"
+          )}>
+            <h3 className={cn(
+              "text-lg md:text-xl font-bold mb-3 md:mb-4",
+              theme === 'dark' ? "text-white" : "text-gray-900"
+            )}>
+              Progresso de Estudo
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+              <div className={cn(
+                "p-3 md:p-4 backdrop-blur-sm rounded-lg border transition-colors duration-300",
+                theme === 'dark'
+                  ? "bg-black/30 border-white/10"
+                  : "bg-yellow-50 border-yellow-400/80"
+              )}>
+                <div className="flex items-center gap-2 mb-2">
+                  <BookOpen className={cn(
+                    "w-4 h-4",
+                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                  )} />
+                  <p className={cn(
+                    "text-xs md:text-sm font-medium",
+                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                  )}>
+                    Aulas concluídas
+                  </p>
+                </div>
+                <p className={cn(
+                  "text-2xl md:text-3xl font-bold",
+                  theme === 'dark' ? "text-white" : "text-gray-900"
+                )}>
+                  {completedLessons}
+                </p>
+              </div>
+              <div className={cn(
+                "p-3 md:p-4 backdrop-blur-sm rounded-lg border transition-colors duration-300",
+                theme === 'dark'
+                  ? "bg-black/30 border-white/10"
+                  : "bg-yellow-50 border-yellow-400/80"
+              )}>
+                <div className="flex items-center gap-2 mb-2">
+                  <GraduationCap className={cn(
+                    "w-4 h-4",
+                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                  )} />
+                  <p className={cn(
+                    "text-xs md:text-sm font-medium",
+                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                  )}>
+                    Cursos ativos
+                  </p>
+                </div>
+                <p className={cn(
+                  "text-2xl md:text-3xl font-bold",
+                  theme === 'dark' ? "text-white" : "text-gray-900"
+                )}>
+                  {activeCourses}
+                </p>
+              </div>
+              {totalLessons > 0 && (
+                <div className={cn(
+                  "p-3 md:p-4 backdrop-blur-sm rounded-lg border transition-colors duration-300",
+                  theme === 'dark'
+                    ? "bg-black/30 border-white/10"
+                    : "bg-yellow-50 border-yellow-400/80"
+                )}>
+                  <p className={cn(
+                    "text-xs md:text-sm font-medium mb-2",
+                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                  )}>
+                    Progresso geral
+                  </p>
+                  <p className={cn(
+                    "text-2xl md:text-3xl font-bold",
+                    theme === 'dark' ? "text-white" : "text-gray-900"
+                  )}>
+                    {completedLessons}/{totalLessons}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Estatísticas Detalhadas */}
           <div className={cn(
             "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
@@ -161,7 +254,7 @@ export default function PerfilPage() {
             )}>
               Estatísticas
             </h3>
-            <div className="grid grid-cols-2 gap-3 md:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
               <div className={cn(
                 "p-3 md:p-4 backdrop-blur-sm rounded-lg border transition-colors duration-300",
                 theme === 'dark'
@@ -172,13 +265,13 @@ export default function PerfilPage() {
                   "text-xs md:text-sm",
                   theme === 'dark' ? "text-gray-400" : "text-gray-600"
                 )}>
-                  Aulas Completas
+                  Quiz completos
                 </p>
                 <p className={cn(
                   "text-xl md:text-2xl font-bold mt-1",
                   theme === 'dark' ? "text-white" : "text-gray-900"
                 )}>
-                  {stats.aulasCompletas}/{stats.aulasTotais}
+                  {stats.quizCompletos}
                 </p>
               </div>
               <div className={cn(
@@ -191,13 +284,13 @@ export default function PerfilPage() {
                   "text-xs md:text-sm",
                   theme === 'dark' ? "text-gray-400" : "text-gray-600"
                 )}>
-                  Quiz Completos
+                  Desafios concluídos
                 </p>
                 <p className={cn(
                   "text-xl md:text-2xl font-bold mt-1",
                   theme === 'dark' ? "text-white" : "text-gray-900"
                 )}>
-                  {stats.quizCompletos}/{stats.quizTotais}
+                  {stats.desafiosConcluidos}
                 </p>
               </div>
               <div className={cn(
@@ -210,26 +303,7 @@ export default function PerfilPage() {
                   "text-xs md:text-sm",
                   theme === 'dark' ? "text-gray-400" : "text-gray-600"
                 )}>
-                  Desafios
-                </p>
-                <p className={cn(
-                  "text-xl md:text-2xl font-bold mt-1",
-                  theme === 'dark' ? "text-white" : "text-gray-900"
-                )}>
-                  {stats.desafiosConcluidos}/{stats.desafiosTotais}
-                </p>
-              </div>
-              <div className={cn(
-                "p-3 md:p-4 backdrop-blur-sm rounded-lg border transition-colors duration-300",
-                theme === 'dark'
-                  ? "bg-black/30 border-white/10"
-                  : "bg-yellow-50 border-yellow-400/80"
-              )}>
-                <p className={cn(
-                  "text-xs md:text-sm",
-                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                )}>
-                  Taxa de Acerto
+                  Taxa de acerto
                 </p>
                 <p className={cn(
                   "text-xl md:text-2xl font-bold mt-1",
@@ -237,60 +311,13 @@ export default function PerfilPage() {
                 )}>
                   {Math.round((stats.respostasCorretas / stats.questoesTotais) * 100)}%
                 </p>
+                <p className={cn(
+                  "text-xs mt-1",
+                  theme === 'dark' ? "text-gray-500" : "text-gray-500"
+                )}>
+                  {stats.respostasCorretas} de {stats.questoesTotais} questões
+                </p>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Badges */}
-        <div className="space-y-4 md:space-y-6">
-          <div className={cn(
-            "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
-            theme === 'dark'
-              ? "bg-black/20 border-white/10"
-              : "bg-white border-yellow-400/90 shadow-md"
-          )}>
-            <div className="flex items-center gap-2 mb-3 md:mb-4">
-              <Award className={cn(
-                "w-4 h-4 md:w-5 md:h-5 flex-shrink-0",
-                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-              )} />
-              <h3 className={cn(
-                "text-lg md:text-xl font-bold",
-                theme === 'dark' ? "text-white" : "text-gray-900"
-              )}>
-                Badges
-              </h3>
-            </div>
-            <p className={cn(
-              "text-xs md:text-sm mb-3 md:mb-4",
-              theme === 'dark' ? "text-gray-400" : "text-gray-600"
-            )}>
-              {badgesDesbloqueadas.length} de {badges.length} desbloqueadas
-            </p>
-
-            <div className="grid grid-cols-3 gap-2 md:gap-3">
-              {badges.map((badge) => (
-                <div
-                  key={badge.id}
-                  className={cn(
-                    "p-3 rounded-lg border text-center transition-all",
-                    badge.desbloqueada
-                      ? theme === 'dark'
-                        ? "bg-yellow-400/10 backdrop-blur-sm border-yellow-400/30"
-                        : "bg-yellow-100 border-yellow-300"
-                      : theme === 'dark'
-                        ? "bg-black/30 backdrop-blur-sm border-white/10 opacity-50"
-                        : "bg-gray-100 border-gray-200 opacity-50"
-                  )}
-                  title={badge.nome}
-                >
-                  <div className="text-2xl mb-1">{badge.icone}</div>
-                  {badge.desbloqueada && (
-                    <div className="w-2 h-2 bg-green-500 rounded-full mx-auto"></div>
-                  )}
-                </div>
-              ))}
             </div>
           </div>
         </div>
