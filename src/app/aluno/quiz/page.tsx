@@ -11,6 +11,7 @@ export default function QuizPage() {
 
   const quizesCompletos = quizes.filter(q => q.completo).length
   const quizesDisponiveis = quizes.filter(q => q.disponivel && !q.completo).length
+  const totalQuizesDisponiveis = quizes.filter(q => q.disponivel).length
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -51,7 +52,7 @@ export default function QuizPage() {
                 "text-xs md:text-sm",
                 theme === 'dark' ? "text-gray-400" : "text-gray-600"
               )}>
-                Quiz Completos
+                Quiz Concluídos
               </p>
             </div>
           </div>
@@ -78,7 +79,7 @@ export default function QuizPage() {
                 "text-xs md:text-sm",
                 theme === 'dark' ? "text-gray-400" : "text-gray-600"
               )}>
-                Disponíveis
+                Quiz Disponíveis
               </p>
             </div>
           </div>
@@ -87,12 +88,20 @@ export default function QuizPage() {
 
       {/* Lista de Quiz */}
       <div className="space-y-3 md:space-y-4">
-        <h2 className={cn(
-          "text-lg md:text-xl font-bold",
-          theme === 'dark' ? "text-white" : "text-gray-900"
-        )}>
-          Todos os Quiz
-        </h2>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
+          <h2 className={cn(
+            "text-lg md:text-xl font-bold",
+            theme === 'dark' ? "text-white" : "text-gray-900"
+          )}>
+            Todos os Quiz
+          </h2>
+          <p className={cn(
+            "text-xs md:text-sm",
+            theme === 'dark' ? "text-gray-400" : "text-gray-600"
+          )}>
+            {totalQuizesDisponiveis} quiz disponíveis • {quizesCompletos} concluídos
+          </p>
+        </div>
         {quizes.map((quiz) => (
           <div
             key={quiz.id}

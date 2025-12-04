@@ -11,6 +11,7 @@ export default function DesafiosPage() {
 
   const desafiosAtivos = desafios.filter(d => !d.completo)
   const desafiosCompletos = desafios.filter(d => d.completo)
+  const totalDesafiosDisponiveis = desafios.length
 
   const getTipoIcon = (tipo: string) => {
     switch (tipo) {
@@ -66,14 +67,79 @@ export default function DesafiosPage() {
         </p>
       </div>
 
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-2 md:gap-4">
+        <div className={cn(
+          "backdrop-blur-md border rounded-xl p-3 md:p-4 transition-colors duration-300",
+          theme === 'dark'
+            ? "bg-black/20 border-white/10"
+            : "bg-white border-yellow-400/90 shadow-md"
+        )}>
+          <div className="flex items-center gap-2 md:gap-3">
+            <Target className="w-4 h-4 md:w-5 md:h-5 text-green-500 flex-shrink-0" />
+            <div className="min-w-0">
+              <p className={cn(
+                "text-xl md:text-2xl font-bold",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                {desafiosCompletos.length}
+              </p>
+              <p className={cn(
+                "text-xs md:text-sm",
+                theme === 'dark' ? "text-gray-400" : "text-gray-600"
+              )}>
+                Desafios Concluídos
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className={cn(
+          "backdrop-blur-md border rounded-xl p-3 md:p-4 transition-colors duration-300",
+          theme === 'dark'
+            ? "bg-black/20 border-white/10"
+            : "bg-white border-yellow-400/90 shadow-md"
+        )}>
+          <div className="flex items-center gap-2 md:gap-3">
+            <Target className={cn(
+              "w-4 h-4 md:w-5 md:h-5 flex-shrink-0",
+              theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+            )} />
+            <div className="min-w-0">
+              <p className={cn(
+                "text-xl md:text-2xl font-bold",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                {totalDesafiosDisponiveis}
+              </p>
+              <p className={cn(
+                "text-xs md:text-sm",
+                theme === 'dark' ? "text-gray-400" : "text-gray-600"
+              )}>
+                Desafios Disponíveis
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Desafios Ativos */}
       <div className="space-y-3 md:space-y-4">
-        <h2 className={cn(
-          "text-lg md:text-xl font-bold",
-          theme === 'dark' ? "text-white" : "text-gray-900"
-        )}>
-          Desafios Ativos
-        </h2>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
+          <h2 className={cn(
+            "text-lg md:text-xl font-bold",
+            theme === 'dark' ? "text-white" : "text-gray-900"
+          )}>
+            Desafios Ativos
+          </h2>
+          {desafiosAtivos.length > 0 && (
+            <p className={cn(
+              "text-xs md:text-sm",
+              theme === 'dark' ? "text-gray-400" : "text-gray-600"
+            )}>
+              {desafiosAtivos.length} desafio{desafiosAtivos.length !== 1 ? 's' : ''} ativo{desafiosAtivos.length !== 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
         {desafiosAtivos.map((desafio) => {
           const prazo = new Date(desafio.prazo)
           const diasRestantes = Math.ceil((prazo.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
@@ -189,12 +255,20 @@ export default function DesafiosPage() {
       {/* Desafios Completos */}
       {desafiosCompletos.length > 0 && (
         <div className="space-y-3 md:space-y-4">
-          <h2 className={cn(
-            "text-lg md:text-xl font-bold",
-            theme === 'dark' ? "text-white" : "text-gray-900"
-          )}>
-            Desafios Completos
-          </h2>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
+            <h2 className={cn(
+              "text-lg md:text-xl font-bold",
+              theme === 'dark' ? "text-white" : "text-gray-900"
+            )}>
+              Desafios Completos
+            </h2>
+            <p className={cn(
+              "text-xs md:text-sm",
+              theme === 'dark' ? "text-gray-400" : "text-gray-600"
+            )}>
+              Você já concluiu {desafiosCompletos.length} desafio{desafiosCompletos.length !== 1 ? 's' : ''}
+            </p>
+          </div>
           {desafiosCompletos.map((desafio) => (
             <div
               key={desafio.id}
