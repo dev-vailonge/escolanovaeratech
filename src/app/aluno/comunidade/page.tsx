@@ -1,18 +1,74 @@
 'use client'
 
 import { mockPerguntas, mockRespostas } from '@/data/aluno/mockComunidade'
-import { MessageSquare, ThumbsUp, Eye, CheckCircle2, Tag, Search, Plus } from 'lucide-react'
-import { useState } from 'react'
+import { MessageSquare, ThumbsUp, Eye, CheckCircle2, Tag, Search, Plus, Filter } from 'lucide-react'
+import { useState, useMemo, useRef, useLayoutEffect } from 'react'
 import { useTheme } from '@/lib/ThemeContext'
+import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
+
+type FilterOwner = 'all' | 'mine'
+type FilterStatus = 'all' | 'answered' | 'unanswered'
 
 export default function ComunidadePage() {
   const [perguntas] = useState(mockPerguntas)
   const respostas = mockRespostas
   const { theme } = useTheme()
+  const { user } = useAuth()
 
-  const perguntasResolvidas = perguntas.filter(p => p.resolvida).length
-  const perguntasAbertas = perguntas.filter(p => !p.resolvida).length
+  // Estados de filtro
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterOwner, setFilterOwner] = useState<FilterOwner>('all')
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
+  
+  // Ref para preservar a posição do scroll
+  const scrollPositionRef = useRef<number>(0)
+
+  // ID do usuário atual (fallback para modo mockado)
+  // TODO: Substituir por user?.id quando autenticação estiver totalmente implementada
+  const currentUserId = user?.id || 'user1' // user1 é um ID mockado para demonstração
+
+  // Função utilitária para filtrar perguntas
+  const filteredPerguntas = useMemo(() => {
+    return perguntas.filter((pergunta) => {
+      // Filtro por owner
+      if (filterOwner === 'mine' && pergunta.autor.id !== currentUserId) {
+        return false
+      }
+
+      // Filtro por status
+      if (filterStatus === 'answered' && pergunta.respostas === 0) {
+        return false
+      }
+      if (filterStatus === 'unanswered' && pergunta.respostas > 0) {
+        return false
+      }
+
+      // Filtro por busca (título + descrição)
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase()
+        const matchesTitle = pergunta.titulo.toLowerCase().includes(query)
+        const matchesDescription = pergunta.descricao.toLowerCase().includes(query)
+        const matchesTags = pergunta.tags.some(tag => tag.toLowerCase().includes(query))
+        
+        if (!matchesTitle && !matchesDescription && !matchesTags) {
+          return false
+        }
+      }
+
+      return true
+    })
+  }, [perguntas, filterOwner, filterStatus, searchQuery, currentUserId])
+
+  // Restaura a posição do scroll após a renderização (antes da pintura)
+  useLayoutEffect(() => {
+    if (scrollPositionRef.current > 0) {
+      window.scrollTo(0, scrollPositionRef.current)
+    }
+  }, [filteredPerguntas])
+
+  const perguntasResolvidas = filteredPerguntas.filter(p => p.resolvida).length
+  const perguntasAbertas = filteredPerguntas.filter(p => !p.resolvida).length
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -53,7 +109,7 @@ export default function ComunidadePage() {
                 "text-xl md:text-2xl font-bold",
                 theme === 'dark' ? "text-white" : "text-gray-900"
               )}>
-                {perguntas.length}
+                {filteredPerguntas.length}
               </p>
               <p className={cn(
                 "text-xs md:text-sm",
@@ -117,8 +173,9 @@ export default function ComunidadePage() {
         </div>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros e Busca */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        {/* Campo de Busca */}
         <div className="flex-1 relative">
           <Search className={cn(
             "absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 md:w-5 md:h-5",
@@ -127,6 +184,8 @@ export default function ComunidadePage() {
           <input
             type="text"
             placeholder="Buscar perguntas..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className={cn(
               "w-full pl-9 md:pl-10 pr-4 py-2 text-sm md:text-base backdrop-blur-md border rounded-lg focus:outline-none transition-colors duration-300",
               theme === 'dark'
@@ -135,22 +194,75 @@ export default function ComunidadePage() {
             )}
           />
         </div>
-        <select className={cn(
-          "px-3 md:px-4 py-2 text-sm md:text-base backdrop-blur-md border rounded-lg focus:outline-none transition-colors duration-300",
-          theme === 'dark'
-            ? "bg-black/20 border-white/10 text-white focus:border-yellow-400/50"
-            : "bg-white border-yellow-400/90 text-gray-900 focus:border-yellow-500 shadow-sm"
-        )}>
-          <option>Todas</option>
-          <option>Sem resposta</option>
-          <option>Mais votadas</option>
-          <option>Recentes</option>
+
+        {/* Filtro por Owner */}
+        <select
+          value={filterOwner}
+          onChange={(e) => {
+            scrollPositionRef.current = window.scrollY
+            setFilterOwner(e.target.value as FilterOwner)
+          }}
+          className={cn(
+            "px-3 md:px-4 py-2 text-sm md:text-base backdrop-blur-md border rounded-lg focus:outline-none transition-colors duration-300",
+            theme === 'dark'
+              ? "bg-black/20 border-white/10 text-white focus:border-yellow-400/50"
+              : "bg-white border-yellow-400/90 text-gray-900 focus:border-yellow-500 shadow-sm"
+          )}
+        >
+          <option value="all">Todas</option>
+          <option value="mine">Minhas perguntas</option>
+        </select>
+
+        {/* Filtro por Status */}
+        <select
+          value={filterStatus}
+          onChange={(e) => {
+            scrollPositionRef.current = window.scrollY
+            setFilterStatus(e.target.value as FilterStatus)
+          }}
+          className={cn(
+            "px-3 md:px-4 py-2 text-sm md:text-base backdrop-blur-md border rounded-lg focus:outline-none transition-colors duration-300",
+            theme === 'dark'
+              ? "bg-black/20 border-white/10 text-white focus:border-yellow-400/50"
+              : "bg-white border-yellow-400/90 text-gray-900 focus:border-yellow-500 shadow-sm"
+          )}
+        >
+          <option value="all">Todas</option>
+          <option value="answered">Respondidas</option>
+          <option value="unanswered">Sem resposta</option>
         </select>
       </div>
 
       {/* Lista de Perguntas */}
       <div className="space-y-3 md:space-y-4">
-        {perguntas.map((pergunta) => {
+        {filteredPerguntas.length === 0 ? (
+          <div className={cn(
+            "backdrop-blur-md border rounded-xl p-8 md:p-12 text-center",
+            theme === 'dark'
+              ? "bg-black/20 border-white/10"
+              : "bg-white border-yellow-400/90 shadow-md"
+          )}>
+            <Filter className={cn(
+              "w-12 h-12 md:w-16 md:h-16 mx-auto mb-4",
+              theme === 'dark' ? "text-gray-500" : "text-gray-400"
+            )} />
+            <h3 className={cn(
+              "text-lg md:text-xl font-semibold mb-2",
+              theme === 'dark' ? "text-white" : "text-gray-900"
+            )}>
+              Nenhuma pergunta encontrada
+            </h3>
+            <p className={cn(
+              "text-sm md:text-base",
+              theme === 'dark' ? "text-gray-400" : "text-gray-600"
+            )}>
+              {searchQuery || filterOwner !== 'all' || filterStatus !== 'all'
+                ? 'Tente ajustar os filtros ou a busca para encontrar mais perguntas.'
+                : 'Ainda não há perguntas na comunidade. Seja o primeiro a fazer uma pergunta!'}
+            </p>
+          </div>
+        ) : (
+          filteredPerguntas.map((pergunta) => {
           const respostasDaPergunta = respostas.filter(r => r.perguntaId === pergunta.id)
           const melhorResposta = respostasDaPergunta.find(r => r.melhorResposta)
 
@@ -258,7 +370,8 @@ export default function ComunidadePage() {
               </div>
             </div>
           )
-        })}
+          })
+        )}
       </div>
     </div>
   )
