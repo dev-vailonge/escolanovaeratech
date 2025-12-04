@@ -22,7 +22,7 @@ import { useTheme } from '@/lib/ThemeContext'
 // Menu items principais (mostrados na bottom bar mobile)
 const mainMenuItems = [
   { icon: Home, label: 'Início', href: '/aluno' },
-  { icon: BookOpen, label: 'Aulas', href: '/aluno/aulas' },
+  { icon: BookOpen, label: 'Plano de Estudos', href: '/aluno/aulas' },
   { icon: Trophy, label: 'Ranking', href: '/aluno/ranking' },
   { icon: User, label: 'Perfil', href: '/aluno/perfil' },
 ]
