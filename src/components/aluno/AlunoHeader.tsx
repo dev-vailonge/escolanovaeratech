@@ -9,8 +9,6 @@ export default function AlunoHeader() {
   const user = mockUser
   const { theme, toggleTheme } = useTheme()
 
-  const progressPercent = (user.xp / user.xpNextLevel) * 100
-
   return (
     <header className={cn(
       "backdrop-blur-xl rounded-xl p-4 mb-6 shadow-lg transition-colors duration-300 overflow-x-hidden max-w-full",
@@ -76,28 +74,26 @@ export default function AlunoHeader() {
           </div>
         </div>
 
-        {/* XP Progress - Mobile: segunda linha, full width */}
-        <div className="w-full lg:w-auto lg:flex-none lg:min-w-[12rem]">
+        {/* XP Total - Mobile: segunda linha, full width */}
+        <div className="w-full lg:w-auto lg:flex-none">
           <div className={cn(
-            "flex items-center justify-between text-xs mb-1",
-            theme === 'dark' ? "text-gray-400" : "text-gray-700"
+            "flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border",
+            theme === 'dark'
+              ? "bg-[#0f0f0f] border-white/10"
+              : "bg-yellow-500/20 border-yellow-600/30"
           )}>
-            <span>XP</span>
-            <span>{user.xp} / {user.xpNextLevel}</span>
-          </div>
-          <div className={cn(
-            "w-full h-2 rounded-full overflow-hidden",
-            theme === 'dark' ? "bg-[#0f0f0f]" : "bg-yellow-200"
-          )}>
-            <div
-              className={cn(
-                "h-full rounded-full transition-all duration-500",
-                theme === 'dark'
-                  ? "bg-gradient-to-r from-yellow-400 to-yellow-500"
-                  : "bg-gradient-to-r from-yellow-600 to-yellow-700"
-              )}
-              style={{ width: `${progressPercent}%` }}
-            />
+            <span className={cn(
+              "text-xs sm:text-sm font-medium",
+              theme === 'dark' ? "text-gray-400" : "text-gray-700"
+            )}>
+              XP:
+            </span>
+            <span className={cn(
+              "font-semibold text-xs sm:text-sm",
+              theme === 'dark' ? "text-white" : "text-gray-900"
+            )}>
+              {user.xp.toLocaleString('pt-BR')}
+            </span>
           </div>
         </div>
 

@@ -6,27 +6,18 @@ import { cn } from '@/lib/utils'
 
 interface ProgressCardProps {
   title: string
-  current: number
-  total: number
+  count: number
   icon: React.ReactNode
   color?: string
 }
 
 export default function ProgressCard({
   title,
-  current,
-  total,
+  count,
   icon,
   color = 'yellow',
 }: ProgressCardProps) {
   const { theme } = useTheme()
-  const percentage = (current / total) * 100
-  const colorClasses = {
-    yellow: theme === 'dark' ? 'bg-yellow-400' : 'bg-yellow-600',
-    blue: 'bg-blue-400',
-    green: 'bg-green-400',
-    purple: 'bg-purple-400',
-  }
 
   const bgGradientClasses = {
     yellow: theme === 'dark' 
@@ -54,25 +45,19 @@ export default function ProgressCard({
         </CardTitle>
         <div className="scale-90 md:scale-100">{icon}</div>
       </CardHeader>
-      <CardContent className="p-4 md:p-5 pt-0 space-y-3">
+      <CardContent className="p-4 md:p-5 pt-0">
         <div className={cn(
-          "text-sm md:text-base font-normal",
-          theme === 'dark' ? "text-gray-400" : "text-gray-600"
+          "text-2xl md:text-3xl font-bold mb-1",
+          theme === 'dark' ? "text-white" : "text-gray-900"
         )}>
-          / {total}
+          {count.toLocaleString('pt-BR')}
         </div>
-        <div className={cn(
-          "w-full h-3 backdrop-blur-sm rounded-full overflow-hidden",
-          theme === 'dark' ? "bg-black/30" : "bg-yellow-100"
+        <p className={cn(
+          "text-xs mt-1",
+          theme === 'dark' ? "text-gray-500" : "text-gray-500"
         )}>
-          <div
-            className={cn(
-              "h-full rounded-full transition-all duration-500 ease-out",
-              colorClasses[color as keyof typeof colorClasses] || colorClasses.yellow
-            )}
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
+          Total até agora
+        </p>
       </CardContent>
     </Card>
   )
