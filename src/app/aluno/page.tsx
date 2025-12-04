@@ -9,6 +9,101 @@ import Link from 'next/link'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 
+// Tipos para avisos/notificações
+interface Announcement {
+  id: string
+  title: string
+  message: string
+  date?: string // opcional (ISO)
+  type?: "info" | "warning" | "update" // opcional para cor do badge
+}
+
+// TODO: substituir mockAnnouncements por dados reais vindos do backend/ADM
+// FUTURO:
+// - Essa secção será alimentada pelo painel administrativo (ADM).
+// - O endpoint deverá retornar uma lista de avisos com id, title, message, date, type.
+// - A dashboard apenas exibirá a lista retornada em ordem cronológica.
+// - Pode ser criado futuramente um badge de "novo aviso" no header.
+const mockAnnouncements: Announcement[] = [
+  {
+    id: "1",
+    title: "Bem-vindo(a) à Escola Nova Era Tech!",
+    message: "Estamos a preparar novos conteúdos e melhorias no teu painel.",
+    type: "info",
+  },
+  {
+    id: "2",
+    title: "Nova turma Norte Tech aberta!",
+    message: "As vagas para a nova turma começam amanhã às 10h.",
+    type: "update",
+  },
+]
+
+// Componente para exibir um card de aviso
+function AnnouncementCard({ title, message, type, date }: Announcement) {
+  const { theme } = useTheme()
+
+  return (
+    <div className={cn(
+      "w-full p-4 md:p-5 rounded-xl backdrop-blur-md border shadow-lg flex flex-col gap-2 transition-colors duration-300",
+      theme === 'dark'
+        ? "bg-black/20 border-white/10"
+        : "bg-white/80 border-yellow-400/90 shadow-md"
+    )}>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h3 className={cn(
+          "text-base md:text-lg font-semibold flex-1 min-w-0",
+          theme === 'dark' ? "text-white" : "text-gray-900"
+        )}>
+          {title}
+        </h3>
+        {type && (
+          <span className={cn(
+            "text-xs px-2 py-1 rounded-md uppercase tracking-wide font-medium flex-shrink-0",
+            type === "info" && (
+              theme === 'dark'
+                ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                : "bg-blue-100 text-blue-700 border border-blue-300"
+            ),
+            type === "update" && (
+              theme === 'dark'
+                ? "bg-green-500/20 text-green-300 border border-green-500/30"
+                : "bg-green-100 text-green-700 border border-green-300"
+            ),
+            type === "warning" && (
+              theme === 'dark'
+                ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30"
+                : "bg-yellow-100 text-yellow-700 border border-yellow-300"
+            )
+          )}>
+            {type === "info" ? "Informação" : type === "update" ? "Atualização" : "Aviso"}
+          </span>
+        )}
+      </div>
+
+      <p className={cn(
+        "text-sm md:text-base leading-relaxed",
+        theme === 'dark' ? "text-white/80" : "text-gray-700"
+      )}>
+        {message}
+      </p>
+
+      {date && (
+        <p className={cn(
+          "text-xs md:text-sm mt-1",
+          theme === 'dark' ? "text-white/40" : "text-gray-500"
+        )}>
+          {new Date(date).toLocaleDateString("pt-PT", {
+            day: "numeric",
+            month: "long",
+            year: "numeric"
+          })}
+        </p>
+      )}
+    </div>
+  )
+}
+
 export default function AlunoDashboard() {
   const user = mockUser
   const stats = mockStats
@@ -41,27 +136,42 @@ export default function AlunoDashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <ProgressCard
-          title="Aulas"
-          current={stats.aulasCompletas}
-          total={stats.aulasTotais}
+          title="Aulas Completas"
+          count={stats.aulasCompletas}
           icon={<BookOpen className="w-6 h-6 text-yellow-500" />}
           color="yellow"
         />
         <ProgressCard
-          title="Quiz"
-          current={stats.quizCompletos}
-          total={stats.quizTotais}
+          title="Quiz Completos"
+          count={stats.quizCompletos}
           icon={<HelpCircle className="w-6 h-6 text-blue-500" />}
           color="blue"
         />
         <ProgressCard
-          title="Desafios"
-          current={stats.desafiosConcluidos}
-          total={stats.desafiosTotais}
+          title="Desafios Concluídos"
+          count={stats.desafiosConcluidos}
           icon={<Target className="w-6 h-6 text-green-500" />}
           color="green"
         />
       </div>
+
+      {/* Avisos da Escola */}
+      {mockAnnouncements.length > 0 && (
+        <section className="w-full flex flex-col gap-3 md:gap-4">
+          <h2 className={cn(
+            "text-lg md:text-xl font-bold",
+            theme === 'dark' ? "text-white" : "text-gray-900"
+          )}>
+            Avisos da Escola
+          </h2>
+
+          <div className="flex flex-col gap-3 md:gap-4">
+            {mockAnnouncements.map(announcement => (
+              <AnnouncementCard key={announcement.id} {...announcement} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Quick Actions & Ranking */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
