@@ -89,6 +89,43 @@ export default function PlanoDeEstudosPage() {
         </p>
       </div>
 
+      {/* TODO: Ativar visualização completa quando motor de IA estiver pronto */}
+      {/* Mensagem "Em breve" para MVP */}
+      <div className={cn(
+        "backdrop-blur-md border rounded-xl p-8 md:p-12 text-center transition-colors duration-300",
+        theme === 'dark'
+          ? "bg-black/20 border-white/10"
+          : "bg-white border-yellow-400/90 shadow-md"
+      )}>
+        <div className="max-w-md mx-auto">
+          <div className={cn(
+            "w-16 h-16 md:w-20 md:h-20 rounded-full mx-auto mb-4 md:mb-6 flex items-center justify-center",
+            theme === 'dark'
+              ? "bg-yellow-400/20 text-yellow-400"
+              : "bg-yellow-100 text-yellow-600"
+          )}>
+            <BookOpen className="w-8 h-8 md:w-10 md:h-10" />
+          </div>
+          <h2 className={cn(
+            "text-xl md:text-2xl font-bold mb-3 md:mb-4",
+            theme === 'dark' ? "text-white" : "text-gray-900"
+          )}>
+            Em breve
+          </h2>
+          <p className={cn(
+            "text-sm md:text-base leading-relaxed",
+            theme === 'dark' ? "text-gray-400" : "text-gray-600"
+          )}>
+            Estamos preparando um plano de estudos personalizado com inteligência artificial. 
+            Em breve você terá acesso a um plano completo e adaptado ao seu ritmo de aprendizado.
+          </p>
+        </div>
+      </div>
+
+      {/* Código comentado - será ativado quando motor de IA estiver pronto */}
+      {false && (
+        <>
+
       {/* Resumo do Aluno */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
         <div className={cn(
@@ -242,7 +279,7 @@ export default function PlanoDeEstudosPage() {
                     theme === 'dark' ? "text-gray-400" : "text-gray-600"
                   )}>
                     <span>
-                      {course.completedLessons} de {course.totalLessons} aulas
+                      {course.completedLessons} aulas concluídas
                     </span>
                     <span>{Math.round(progressPercentage)}%</span>
                   </div>
@@ -477,6 +514,8 @@ export default function PlanoDeEstudosPage() {
           })}
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }

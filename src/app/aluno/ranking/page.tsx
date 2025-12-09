@@ -1,16 +1,37 @@
 'use client'
 
+import { useState, useMemo } from 'react'
 import { mockRanking } from '@/data/aluno/mockRanking'
+import { mockUser } from '@/data/aluno/mockUser'
 import { Trophy, Medal, Award, TrendingUp } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 
+type RankingType = 'mensal' | 'geral'
+
 export default function RankingPage() {
-  const ranking = mockRanking
-  const top3 = ranking.slice(0, 3)
-  const currentUser = ranking.find(u => u.isCurrentUser)
-  const currentUserPosition = currentUser?.position || 0
   const { theme } = useTheme()
+  const [rankingType, setRankingType] = useState<RankingType>('mensal')
+  
+  // Filtrar apenas alunos com accessLevel "full" e ordenar
+  const filteredRanking = useMemo(() => {
+    return mockRanking
+      .filter(user => user.accessLevel === 'full')
+      .sort((a, b) => {
+        // Ordenar por XP mensal ou geral conforme o tipo selecionado
+        const xpA = rankingType === 'mensal' ? a.xpMensal : a.xp
+        const xpB = rankingType === 'mensal' ? b.xpMensal : b.xp
+        return xpB - xpA
+      })
+      .map((user, index) => ({
+        ...user,
+        position: index + 1
+      }))
+  }, [rankingType])
+
+  const top3 = filteredRanking.slice(0, 3)
+  const currentUser = filteredRanking.find(u => u.id === mockUser.id)
+  const currentUserPosition = currentUser?.position || 0
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -20,14 +41,48 @@ export default function RankingPage() {
           "text-2xl md:text-3xl font-bold mb-2",
           theme === 'dark' ? "text-white" : "text-gray-900"
         )}>
-          Ranking Mensal
+          Ranking
         </h1>
         <p className={cn(
-          "text-sm md:text-base",
+          "text-sm md:text-base mb-4",
           theme === 'dark' ? "text-gray-400" : "text-gray-600"
         )}>
-          Veja quem está no topo da competição
+          Ranking baseado em XP. Complete aulas, quizzes e desafios para subir de posição!
         </p>
+        
+        {/* Tabs Mensal/Geral */}
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setRankingType('mensal')}
+            className={cn(
+              "px-4 py-2 rounded-lg font-medium transition-colors text-sm md:text-base",
+              rankingType === 'mensal'
+                ? theme === 'dark'
+                  ? "bg-yellow-400 text-black"
+                  : "bg-yellow-500 text-white"
+                : theme === 'dark'
+                  ? "bg-black/30 text-gray-400 border border-white/10 hover:bg-white/5"
+                  : "bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200"
+            )}
+          >
+            Mensal
+          </button>
+          <button
+            onClick={() => setRankingType('geral')}
+            className={cn(
+              "px-4 py-2 rounded-lg font-medium transition-colors text-sm md:text-base",
+              rankingType === 'geral'
+                ? theme === 'dark'
+                  ? "bg-yellow-400 text-black"
+                  : "bg-yellow-500 text-white"
+                : theme === 'dark'
+                  ? "bg-black/30 text-gray-400 border border-white/10 hover:bg-white/5"
+                  : "bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200"
+            )}
+          >
+            Geral
+          </button>
+        </div>
       </div>
 
       {/* Pódio */}
@@ -81,7 +136,7 @@ export default function RankingPage() {
                   "font-bold mt-1 md:mt-2 text-xs md:text-sm",
                   theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                 )}>
-                  {top3[1].xp} XP
+                  {rankingType === 'mensal' ? top3[1].xpMensal : top3[1].xp} XP
                 </p>
               </div>
               <div className={cn(
@@ -132,7 +187,7 @@ export default function RankingPage() {
                   "font-bold mt-1 md:mt-2 text-xs md:text-sm",
                   theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                 )}>
-                  {top3[0].xp} XP
+                  {rankingType === 'mensal' ? top3[0].xpMensal : top3[0].xp} XP
                 </p>
               </div>
               <div className={cn(
@@ -180,7 +235,7 @@ export default function RankingPage() {
                   "font-bold mt-1 md:mt-2 text-xs md:text-sm",
                   theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                 )}>
-                  {top3[2].xp} XP
+                  {rankingType === 'mensal' ? top3[2].xpMensal : top3[2].xp} XP
                 </p>
               </div>
               <div className={cn(
@@ -220,12 +275,12 @@ export default function RankingPage() {
         </div>
 
         <div className="space-y-2">
-          {ranking.map((user) => (
+          {filteredRanking.map((user) => (
             <div
               key={user.id}
               className={cn(
                 "flex items-center gap-2 md:gap-4 p-3 md:p-4 rounded-lg transition-all duration-300",
-                user.isCurrentUser
+                user.id === mockUser.id
                   ? theme === 'dark'
                     ? "bg-yellow-400/10 backdrop-blur-sm border border-yellow-400/30"
                     : "bg-yellow-100 border border-yellow-300 shadow-sm"
@@ -236,7 +291,7 @@ export default function RankingPage() {
             >
               <div className={cn(
                 "text-sm md:text-lg font-bold w-8 md:w-12 text-center flex-shrink-0",
-                user.isCurrentUser
+                user.id === mockUser.id
                   ? theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                   : theme === 'dark' ? "text-gray-400" : "text-gray-600"
               )}>
@@ -255,12 +310,12 @@ export default function RankingPage() {
               <div className="flex-1 min-w-0">
                 <p className={cn(
                   "font-semibold text-sm md:text-base truncate",
-                  user.isCurrentUser
+                  user.id === mockUser.id
                     ? theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                     : theme === 'dark' ? "text-white" : "text-gray-900"
                 )}>
                   {user.name}
-                  {user.isCurrentUser && ' (Você)'}
+                  {user.id === mockUser.id && ' (Você)'}
                 </p>
                 <p className={cn(
                   "text-xs md:text-sm",
@@ -275,7 +330,7 @@ export default function RankingPage() {
                   "font-bold text-xs md:text-sm",
                   theme === 'dark' ? "text-white" : "text-gray-900"
                 )}>
-                  {user.xp.toLocaleString('pt-BR')} XP
+                  {(rankingType === 'mensal' ? user.xpMensal : user.xp).toLocaleString('pt-BR')} XP
                 </p>
                 <p className={cn(
                   "text-xs hidden md:block",

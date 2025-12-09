@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 
 type FilterOwner = 'all' | 'mine'
 type FilterStatus = 'all' | 'answered' | 'unanswered'
+type FilterTechnology = 'all' | 'HTML' | 'CSS' | 'JavaScript' | 'React' | 'Android' | 'Web Development'
 
 export default function ComunidadePage() {
   const [perguntas] = useState(mockPerguntas)
@@ -20,6 +21,7 @@ export default function ComunidadePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterOwner, setFilterOwner] = useState<FilterOwner>('all')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
+  const [filterTechnology, setFilterTechnology] = useState<FilterTechnology>('all')
   
   // Ref para preservar a posição do scroll
   const scrollPositionRef = useRef<number>(0)
@@ -44,6 +46,20 @@ export default function ComunidadePage() {
         return false
       }
 
+      // Filtro por tecnologia
+      if (filterTechnology !== 'all') {
+        const techLower = filterTechnology.toLowerCase()
+        const categoriaMatch = pergunta.categoria.toLowerCase().includes(techLower)
+        const tagsMatch = pergunta.tags.some(tag => 
+          tag.toLowerCase().includes(techLower) ||
+          (techLower === 'javascript' && tag.toLowerCase().includes('js'))
+        )
+        
+        if (!categoriaMatch && !tagsMatch) {
+          return false
+        }
+      }
+
       // Filtro por busca (título + descrição)
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase()
@@ -58,7 +74,7 @@ export default function ComunidadePage() {
 
       return true
     })
-  }, [perguntas, filterOwner, filterStatus, searchQuery, currentUserId])
+  }, [perguntas, filterOwner, filterStatus, filterTechnology, searchQuery, currentUserId])
 
   // Restaura a posição do scroll após a renderização (antes da pintura)
   useLayoutEffect(() => {
@@ -194,6 +210,29 @@ export default function ComunidadePage() {
             )}
           />
         </div>
+
+        {/* Filtro por Tecnologia */}
+        <select
+          value={filterTechnology}
+          onChange={(e) => {
+            scrollPositionRef.current = window.scrollY
+            setFilterTechnology(e.target.value as FilterTechnology)
+          }}
+          className={cn(
+            "px-3 md:px-4 py-2 text-sm md:text-base backdrop-blur-md border rounded-lg focus:outline-none transition-colors duration-300",
+            theme === 'dark'
+              ? "bg-black/20 border-white/10 text-white focus:border-yellow-400/50"
+              : "bg-white border-yellow-400/90 text-gray-900 focus:border-yellow-500 shadow-sm"
+          )}
+        >
+          <option value="all">Todas as tecnologias</option>
+          <option value="HTML">HTML</option>
+          <option value="CSS">CSS</option>
+          <option value="JavaScript">JavaScript</option>
+          <option value="React">React</option>
+          <option value="Android">Android</option>
+          <option value="Web Development">Web Development</option>
+        </select>
 
         {/* Filtro por Owner */}
         <select

@@ -54,13 +54,24 @@ export async function middleware(request: NextRequest) {
       } else {
         // Em desenvolvimento: permitir acesso sem Supabase (para desenvolvimento local)
         if (hasSupabaseConfig) {
-          // Se tem Supabase configurado, verificar autenticação normalmente
+          // Se tem Supabase configurado, verificar autenticação
+          // Mas em desenvolvimento, ser mais permissivo
           const session = SecureSessionManager.getSessionFromRequest(request)
-          if (!session?.isValid) {
+          
+          // Em desenvolvimento, também verificar cookies do Supabase diretamente
+          const supabaseCookies = [
+            request.cookies.get('sb-access-token'),
+            request.cookies.get('sb-refresh-token'),
+            ...Array.from(request.cookies.getAll()).filter(c => c.name.includes('supabase') || c.name.includes('sb-'))
+          ]
+          
+          // Se não tem sessão válida E não tem cookies do Supabase, redirecionar para login
+          if (!session?.isValid && supabaseCookies.length === 0) {
             const loginUrl = new URL('/aluno/login', request.url)
             loginUrl.searchParams.set('redirect', pathname)
             return NextResponse.redirect(loginUrl)
           }
+          // Se tem cookies do Supabase, permitir acesso (o AuthContext vai validar)
         }
         // Se não tem Supabase em desenvolvimento, permite acesso (modo desenvolvimento)
       }

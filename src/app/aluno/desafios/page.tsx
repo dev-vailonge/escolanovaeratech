@@ -1,13 +1,18 @@
 'use client'
 
 import { mockDesafios } from '@/data/aluno/mockDesafios'
-import { Target, Clock, CheckCircle2, Coins, Trophy, Users, Calendar } from 'lucide-react'
+import { mockUser } from '@/data/aluno/mockUser'
+import { Target, Clock, CheckCircle2, Coins, Trophy, Users, Calendar, Lock } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
+import { isFeatureEnabled } from '@/lib/features'
+import { hasFullAccess } from '@/lib/types/auth'
 
 export default function DesafiosPage() {
   const desafios = mockDesafios
   const { theme } = useTheme()
+  const user = mockUser
+  const canParticipate = hasFullAccess({ ...user, role: user.role as 'aluno' | 'admin', accessLevel: user.accessLevel })
 
   const desafiosAtivos = desafios.filter(d => !d.completo)
   const desafiosCompletos = desafios.filter(d => d.completo)
@@ -63,7 +68,7 @@ export default function DesafiosPage() {
           "text-sm md:text-base",
           theme === 'dark' ? "text-gray-400" : "text-gray-600"
         )}>
-          Complete desafios e ganhe recompensas incríveis
+          Complete desafios e ganhe XP para subir no ranking
         </p>
       </div>
 
@@ -179,7 +184,13 @@ export default function DesafiosPage() {
                     {desafio.descricao}
                   </p>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-3 md:mb-4">
+                  <div className={cn(
+                    "grid gap-2 md:gap-4 mb-3 md:mb-4",
+                    // Grid responsivo: ajusta colunas baseado nas features habilitadas
+                    isFeatureEnabled('coins')
+                      ? "grid-cols-2 md:grid-cols-4"
+                      : "grid-cols-2 md:grid-cols-3"
+                  )}>
                     <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
                       <Trophy className={cn(
                         "w-3 h-3 md:w-4 md:h-4 flex-shrink-0",
@@ -192,18 +203,21 @@ export default function DesafiosPage() {
                         +{desafio.xpGanho} XP
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
-                      <Coins className={cn(
-                        "w-3 h-3 md:w-4 md:h-4 flex-shrink-0",
-                        theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                      )} />
-                      <span className={cn(
-                        "truncate",
-                        theme === 'dark' ? "text-gray-300" : "text-gray-700"
-                      )}>
-                        {desafio.moedasGanho} moedas
-                      </span>
-                    </div>
+                    {/* Moedas - Oculto no MVP */}
+                    {isFeatureEnabled('coins') && (
+                      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+                        <Coins className={cn(
+                          "w-3 h-3 md:w-4 md:h-4 flex-shrink-0",
+                          theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                        )} />
+                        <span className={cn(
+                          "truncate",
+                          theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                        )}>
+                          {desafio.moedasGanho} moedas
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
                       <Clock className="w-3 h-3 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
                       <span className={cn(
@@ -243,8 +257,27 @@ export default function DesafiosPage() {
                   )}
                 </div>
 
-                <button className="btn-primary w-full md:w-auto mt-2 md:mt-0">
-                  Participar
+                {!canParticipate && (
+                  <div className={cn(
+                    "mb-3 p-3 rounded-lg text-sm",
+                    theme === 'dark'
+                      ? "bg-yellow-400/10 border border-yellow-400/30 text-yellow-400"
+                      : "bg-yellow-50 border border-yellow-300 text-yellow-700"
+                  )}>
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-4 h-4" />
+                      <span>Upgrade sua conta para participar de desafios e aparecer no ranking</span>
+                    </div>
+                  </div>
+                )}
+                <button 
+                  className={cn(
+                    "btn-primary w-full md:w-auto mt-2 md:mt-0",
+                    !canParticipate && "opacity-50 cursor-not-allowed"
+                  )}
+                  disabled={!canParticipate}
+                >
+                  {!canParticipate ? 'Acesso Limitado' : 'Participar'}
                 </button>
               </div>
             </div>
@@ -310,7 +343,10 @@ export default function DesafiosPage() {
                     theme === 'dark' ? "text-gray-400" : "text-gray-600"
                   )}>
                     <span>+{desafio.xpGanho} XP ganhos</span>
-                    <span>{desafio.moedasGanho} moedas ganhas</span>
+                    {/* Moedas - Oculto no MVP */}
+                    {isFeatureEnabled('coins') && (
+                      <span>{desafio.moedasGanho} moedas ganhas</span>
+                    )}
                     {desafio.badgeGanho && (
                       <span className={cn(
                         theme === 'dark' ? "text-yellow-400" : "text-yellow-600"

@@ -3,9 +3,12 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { User } from '@supabase/supabase-js'
+import { getUserById } from './database'
+import type { AuthUser } from './types/auth'
+import type { DatabaseUser } from '@/types/database'
 
 interface AuthContextType {
-  user: User | null
+  user: AuthUser | null
   loading: boolean
   signOut: () => Promise<void>
   refreshSession: () => Promise<void>
@@ -14,10 +17,43 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Função helper para converter DatabaseUser em AuthUser
+function convertToAuthUser(dbUser: DatabaseUser | null, supabaseUser: User | null): AuthUser | null {
+  if (!dbUser || !supabaseUser) return null
+
+  return {
+    id: dbUser.id,
+    name: dbUser.name,
+    email: dbUser.email,
+    role: dbUser.role as 'aluno' | 'admin',
+    accessLevel: dbUser.access_level as 'full' | 'limited',
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(false)
   const [initialized, setInitialized] = useState(false)
+
+  // Buscar dados completos do usuário do banco
+  const fetchUserData = async (supabaseUser: User | null): Promise<AuthUser | null> => {
+    if (!supabaseUser) return null
+
+    try {
+      const dbUser = await getUserById(supabaseUser.id)
+      
+      if (!dbUser) {
+        console.warn(`⚠️ Usuário ${supabaseUser.id} não encontrado na tabela users. Verifique se o usuário foi criado corretamente.`)
+        // Retornar null para que o sistema saiba que precisa criar o usuário
+        return null
+      }
+      
+      return convertToAuthUser(dbUser, supabaseUser)
+    } catch (error) {
+      console.error('Error fetching user data:', error)
+      return null
+    }
+  }
 
   const initializeAuth = async () => {
     if (initialized) return
@@ -27,7 +63,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Verifica se Supabase está configurado antes de usar
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
         const { data: { session } } = await supabase.auth.getSession()
-        setUser(session?.user ?? null)
+        if (session?.user) {
+          const authUser = await fetchUserData(session.user)
+          setUser(authUser)
+        } else {
+          setUser(null)
+        }
       } else {
         // Modo mockado - não há usuário autenticado mas não quebra
         setUser(null)
@@ -46,7 +87,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
         const { data: { session } } = await supabase.auth.getSession()
-        setUser(session?.user ?? null)
+        if (session?.user) {
+          const authUser = await fetchUserData(session.user)
+          setUser(authUser)
+        } else {
+          setUser(null)
+        }
       } else {
         setUser(null)
       }
@@ -78,8 +124,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
           if (mounted && initialized) {
-            // Auth state changed
-            setUser(session?.user ?? null)
+            // Auth state changed - buscar dados completos do usuário
+            if (session?.user) {
+              const authUser = await fetchUserData(session.user)
+              setUser(authUser)
+            } else {
+              setUser(null)
+            }
           }
         }
       )

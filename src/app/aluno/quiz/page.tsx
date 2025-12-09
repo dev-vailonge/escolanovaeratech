@@ -1,13 +1,17 @@
 'use client'
 
 import { mockQuiz } from '@/data/aluno/mockQuiz'
-import { HelpCircle, Clock, CheckCircle2, Circle, Play, Trophy } from 'lucide-react'
+import { mockUser } from '@/data/aluno/mockUser'
+import { HelpCircle, Clock, CheckCircle2, Circle, Play, Trophy, Lock } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
+import { hasFullAccess } from '@/lib/types/auth'
 
 export default function QuizPage() {
   const quizes = mockQuiz
   const { theme } = useTheme()
+  const user = mockUser
+  const canParticipate = hasFullAccess({ ...user, role: user.role as 'aluno' | 'admin', accessLevel: user.accessLevel })
 
   const quizesCompletos = quizes.filter(q => q.completo).length
   const quizesDisponiveis = quizes.filter(q => q.disponivel && !q.completo).length
@@ -194,11 +198,33 @@ export default function QuizPage() {
                 )}
               </div>
 
+              {!canParticipate && (
+                <div className={cn(
+                  "mb-3 p-3 rounded-lg text-sm",
+                  theme === 'dark'
+                    ? "bg-yellow-400/10 border border-yellow-400/30 text-yellow-400"
+                    : "bg-yellow-50 border border-yellow-300 text-yellow-700"
+                )}>
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-4 h-4" />
+                    <span>Upgrade sua conta para participar de quizzes e ganhar XP</span>
+                  </div>
+                </div>
+              )}
               <button 
-                className="btn-primary w-full md:w-auto mt-2 md:mt-0"
-                disabled={!quiz.disponivel}
+                className={cn(
+                  "btn-primary w-full md:w-auto mt-2 md:mt-0",
+                  !canParticipate && "opacity-50 cursor-not-allowed"
+                )}
+                disabled={!quiz.disponivel || !canParticipate}
               >
-                {quiz.completo ? 'Refazer' : quiz.disponivel ? 'Iniciar Quiz' : 'Em breve'}
+                {!canParticipate 
+                  ? 'Acesso Limitado' 
+                  : quiz.completo 
+                    ? 'Refazer' 
+                    : quiz.disponivel 
+                      ? 'Iniciar Quiz' 
+                      : 'Em breve'}
               </button>
             </div>
           </div>

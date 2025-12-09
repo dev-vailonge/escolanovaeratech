@@ -6,9 +6,17 @@ import { mockCourseProgress } from '@/data/aluno/studyPlan'
 import { Edit2, BookOpen, GraduationCap } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
+import { isFeatureEnabled } from '@/lib/features'
+import { useAuth } from '@/lib/AuthContext'
 
 export default function PerfilPage() {
-  const user = mockUser
+  const { user: authUser } = useAuth()
+  // Usar usuário autenticado se disponível, senão usar mockUser como fallback
+  const user = authUser ? {
+    ...mockUser,
+    name: authUser.name,
+    email: authUser.email,
+  } : mockUser
   const stats = mockStats
   const courses = mockCourseProgress
   const { theme } = useTheme()
@@ -96,8 +104,12 @@ export default function PerfilPage() {
             )}
 
             <div className={cn(
-              "grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 pt-4 border-t",
-              theme === 'dark' ? "border-white/10" : "border-yellow-400/90"
+              "grid gap-3 md:gap-4 pt-4 border-t",
+              theme === 'dark' ? "border-white/10" : "border-yellow-400/90",
+              // Grid responsivo: 2 colunas se moedas/streak desabilitados, 4 se habilitados
+              isFeatureEnabled('coins') || isFeatureEnabled('streak')
+                ? "grid-cols-2 md:grid-cols-4"
+                : "grid-cols-2"
             )}>
               <div>
                 <p className={cn(
@@ -127,29 +139,35 @@ export default function PerfilPage() {
                   {user.xp.toLocaleString('pt-BR')}
                 </p>
               </div>
-              <div>
-                <p className={cn(
-                  "text-xs md:text-sm",
-                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                )}>
-                  Moedas
-                </p>
-                <p className={cn(
-                  "text-xl md:text-2xl font-bold",
-                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                )}>
-                  {user.coins}
-                </p>
-              </div>
-              <div>
-                <p className={cn(
-                  "text-xs md:text-sm",
-                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                )}>
-                  Streak
-                </p>
-                <p className="text-xl md:text-2xl font-bold text-orange-500">{user.streak} 🔥</p>
-              </div>
+              {/* Moedas - Oculto no MVP */}
+              {isFeatureEnabled('coins') && (
+                <div>
+                  <p className={cn(
+                    "text-xs md:text-sm",
+                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                  )}>
+                    Moedas
+                  </p>
+                  <p className={cn(
+                    "text-xl md:text-2xl font-bold",
+                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                  )}>
+                    {user.coins}
+                  </p>
+                </div>
+              )}
+              {/* Streak - Oculto no MVP */}
+              {isFeatureEnabled('streak') && (
+                <div>
+                  <p className={cn(
+                    "text-xs md:text-sm",
+                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                  )}>
+                    Streak
+                  </p>
+                  <p className="text-xl md:text-2xl font-bold text-orange-500">{user.streak} 🔥</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -234,7 +252,13 @@ export default function PerfilPage() {
                     "text-2xl md:text-3xl font-bold",
                     theme === 'dark' ? "text-white" : "text-gray-900"
                   )}>
-                    {completedLessons}/{totalLessons}
+                    {completedLessons}
+                  </p>
+                  <p className={cn(
+                    "text-xs mt-1",
+                    theme === 'dark' ? "text-gray-500" : "text-gray-500"
+                  )}>
+                    Aulas concluídas
                   </p>
                 </div>
               )}

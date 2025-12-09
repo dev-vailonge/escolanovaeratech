@@ -63,16 +63,24 @@ function AlunoLoginContent() {
       }
 
       if (data?.user) {
+        // Forçar refresh da sessão no AuthContext
+        await initializeAuth()
+        
+        // Aguardar um pouco para o AuthContext atualizar
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
         // Successful login - redirect to aluno dashboard
+        // Redirecionar mesmo se user não estiver na tabela (para desenvolvimento)
         router.push('/aluno')
+        return // Sair da função para não resetar isLoading
       }
     } catch (err: any) {
+      console.error('Login error:', err)
       if (err?.message?.includes('Invalid login credentials')) {
         setError('Email ou senha inválidos.')
       } else {
         setError('Ocorreu um erro ao tentar fazer login. Por favor, tente novamente.')
       }
-    } finally {
       setIsLoading(false)
     }
   }

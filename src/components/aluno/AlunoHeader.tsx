@@ -4,9 +4,17 @@ import { mockUser } from '@/data/aluno/mockUser'
 import { Bell, Coins, Flame, Sun, Moon } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
+import { isFeatureEnabled } from '@/lib/features'
+import { useAuth } from '@/lib/AuthContext'
 
 export default function AlunoHeader() {
-  const user = mockUser
+  const { user: authUser } = useAuth()
+  // Usar usuário autenticado se disponível, senão usar mockUser como fallback
+  const user = authUser ? {
+    ...mockUser,
+    name: authUser.name,
+    email: authUser.email,
+  } : mockUser
   const { theme, toggleTheme } = useTheme()
 
   return (
@@ -74,7 +82,7 @@ export default function AlunoHeader() {
           </div>
         </div>
 
-        {/* Stats - Mobile: segunda linha com XP, Coins e Streak | Desktop: todos alinhados à direita */}
+        {/* Stats - Mobile: segunda linha com XP | Desktop: todos alinhados à direita */}
         <div className="flex items-center flex-nowrap gap-2 sm:gap-3 w-full lg:w-auto lg:gap-4 overflow-x-auto">
           {/* XP Total */}
           <div className={cn(
@@ -96,40 +104,45 @@ export default function AlunoHeader() {
               {user.xp.toLocaleString('pt-BR')}
             </span>
           </div>
-          {/* Coins */}
-          <div className={cn(
-            "flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border flex-shrink-0",
-            theme === 'dark'
-              ? "bg-[#0f0f0f] border-white/10"
-              : "bg-yellow-500/20 border-yellow-600/30"
-          )}>
-            <Coins className={cn(
-              "w-3.5 h-3.5 sm:w-4 sm:h-4",
-              theme === 'dark' ? "text-yellow-400" : "text-yellow-700"
-            )} />
-            <span className={cn(
-              "font-semibold text-xs sm:text-sm",
-              theme === 'dark' ? "text-white" : "text-gray-900"
-            )}>
-              {user.coins}
-            </span>
-          </div>
 
-          {/* Streak */}
-          <div className={cn(
-            "flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border flex-shrink-0",
-            theme === 'dark'
-              ? "bg-[#0f0f0f] border-white/10"
-              : "bg-yellow-500/20 border-yellow-600/30"
-          )}>
-            <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500" />
-            <span className={cn(
-              "font-semibold text-xs sm:text-sm",
-              theme === 'dark' ? "text-white" : "text-gray-900"
+          {/* Coins - Oculto no MVP */}
+          {isFeatureEnabled('coins') && (
+            <div className={cn(
+              "flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border flex-shrink-0",
+              theme === 'dark'
+                ? "bg-[#0f0f0f] border-white/10"
+                : "bg-yellow-500/20 border-yellow-600/30"
             )}>
-              {user.streak}
-            </span>
-          </div>
+              <Coins className={cn(
+                "w-3.5 h-3.5 sm:w-4 sm:h-4",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-700"
+              )} />
+              <span className={cn(
+                "font-semibold text-xs sm:text-sm",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                {user.coins}
+              </span>
+            </div>
+          )}
+
+          {/* Streak - Oculto no MVP */}
+          {isFeatureEnabled('streak') && (
+            <div className={cn(
+              "flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border flex-shrink-0",
+              theme === 'dark'
+                ? "bg-[#0f0f0f] border-white/10"
+                : "bg-yellow-500/20 border-yellow-600/30"
+            )}>
+              <Flame className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500" />
+              <span className={cn(
+                "font-semibold text-xs sm:text-sm",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                {user.streak}
+              </span>
+            </div>
+          )}
 
           {/* Theme Toggle e Notifications - Desktop: visíveis aqui */}
           <div className="hidden lg:flex items-center gap-2 ml-auto">
