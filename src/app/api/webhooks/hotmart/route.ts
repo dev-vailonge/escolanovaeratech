@@ -1,17 +1,34 @@
 /**
  * Webhook endpoint para receber eventos da Hotmart
  * 
- * Documentação: https://developers.hotmart.com/docs/pt-BR/1.0.0/webhook/about-webhook/
+ * Documentação: 
+ * - Tutorial: https://developers.hotmart.com/docs/pt-BR/tutorials/use-webhook-for-subscriptions/
+ * - Webhook: https://developers.hotmart.com/docs/pt-BR/2.0.0/webhook/purchase-webhook/
  * 
- * Eventos suportados:
+ * Versão suportada: 2.0.0 (Recomendado)
+ * 
+ * Eventos suportados (conforme tutorial):
  * - PURCHASE_APPROVED: Compra aprovada
- * - PURCHASE_CANCELLED: Compra cancelada
+ * - PURCHASE_COMPLETE: Compra completa
+ * - PURCHASE_CANCELED: Compra cancelada (versão 2.0.0 usa um L)
+ * - PURCHASE_CANCELLED: Compra cancelada (versão 1.0.0 usa dois L)
+ * - PURCHASE_DELAYED: Compra atrasada
  * - PURCHASE_EXPIRED: Compra expirada
+ * 
+ * Estrutura de dados (versão 2.0.0):
+ * {
+ *   "event": "PURCHASE_APPROVED",
+ *   "data": {
+ *     "subscription": {...},
+ *     "buyer": {...},
+ *     "purchase": {...}
+ *   }
+ * }
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
-import { upsertHotmartSubscription } from '@/lib/hotmart'
+import { upsertHotmartSubscription } from '@/lib/hotmart/subscriptions'
 import { getUserByEmail, createUser } from '@/lib/database'
 
 /**
@@ -48,39 +65,61 @@ function validateWebhookSignature(
  */
 async function handlePurchaseApproved(data: any) {
   try {
-    const purchase = data.purchase
-    const buyer = purchase.buyer
-    const product = purchase.product
+    // Conforme tutorial Hotmart versão 2.0.0:
+    // Estrutura: { event: "...", data: { subscription: {...}, buyer: {...}, purchase: {...} } }
+    // https://developers.hotmart.com/docs/pt-BR/tutorials/use-webhook-for-subscriptions/
+    const subscription = data.subscription || {}
+    const purchase = data.purchase || subscription.purchase || data
+    const buyer = data.buyer || subscription.buyer || purchase.buyer || {}
+    const product = data.product || subscription.product || purchase.product || {}
+
+    // Extrair email do comprador (pode estar em diferentes lugares)
+    const email = buyer.email || purchase.buyer?.email || data.buyer?.email || data.email
+
+    if (!email) {
+      console.error('❌ Webhook sem email do comprador:', JSON.stringify(data).substring(0, 200))
+      return { success: false, message: 'Email do comprador não encontrado' }
+    }
 
     // Buscar usuário por email
-    let user = await getUserByEmail(buyer.email)
+    let user = await getUserByEmail(email)
     
     // Se não existir, criar automaticamente
     if (!user) {
-      console.log(`📝 Criando novo usuário para email: ${buyer.email}`)
-      const buyerName = buyer.name || buyer.first_name || buyer.email.split('@')[0]
+      console.log(`📝 Criando novo usuário para email: ${email}`)
+      const buyerName = buyer.name || buyer.first_name || buyer.full_name || email.split('@')[0]
       
       user = await createUser({
-        email: buyer.email,
+        email: email,
         name: buyerName,
         role: 'aluno',
         access_level: 'full', // Compra aprovada = acesso completo
       })
 
       if (!user) {
-        console.error(`❌ Erro ao criar usuário para: ${buyer.email}`)
+        console.error(`❌ Erro ao criar usuário para: ${email}`)
         return { success: false, message: 'Erro ao criar usuário' }
       }
       
-      console.log(`✅ Usuário criado automaticamente: ${buyer.email}`)
+      console.log(`✅ Usuário criado automaticamente: ${email}`)
+    }
+
+    // Extrair dados da transação (pode estar em diferentes lugares)
+    const transactionId = purchase.transaction || purchase.transaction_id || purchase.id || data.transaction_id
+    const productId = product.id || purchase.product_id || data.product_id
+    const expiresDate = purchase.expires_date || purchase.expiration_date || data.expires_date || null
+
+    if (!transactionId) {
+      console.error('❌ Webhook sem transaction_id:', JSON.stringify(data).substring(0, 200))
+      return { success: false, message: 'Transaction ID não encontrado' }
     }
 
     // Atualizar ou criar assinatura
     const success = await upsertHotmartSubscription(user.id, {
-      hotmart_transaction_id: purchase.transaction,
-      product_id: product.id.toString(),
+      hotmart_transaction_id: transactionId.toString(),
+      product_id: productId ? productId.toString() : 'unknown',
       status: 'active',
-      expires_at: purchase.expires_date || null,
+      expires_at: expiresDate || null,
     })
 
     if (success) {
@@ -100,32 +139,51 @@ async function handlePurchaseApproved(data: any) {
  */
 async function handlePurchaseCancelled(data: any) {
   try {
-    const purchase = data.purchase
-    const buyer = purchase.buyer
+    // Conforme tutorial Hotmart versão 2.0.0:
+    // Estrutura: { event: "...", data: { subscription: {...}, buyer: {...}, purchase: {...} } }
+    const subscription = data.subscription || {}
+    const purchase = data.purchase || subscription.purchase || data
+    const buyer = data.buyer || subscription.buyer || purchase.buyer || {}
+    const product = data.product || subscription.product || purchase.product || {}
 
-    let user = await getUserByEmail(buyer.email)
+    const email = buyer.email || purchase.buyer?.email || data.buyer?.email || data.email
+
+    if (!email) {
+      console.error('❌ Webhook sem email do comprador:', JSON.stringify(data).substring(0, 200))
+      return { success: false, message: 'Email do comprador não encontrado' }
+    }
+
+    let user = await getUserByEmail(email)
     
     // Se não existir, criar (pode ser um cancelamento de compra futura)
     if (!user) {
-      console.log(`📝 Criando novo usuário para email: ${buyer.email} (cancelamento)`)
-      const buyerName = buyer.name || buyer.first_name || buyer.email.split('@')[0]
+      console.log(`📝 Criando novo usuário para email: ${email} (cancelamento)`)
+      const buyerName = buyer.name || buyer.first_name || buyer.full_name || email.split('@')[0]
       
       user = await createUser({
-        email: buyer.email,
+        email: email,
         name: buyerName,
         role: 'aluno',
         access_level: 'limited', // Cancelado = acesso limitado
       })
 
       if (!user) {
-        console.error(`❌ Erro ao criar usuário para: ${buyer.email}`)
+        console.error(`❌ Erro ao criar usuário para: ${email}`)
         return { success: false, message: 'Erro ao criar usuário' }
       }
     }
 
+    const transactionId = purchase.transaction || purchase.transaction_id || purchase.id || data.transaction_id
+    const productId = product.id || purchase.product_id || data.product_id
+
+    if (!transactionId) {
+      console.error('❌ Webhook sem transaction_id:', JSON.stringify(data).substring(0, 200))
+      return { success: false, message: 'Transaction ID não encontrado' }
+    }
+
     const success = await upsertHotmartSubscription(user.id, {
-      hotmart_transaction_id: purchase.transaction,
-      product_id: purchase.product.id.toString(),
+      hotmart_transaction_id: transactionId.toString(),
+      product_id: productId ? productId.toString() : 'unknown',
       status: 'cancelled',
     })
 
@@ -146,32 +204,51 @@ async function handlePurchaseCancelled(data: any) {
  */
 async function handlePurchaseExpired(data: any) {
   try {
-    const purchase = data.purchase
-    const buyer = purchase.buyer
+    // Conforme tutorial Hotmart versão 2.0.0:
+    // Estrutura: { event: "...", data: { subscription: {...}, buyer: {...}, purchase: {...} } }
+    const subscription = data.subscription || {}
+    const purchase = data.purchase || subscription.purchase || data
+    const buyer = data.buyer || subscription.buyer || purchase.buyer || {}
+    const product = data.product || subscription.product || purchase.product || {}
 
-    let user = await getUserByEmail(buyer.email)
+    const email = buyer.email || purchase.buyer?.email || data.buyer?.email || data.email
+
+    if (!email) {
+      console.error('❌ Webhook sem email do comprador:', JSON.stringify(data).substring(0, 200))
+      return { success: false, message: 'Email do comprador não encontrado' }
+    }
+
+    let user = await getUserByEmail(email)
     
     // Se não existir, criar (pode ser uma expiração de compra futura)
     if (!user) {
-      console.log(`📝 Criando novo usuário para email: ${buyer.email} (expirado)`)
-      const buyerName = buyer.name || buyer.first_name || buyer.email.split('@')[0]
+      console.log(`📝 Criando novo usuário para email: ${email} (expirado)`)
+      const buyerName = buyer.name || buyer.first_name || buyer.full_name || email.split('@')[0]
       
       user = await createUser({
-        email: buyer.email,
+        email: email,
         name: buyerName,
         role: 'aluno',
         access_level: 'limited', // Expirado = acesso limitado
       })
 
       if (!user) {
-        console.error(`❌ Erro ao criar usuário para: ${buyer.email}`)
+        console.error(`❌ Erro ao criar usuário para: ${email}`)
         return { success: false, message: 'Erro ao criar usuário' }
       }
     }
 
+    const transactionId = purchase.transaction || purchase.transaction_id || purchase.id || data.transaction_id
+    const productId = product.id || purchase.product_id || data.product_id
+
+    if (!transactionId) {
+      console.error('❌ Webhook sem transaction_id:', JSON.stringify(data).substring(0, 200))
+      return { success: false, message: 'Transaction ID não encontrado' }
+    }
+
     const success = await upsertHotmartSubscription(user.id, {
-      hotmart_transaction_id: purchase.transaction,
-      product_id: purchase.product.id.toString(),
+      hotmart_transaction_id: transactionId.toString(),
+      product_id: productId ? productId.toString() : 'unknown',
       status: 'expired',
     })
 
@@ -211,35 +288,60 @@ export async function POST(request: NextRequest) {
     }
 
     // Extrair evento e dados
-    const event = body.event
-    const data = body.data
+    // A estrutura pode variar entre versões do webhook
+    // Versão 2.0.0: { event: "...", data: {...} }
+    // Versão 1.0.0: pode ter estrutura diferente
+    const event = body.event || body.type || body.event_type
+    const data = body.data || body.payload || body
 
-    if (!event || !data) {
+    if (!event) {
+      console.warn('⚠️ Webhook sem evento identificado. Estrutura recebida:', JSON.stringify(body).substring(0, 200))
       return NextResponse.json(
-        { error: 'Evento ou dados inválidos' },
+        { error: 'Evento não identificado' },
         { status: 400 }
       )
     }
 
     console.log(`📥 Webhook recebido: ${event}`)
+    console.log(`📋 Versão do webhook: ${body.version || 'não especificada'}`)
 
     // Processar evento baseado no tipo
+    // Conforme tutorial: https://developers.hotmart.com/docs/pt-BR/tutorials/use-webhook-for-subscriptions/
+    // Eventos da versão 2.0.0: PURCHASE_APPROVED, PURCHASE_CANCELED, PURCHASE_DELAYED
     let result
     switch (event) {
       case 'PURCHASE_APPROVED':
+      case 'PURCHASE_APPROVED_V2':
+        result = await handlePurchaseApproved(data)
+        break
+
+      case 'PURCHASE_COMPLETE':
+      case 'PURCHASE_COMPLETE_V2':
+        // Compra completa é tratada como compra aprovada
         result = await handlePurchaseApproved(data)
         break
 
       case 'PURCHASE_CANCELLED':
+      case 'PURCHASE_CANCELLED_V2':
+      case 'PURCHASE_CANCELED':  // Versão 2.0.0 usa um L (conforme tutorial)
+      case 'PURCHASE_CANCELED_V2':
+        result = await handlePurchaseCancelled(data)
+        break
+
+      case 'PURCHASE_DELAYED':  // Evento de compra atrasada (conforme tutorial)
+      case 'PURCHASE_DELAYED_V2':
+        // Compra atrasada pode ser tratada como cancelada ou com lógica específica
         result = await handlePurchaseCancelled(data)
         break
 
       case 'PURCHASE_EXPIRED':
+      case 'PURCHASE_EXPIRED_V2':
         result = await handlePurchaseExpired(data)
         break
 
       default:
         console.log(`ℹ️ Evento não processado: ${event}`)
+        console.log(`📋 Estrutura completa:`, JSON.stringify(body).substring(0, 500))
         return NextResponse.json(
           { message: 'Evento recebido mas não processado' },
           { status: 200 }

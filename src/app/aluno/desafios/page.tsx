@@ -7,16 +7,75 @@ import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { isFeatureEnabled } from '@/lib/features'
 import { hasFullAccess } from '@/lib/types/auth'
+import { useAuth } from '@/lib/AuthContext'
+import { useMemo, useState } from 'react'
+import Modal from '@/components/ui/Modal'
+import { supabase } from '@/lib/supabase'
 
 export default function DesafiosPage() {
-  const desafios = mockDesafios
   const { theme } = useTheme()
-  const user = mockUser
+  const { user: authUser } = useAuth()
+  const user = authUser
+    ? { ...mockUser, id: authUser.id, role: authUser.role, accessLevel: authUser.accessLevel }
+    : mockUser
   const canParticipate = hasFullAccess({ ...user, role: user.role as 'aluno' | 'admin', accessLevel: user.accessLevel })
 
-  const desafiosAtivos = desafios.filter(d => !d.completo)
-  const desafiosCompletos = desafios.filter(d => d.completo)
+  const [desafios, setDesafios] = useState(mockDesafios)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string>('')
+  const [success, setSuccess] = useState<string>('')
+  const [selectedDesafioId, setSelectedDesafioId] = useState<string | null>(null)
+
+  const desafiosAtivos = useMemo(() => desafios.filter(d => !d.completo), [desafios])
+  const desafiosCompletos = useMemo(() => desafios.filter(d => d.completo), [desafios])
   const totalDesafiosDisponiveis = desafios.length
+
+  const selectedDesafio = useMemo(
+    () => desafios.find((d) => d.id === selectedDesafioId) || null,
+    [desafios, selectedDesafioId]
+  )
+
+  const handleCompleteDesafio = async () => {
+    if (!selectedDesafio) return
+    setError('')
+    setSuccess('')
+
+    if (!authUser?.id) {
+      setError('Você precisa estar logado para concluir desafios.')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) throw new Error('Não autenticado')
+
+      const res = await fetch(`/api/desafios/${selectedDesafio.id}/completar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(json?.error || 'Falha ao concluir desafio')
+      }
+
+      const awarded = json?.result?.awarded
+      const xp = json?.result?.xp
+
+      if (awarded) {
+        setDesafios((prev) => prev.map((d) => (d.id === selectedDesafio.id ? { ...d, completo: true } : d)))
+        setSuccess(`✅ Desafio concluído! Você ganhou ${xp ?? selectedDesafio.xpGanho} XP.`)
+      } else {
+        setSuccess('Este desafio já estava concluído.')
+      }
+      setSelectedDesafioId(null)
+    } catch (e: any) {
+      setError(e?.message || 'Erro ao concluir desafio')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   const getTipoIcon = (tipo: string) => {
     switch (tipo) {
@@ -56,6 +115,58 @@ export default function DesafiosPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      <Modal
+        isOpen={!!selectedDesafio}
+        onClose={() => setSelectedDesafioId(null)}
+        title="Concluir desafio"
+        size="sm"
+      >
+        <div className="space-y-3">
+          <p className={cn(theme === 'dark' ? 'text-gray-300' : 'text-gray-700')}>
+            Confirmar conclusão de: <span className="font-semibold">{selectedDesafio?.titulo}</span>
+          </p>
+          <div className="flex items-center justify-between gap-3">
+            <button
+              className={cn(
+                'px-4 py-2 rounded-lg border text-sm font-medium',
+                theme === 'dark'
+                  ? 'border-white/10 text-gray-300 hover:bg-white/5'
+                  : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+              )}
+              onClick={() => setSelectedDesafioId(null)}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </button>
+            <button className="btn-primary" onClick={handleCompleteDesafio} disabled={isSubmitting || !canParticipate}>
+              {isSubmitting ? 'Salvando...' : 'Concluir e ganhar XP'}
+            </button>
+          </div>
+          {!canParticipate && (
+            <p className={cn('text-sm', theme === 'dark' ? 'text-yellow-400' : 'text-yellow-700')}>
+              Seu acesso é limitado. Faça upgrade para participar.
+            </p>
+          )}
+        </div>
+      </Modal>
+
+      {(error || success) && (
+        <div
+          className={cn(
+            'border rounded-lg p-3 text-sm',
+            error
+              ? theme === 'dark'
+                ? 'bg-red-500/10 border-red-500/30 text-red-300'
+                : 'bg-red-50 border-red-200 text-red-700'
+              : theme === 'dark'
+                ? 'bg-green-500/10 border-green-500/30 text-green-300'
+                : 'bg-green-50 border-green-200 text-green-700'
+          )}
+        >
+          {error || success}
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h1 className={cn(
@@ -276,8 +387,9 @@ export default function DesafiosPage() {
                     !canParticipate && "opacity-50 cursor-not-allowed"
                   )}
                   disabled={!canParticipate}
+                  onClick={() => setSelectedDesafioId(desafio.id)}
                 >
-                  {!canParticipate ? 'Acesso Limitado' : 'Participar'}
+                  {!canParticipate ? 'Acesso Limitado' : 'Concluir desafio'}
                 </button>
               </div>
             </div>

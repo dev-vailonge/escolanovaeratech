@@ -132,7 +132,7 @@ export default function AdminNotificacoesTab() {
             "text-xs md:text-sm mt-1",
             theme === 'dark' ? "text-gray-400" : "text-gray-600"
           )}>
-            {notificacoes.length} notificação{notificacoes.length !== 1 ? 'ões' : ''} cadastrada{notificacoes.length !== 1 ? 's' : ''}
+            {notificacoes.length} {notificacoes.length === 1 ? 'notificação cadastrada' : 'notificações cadastradas'}
           </p>
         </div>
         <button

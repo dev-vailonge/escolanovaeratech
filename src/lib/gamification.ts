@@ -53,7 +53,7 @@ export interface XPState {
 
 export interface XPEntry {
   id: string
-  source: 'aula' | 'quiz' | 'desafio'
+  source: 'aula' | 'quiz' | 'desafio' | 'comunidade'
   sourceId: string
   amount: number
   timestamp: string
@@ -224,4 +224,5 @@ export function isIntensivoActive(state: IntensivoState): boolean {
   // TODO: Implementar após definir regras do modo intensivo
   return false
 }
+
 

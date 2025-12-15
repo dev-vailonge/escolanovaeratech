@@ -27,6 +27,14 @@ function convertToAuthUser(dbUser: DatabaseUser | null, supabaseUser: User | nul
     email: dbUser.email,
     role: dbUser.role as 'aluno' | 'admin',
     accessLevel: dbUser.access_level as 'full' | 'limited',
+    avatarUrl: dbUser.avatar_url || null,
+    bio: dbUser.bio || null,
+    level: dbUser.level,
+    xp: dbUser.xp,
+    xpMensal: dbUser.xp_mensal,
+    coins: dbUser.coins,
+    streak: dbUser.streak,
+    createdAt: dbUser.created_at,
   }
 }
 

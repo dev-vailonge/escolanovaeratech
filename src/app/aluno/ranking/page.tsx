@@ -1,36 +1,88 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { mockRanking } from '@/data/aluno/mockRanking'
 import { mockUser } from '@/data/aluno/mockUser'
 import { Trophy, Medal, Award, TrendingUp } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/lib/AuthContext'
+import { supabase } from '@/lib/supabase'
 
 type RankingType = 'mensal' | 'geral'
 
 export default function RankingPage() {
   const { theme } = useTheme()
   const [rankingType, setRankingType] = useState<RankingType>('mensal')
+  const { user: authUser } = useAuth()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string>('')
+  const [hotmartStatus, setHotmartStatus] = useState<string>('')
+  const [ranking, setRanking] = useState<any[] | null>(null)
   
-  // Filtrar apenas alunos com accessLevel "full" e ordenar
-  const filteredRanking = useMemo(() => {
+  useEffect(() => {
+    let mounted = true
+    const run = async () => {
+      setError('')
+      setLoading(true)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+        if (!token) throw new Error('Não autenticado')
+
+        const res = await fetch(`/api/ranking?type=${rankingType}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(json?.error || 'Erro ao carregar ranking')
+
+        if (!mounted) return
+        setRanking(json?.ranking || [])
+        setHotmartStatus(json?.hotmart?.message || '')
+      } catch (e: any) {
+        if (!mounted) return
+        setError(e?.message || 'Erro ao carregar ranking')
+        setRanking(null)
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+
+    run()
+    return () => {
+      mounted = false
+    }
+  }, [rankingType])
+
+  const fallbackRanking = useMemo(() => {
     return mockRanking
       .filter(user => user.accessLevel === 'full')
       .sort((a, b) => {
-        // Ordenar por XP mensal ou geral conforme o tipo selecionado
         const xpA = rankingType === 'mensal' ? a.xpMensal : a.xp
         const xpB = rankingType === 'mensal' ? b.xpMensal : b.xp
         return xpB - xpA
       })
-      .map((user, index) => ({
-        ...user,
-        position: index + 1
-      }))
+      .map((user, index) => ({ ...user, position: index + 1, avatarUrl: user.avatar || null }))
   }, [rankingType])
 
+  const filteredRanking = useMemo(() => {
+    if (!ranking) return fallbackRanking
+    // Adapter: API retorna xp/xp_mensal/level (snake_case), aqui normalizamos
+    return (ranking || []).map((u: any, idx: number) => ({
+      id: u.id,
+      name: u.name,
+      level: u.level,
+      xp: u.xp,
+      xpMensal: u.xp_mensal,
+      position: u.position ?? idx + 1,
+      accessLevel: 'full',
+      avatarUrl: u.avatar_url || null,
+    }))
+  }, [ranking, fallbackRanking])
+
   const top3 = filteredRanking.slice(0, 3)
-  const currentUser = filteredRanking.find(u => u.id === mockUser.id)
+  const currentUserId = authUser?.id || mockUser.id
+  const currentUser = filteredRanking.find(u => u.id === currentUserId)
   const currentUserPosition = currentUser?.position || 0
 
   return (
@@ -49,6 +101,25 @@ export default function RankingPage() {
         )}>
           Ranking baseado em XP. Complete aulas, quizzes e desafios para subir de posição!
         </p>
+
+        {(loading || error || hotmartStatus) && (
+          <div
+            className={cn(
+              'border rounded-lg p-3 text-sm mb-4',
+              error
+                ? theme === 'dark'
+                  ? 'bg-red-500/10 border-red-500/30 text-red-300'
+                  : 'bg-red-50 border-red-200 text-red-700'
+                : theme === 'dark'
+                  ? 'bg-black/20 border-white/10 text-gray-300'
+                  : 'bg-white border-gray-200 text-gray-700'
+            )}
+          >
+            {loading && 'Carregando ranking...'}
+            {!loading && error}
+            {!loading && !error && hotmartStatus && `Hotmart: ${hotmartStatus}`}
+          </div>
+        )}
         
         {/* Tabs Mensal/Geral */}
         <div className="flex gap-2 mb-4">
@@ -112,14 +183,22 @@ export default function RankingPage() {
                   "w-6 h-6 md:w-8 md:h-8 mx-auto mb-1 md:mb-2",
                   theme === 'dark' ? "text-gray-400" : "text-gray-500"
                 )} />
-                <div className={cn(
-                  "w-12 h-12 md:w-16 md:h-16 rounded-full mx-auto mb-1 md:mb-2 flex items-center justify-center font-bold text-base md:text-xl",
-                  theme === 'dark'
-                    ? "bg-gradient-to-br from-gray-400 to-gray-600 text-black"
-                    : "bg-gradient-to-br from-gray-500 to-gray-600 text-white"
-                )}>
-                  {top3[1].name.charAt(0)}
-                </div>
+                {top3[1].avatarUrl ? (
+                  <img
+                    src={top3[1].avatarUrl}
+                    alt={top3[1].name}
+                    className="w-12 h-12 md:w-16 md:h-16 rounded-full mx-auto mb-1 md:mb-2 object-cover border-2 border-gray-400"
+                  />
+                ) : (
+                  <div className={cn(
+                    "w-12 h-12 md:w-16 md:h-16 rounded-full mx-auto mb-1 md:mb-2 flex items-center justify-center font-bold text-base md:text-xl",
+                    theme === 'dark'
+                      ? "bg-gradient-to-br from-gray-400 to-gray-600 text-black"
+                      : "bg-gradient-to-br from-gray-500 to-gray-600 text-white"
+                  )}>
+                    {top3[1].name.charAt(0)}
+                  </div>
+                )}
                 <p className={cn(
                   "font-semibold text-sm md:text-base truncate px-1",
                   theme === 'dark' ? "text-white" : "text-gray-900"
@@ -163,14 +242,22 @@ export default function RankingPage() {
                   "w-8 h-8 md:w-12 md:h-12 mx-auto mb-1 md:mb-2",
                   theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                 )} />
-                <div className={cn(
-                  "w-14 h-14 md:w-20 md:h-20 rounded-full mx-auto mb-1 md:mb-2 flex items-center justify-center font-bold text-lg md:text-2xl",
-                  theme === 'dark'
-                    ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
-                    : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
-                )}>
-                  {top3[0].name.charAt(0)}
-                </div>
+                {top3[0].avatarUrl ? (
+                  <img
+                    src={top3[0].avatarUrl}
+                    alt={top3[0].name}
+                    className="w-14 h-14 md:w-20 md:h-20 rounded-full mx-auto mb-1 md:mb-2 object-cover border-2 border-yellow-400"
+                  />
+                ) : (
+                  <div className={cn(
+                    "w-14 h-14 md:w-20 md:h-20 rounded-full mx-auto mb-1 md:mb-2 flex items-center justify-center font-bold text-lg md:text-2xl",
+                    theme === 'dark'
+                      ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
+                      : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
+                  )}>
+                    {top3[0].name.charAt(0)}
+                  </div>
+                )}
                 <p className={cn(
                   "font-semibold text-sm md:text-base truncate px-1",
                   theme === 'dark' ? "text-white" : "text-gray-900"
@@ -211,14 +298,22 @@ export default function RankingPage() {
                   : "bg-orange-50 border-orange-200"
               )}>
                 <Award className="w-6 h-6 md:w-8 md:h-8 text-orange-500 mx-auto mb-1 md:mb-2" />
-                <div className={cn(
-                  "w-12 h-12 md:w-16 md:h-16 rounded-full mx-auto mb-1 md:mb-2 flex items-center justify-center font-bold text-base md:text-xl",
-                  theme === 'dark'
-                    ? "bg-gradient-to-br from-orange-400 to-orange-600 text-black"
-                    : "bg-gradient-to-br from-orange-500 to-orange-600 text-white"
-                )}>
-                  {top3[2].name.charAt(0)}
-                </div>
+                {top3[2].avatarUrl ? (
+                  <img
+                    src={top3[2].avatarUrl}
+                    alt={top3[2].name}
+                    className="w-12 h-12 md:w-16 md:h-16 rounded-full mx-auto mb-1 md:mb-2 object-cover border-2 border-orange-400"
+                  />
+                ) : (
+                  <div className={cn(
+                    "w-12 h-12 md:w-16 md:h-16 rounded-full mx-auto mb-1 md:mb-2 flex items-center justify-center font-bold text-base md:text-xl",
+                    theme === 'dark'
+                      ? "bg-gradient-to-br from-orange-400 to-orange-600 text-black"
+                      : "bg-gradient-to-br from-orange-500 to-orange-600 text-white"
+                  )}>
+                    {top3[2].name.charAt(0)}
+                  </div>
+                )}
                 <p className={cn(
                   "font-semibold text-sm md:text-base truncate px-1",
                   theme === 'dark' ? "text-white" : "text-gray-900"
@@ -298,14 +393,22 @@ export default function RankingPage() {
                 #{user.position}
               </div>
               
-              <div className={cn(
-                "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-xs md:text-sm flex-shrink-0",
-                theme === 'dark'
-                  ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
-                  : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
-              )}>
-                {user.name.charAt(0)}
-              </div>
+              {user.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={user.name}
+                  className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover flex-shrink-0 border border-yellow-400/50"
+                />
+              ) : (
+                <div className={cn(
+                  "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-xs md:text-sm flex-shrink-0",
+                  theme === 'dark'
+                    ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
+                    : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
+                )}>
+                  {user.name.charAt(0)}
+                </div>
+              )}
               
               <div className="flex-1 min-w-0">
                 <p className={cn(

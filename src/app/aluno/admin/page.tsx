@@ -1,22 +1,70 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, lazy, Suspense, useCallback, memo, useEffect } from 'react'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { mockUser } from '@/data/aluno/mockUser'
-import { HelpCircle, Target, Bell, FileText } from 'lucide-react'
+import { HelpCircle, Target, Bell, FileText, Users, Loader2 } from 'lucide-react'
 
-// Componentes das abas (serão criados depois)
-import AdminQuizTab from './components/AdminQuizTab'
-import AdminDesafiosTab from './components/AdminDesafiosTab'
-import AdminNotificacoesTab from './components/AdminNotificacoesTab'
-import AdminFormulariosTab from './components/AdminFormulariosTab'
+// Lazy loading dos componentes das abas para melhor performance
+const AdminQuizTab = lazy(() => import('./components/AdminQuizTab'))
+const AdminDesafiosTab = lazy(() => import('./components/AdminDesafiosTab'))
+const AdminNotificacoesTab = lazy(() => import('./components/AdminNotificacoesTab'))
+const AdminFormulariosTab = lazy(() => import('./components/AdminFormulariosTab'))
+const AdminAlunosTab = lazy(() => import('./components/AdminAlunosTab'))
 
-type AdminTab = 'quiz' | 'desafios' | 'notificacoes' | 'formularios'
+type AdminTab = 'quiz' | 'desafios' | 'notificacoes' | 'formularios' | 'alunos'
+
+// Lista de abas válidas para validação
+const validTabs: AdminTab[] = ['quiz', 'desafios', 'notificacoes', 'formularios', 'alunos']
+
+// Componente de loading para Suspense
+const TabLoading = memo(function TabLoading({ theme }: { theme: string }) {
+  return (
+    <div className={cn(
+      "flex items-center justify-center p-8",
+      theme === 'dark' ? "text-gray-400" : "text-gray-600"
+    )}>
+      <Loader2 className="w-6 h-6 animate-spin mr-2" />
+      <span>Carregando...</span>
+    </div>
+  )
+})
 
 export default function AdminPage() {
   const { theme } = useTheme()
-  const [activeTab, setActiveTab] = useState<AdminTab>('quiz')
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  
+  // Obtém a aba da URL ou usa 'quiz' como padrão
+  const tabFromUrl = searchParams.get('tab') as AdminTab | null
+  const initialTab: AdminTab = tabFromUrl && validTabs.includes(tabFromUrl) ? tabFromUrl : 'quiz'
+  
+  const [activeTab, setActiveTab] = useState<AdminTab>(initialTab)
+  // Rastrear quais abas já foram visitadas para manter os dados em cache
+  const [visitedTabs, setVisitedTabs] = useState<Set<AdminTab>>(new Set([initialTab]))
+
+  // Sincroniza o estado com a URL quando ela muda (ex: botão voltar do navegador)
+  useEffect(() => {
+    const tabParam = searchParams.get('tab') as AdminTab | null
+    if (tabParam && validTabs.includes(tabParam) && tabParam !== activeTab) {
+      setActiveTab(tabParam)
+      setVisitedTabs(prev => new Set(prev).add(tabParam))
+    }
+  }, [searchParams, activeTab])
+
+  // Handler para mudar de aba e atualizar a URL
+  const handleTabChange = useCallback((tabId: AdminTab) => {
+    setActiveTab(tabId)
+    setVisitedTabs(prev => new Set(prev).add(tabId))
+    
+    // Atualiza a URL sem recarregar a página
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', tabId)
+    router.push(`${pathname}?${params.toString()}`, { scroll: false })
+  }, [searchParams, router, pathname])
 
   // Verificar se é admin (em produção, isso virá do contexto de autenticação)
   if (mockUser.role !== 'admin') {
@@ -48,6 +96,7 @@ export default function AdminPage() {
     { id: 'desafios', label: 'Desafios', icon: Target },
     { id: 'notificacoes', label: 'Notificações', icon: Bell },
     { id: 'formularios', label: 'Formulários', icon: FileText },
+    { id: 'alunos', label: 'Alunos', icon: Users },
   ]
 
   return (
@@ -64,7 +113,7 @@ export default function AdminPage() {
           "text-sm md:text-base",
           theme === 'dark' ? "text-gray-400" : "text-gray-600"
         )}>
-          Gerencie quizzes, desafios, notificações e formulários
+          Gerencie quizzes, desafios, notificações, formulários e alunos
         </p>
       </div>
 
@@ -83,7 +132,7 @@ export default function AdminPage() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm md:text-base flex-1 min-w-0",
                   isActive
@@ -103,19 +152,34 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Conteúdo das Abas */}
+      {/* Conteúdo das Abas - Mantém abas visitadas em cache para evitar recarregamento */}
       <div className={cn(
         "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
         theme === 'dark'
           ? "bg-black/20 border-white/10"
           : "bg-white border-yellow-400/90 shadow-md"
       )}>
-        {activeTab === 'quiz' && <AdminQuizTab />}
-        {activeTab === 'desafios' && <AdminDesafiosTab />}
-        {activeTab === 'notificacoes' && <AdminNotificacoesTab />}
-        {activeTab === 'formularios' && <AdminFormulariosTab />}
+        <Suspense fallback={<TabLoading theme={theme} />}>
+          {/* Renderiza abas visitadas com display:none para manter cache dos dados */}
+          <div style={{ display: activeTab === 'quiz' ? 'block' : 'none' }}>
+            {visitedTabs.has('quiz') && <AdminQuizTab />}
+          </div>
+          <div style={{ display: activeTab === 'desafios' ? 'block' : 'none' }}>
+            {visitedTabs.has('desafios') && <AdminDesafiosTab />}
+          </div>
+          <div style={{ display: activeTab === 'notificacoes' ? 'block' : 'none' }}>
+            {visitedTabs.has('notificacoes') && <AdminNotificacoesTab />}
+          </div>
+          <div style={{ display: activeTab === 'formularios' ? 'block' : 'none' }}>
+            {visitedTabs.has('formularios') && <AdminFormulariosTab />}
+          </div>
+          <div style={{ display: activeTab === 'alunos' ? 'block' : 'none' }}>
+            {visitedTabs.has('alunos') && <AdminAlunosTab />}
+          </div>
+        </Suspense>
       </div>
     </div>
   )
 }
+
 

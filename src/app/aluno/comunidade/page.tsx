@@ -6,6 +6,8 @@ import { useState, useMemo, useRef, useLayoutEffect } from 'react'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
+import Modal from '@/components/ui/Modal'
+import { supabase } from '@/lib/supabase'
 
 type FilterOwner = 'all' | 'mine'
 type FilterStatus = 'all' | 'answered' | 'unanswered'
@@ -13,7 +15,7 @@ type FilterTechnology = 'all' | 'HTML' | 'CSS' | 'JavaScript' | 'React' | 'Andro
 
 export default function ComunidadePage() {
   const [perguntas] = useState(mockPerguntas)
-  const respostas = mockRespostas
+  const [respostas, setRespostas] = useState(mockRespostas)
   const { theme } = useTheme()
   const { user } = useAuth()
 
@@ -29,6 +31,82 @@ export default function ComunidadePage() {
   // ID do usuário atual (fallback para modo mockado)
   // TODO: Substituir por user?.id quando autenticação estiver totalmente implementada
   const currentUserId = user?.id || 'user1' // user1 é um ID mockado para demonstração
+
+  const [selectedPerguntaId, setSelectedPerguntaId] = useState<string | null>(null)
+  const [respostaConteudo, setRespostaConteudo] = useState<string>('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string>('')
+  const [success, setSuccess] = useState<string>('')
+
+  const selectedPergunta = useMemo(
+    () => perguntas.find((p) => p.id === selectedPerguntaId) || null,
+    [perguntas, selectedPerguntaId]
+  )
+
+  const openResponder = (perguntaId: string) => {
+    setError('')
+    setSuccess('')
+    setRespostaConteudo('')
+    setSelectedPerguntaId(perguntaId)
+  }
+
+  const submitResposta = async () => {
+    if (!selectedPergunta) return
+    setError('')
+    setSuccess('')
+
+    if (!user?.id) {
+      setError('Você precisa estar logado para responder na comunidade.')
+      return
+    }
+
+    const conteudo = respostaConteudo.trim()
+    if (conteudo.length < 3) {
+      setError('Sua resposta está muito curta.')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) throw new Error('Não autenticado')
+
+      const res = await fetch(`/api/comunidade/perguntas/${selectedPergunta.id}/responder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ conteudo }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json?.error || 'Falha ao enviar resposta')
+
+      // Atualiza lista local (UI ainda é mockada)
+      setRespostas((prev) => [
+        ...prev,
+        {
+          id: `local-${Date.now()}`,
+          perguntaId: selectedPergunta.id,
+          autor: {
+            id: user.id,
+            nome: user.name,
+            nivel: 1,
+          },
+          conteudo,
+          votos: 0,
+          melhorResposta: false,
+          data: new Date().toISOString(),
+        } as any,
+      ])
+
+      const xp = json?.result?.xp ?? 20
+      setSuccess(`✅ Resposta enviada! Você ganhou ${xp} XP.`)
+      setSelectedPerguntaId(null)
+    } catch (e: any) {
+      setError(e?.message || 'Erro ao enviar resposta')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   // Função utilitária para filtrar perguntas
   const filteredPerguntas = useMemo(() => {
@@ -88,6 +166,69 @@ export default function ComunidadePage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      <Modal
+        isOpen={!!selectedPergunta}
+        onClose={() => setSelectedPerguntaId(null)}
+        title="Responder na comunidade"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <p className={cn('text-sm', theme === 'dark' ? 'text-gray-400' : 'text-gray-600')}>Pergunta</p>
+            <p className={cn('font-semibold', theme === 'dark' ? 'text-white' : 'text-gray-900')}>
+              {selectedPergunta?.titulo}
+            </p>
+          </div>
+
+          <textarea
+            value={respostaConteudo}
+            onChange={(e) => setRespostaConteudo(e.target.value)}
+            placeholder="Escreva sua resposta..."
+            className={cn(
+              'w-full min-h-[120px] px-3 py-2 rounded-lg border text-sm',
+              theme === 'dark'
+                ? 'bg-black/30 border-white/10 text-white placeholder-gray-500'
+                : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+            )}
+          />
+
+          <div className="flex items-center justify-between gap-3">
+            <button
+              className={cn(
+                'px-4 py-2 rounded-lg border text-sm font-medium',
+                theme === 'dark'
+                  ? 'border-white/10 text-gray-300 hover:bg-white/5'
+                  : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+              )}
+              onClick={() => setSelectedPerguntaId(null)}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </button>
+            <button className="btn-primary" onClick={submitResposta} disabled={isSubmitting}>
+              {isSubmitting ? 'Enviando...' : 'Enviar e ganhar XP'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {(error || success) && (
+        <div
+          className={cn(
+            'border rounded-lg p-3 text-sm',
+            error
+              ? theme === 'dark'
+                ? 'bg-red-500/10 border-red-500/30 text-red-300'
+                : 'bg-red-50 border-red-200 text-red-700'
+              : theme === 'dark'
+                ? 'bg-green-500/10 border-green-500/30 text-green-300'
+                : 'bg-green-50 border-green-200 text-green-700'
+          )}
+        >
+          {error || success}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
@@ -404,6 +545,12 @@ export default function ComunidadePage() {
                         {tag}
                       </span>
                     ))}
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2">
+                    <button className="btn-primary" onClick={() => openResponder(pergunta.id)}>
+                      Responder
+                    </button>
                   </div>
                 </div>
               </div>

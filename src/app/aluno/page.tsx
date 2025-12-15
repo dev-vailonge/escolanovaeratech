@@ -1,13 +1,24 @@
 'use client'
 
-import { mockUser } from '@/data/aluno/mockUser'
-import { mockStats } from '@/data/aluno/mockStats'
-import { mockRanking } from '@/data/aluno/mockRanking'
+import { useEffect, useState, useCallback } from 'react'
 import ProgressCard from '@/components/aluno/ProgressCard'
 import { BookOpen, Trophy, HelpCircle, Target, Clock, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/lib/AuthContext'
+import { supabase } from '@/lib/supabase'
+import { getNotificacoesAtivas } from '@/lib/database'
+import type { DatabaseNotificacao } from '@/types/database'
+
+// Tipos para estatísticas do usuário
+interface UserStats {
+  aulasCompletas: number
+  quizCompletos: number
+  desafiosConcluidos: number
+  tempoEstudo: number
+  participacaoComunidade: number
+}
 
 // Tipos para avisos/notificações
 interface Announcement {
@@ -18,26 +29,27 @@ interface Announcement {
   type?: "info" | "warning" | "update" // opcional para cor do badge
 }
 
-// TODO: substituir mockAnnouncements por dados reais vindos do backend/ADM
-// FUTURO:
-// - Essa secção será alimentada pelo painel administrativo (ADM).
-// - O endpoint deverá retornar uma lista de avisos com id, title, message, date, type.
-// - A dashboard apenas exibirá a lista retornada em ordem cronológica.
-// - Pode ser criado futuramente um badge de "novo aviso" no header.
-const mockAnnouncements: Announcement[] = [
-  {
-    id: "1",
-    title: "Bem-vindo(a) à Escola Nova Era Tech!",
-    message: "Estamos a preparar novos conteúdos e melhorias no teu painel.",
-    type: "info",
-  },
-  {
-    id: "2",
-    title: "Nova turma Norte Tech aberta!",
-    message: "As vagas para a nova turma começam amanhã às 10h.",
-    type: "update",
-  },
-]
+// Tipo para usuário do ranking
+interface RankingUser {
+  id: string
+  name: string
+  level: number
+  xp: number
+  xp_mensal: number
+  avatar_url?: string | null
+  position: number
+}
+
+// Função para converter notificação do banco para o formato do componente
+function convertNotificacaoToAnnouncement(notificacao: DatabaseNotificacao): Announcement {
+  return {
+    id: notificacao.id,
+    title: notificacao.titulo,
+    message: notificacao.mensagem,
+    date: notificacao.created_at,
+    type: notificacao.tipo,
+  }
+}
 
 // Componente para exibir um card de aviso
 function AnnouncementCard({ title, message, type, date }: Announcement) {
@@ -105,10 +117,74 @@ function AnnouncementCard({ title, message, type, date }: Announcement) {
 }
 
 export default function AlunoDashboard() {
-  const user = mockUser
-  const stats = mockStats
-  const topRanking = mockRanking.slice(0, 3)
+  const { user: authUser } = useAuth()
   const { theme } = useTheme()
+  
+  // Estado para estatísticas reais
+  const [stats, setStats] = useState<UserStats>({
+    aulasCompletas: 0,
+    quizCompletos: 0,
+    desafiosConcluidos: 0,
+    tempoEstudo: 0,
+    participacaoComunidade: 0,
+  })
+  
+  // Estado para avisos/notificações reais
+  const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  
+  // Estado para ranking real
+  const [topRanking, setTopRanking] = useState<RankingUser[]>([])
+  const [loadingData, setLoadingData] = useState(true)
+
+  // Buscar todos os dados em paralelo para melhor performance
+  const fetchAllData = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      // Executar todas as requisições em paralelo
+      const [statsResult, notificacoesResult, rankingResult] = await Promise.allSettled([
+        // Stats do usuário
+        token && authUser?.id
+          ? fetch('/api/users/me/stats', { headers: { Authorization: `Bearer ${token}` } })
+              .then(r => r.ok ? r.json() : null)
+          : Promise.resolve(null),
+        // Notificações
+        getNotificacoesAtivas(),
+        // Ranking (top 3)
+        token
+          ? fetch('/api/ranking?type=geral', { headers: { Authorization: `Bearer ${token}` } })
+              .then(r => r.ok ? r.json() : null)
+          : Promise.resolve(null),
+      ])
+
+      // Processar stats
+      if (statsResult.status === 'fulfilled' && statsResult.value) {
+        setStats(statsResult.value)
+      }
+
+      // Processar notificações
+      if (notificacoesResult.status === 'fulfilled') {
+        setAnnouncements(notificacoesResult.value.map(convertNotificacaoToAnnouncement))
+      }
+
+      // Processar ranking
+      if (rankingResult.status === 'fulfilled' && rankingResult.value?.ranking) {
+        setTopRanking(rankingResult.value.ranking.slice(0, 3))
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados do dashboard:', error)
+    } finally {
+      setLoadingData(false)
+    }
+  }, [authUser?.id])
+
+  useEffect(() => {
+    fetchAllData()
+  }, [fetchAllData])
+
+  // Nome do usuário (real ou fallback)
+  const userName = authUser?.name || 'Aluno'
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -123,7 +199,7 @@ export default function AlunoDashboard() {
           "text-2xl md:text-3xl font-bold mb-2",
           theme === 'dark' ? "text-white" : "text-gray-900"
         )}>
-          Olá, {user.name}! 👋
+          Olá, {userName}! 👋
         </h1>
         <p className={cn(
           "text-sm md:text-base",
@@ -150,13 +226,13 @@ export default function AlunoDashboard() {
         <ProgressCard
           title="Desafios Concluídos"
           count={stats.desafiosConcluidos}
-          icon={<Target className="w-6 h-6 text-green-500" />}
+          icon={<Target className="w-6 h-6 text-green-500" style={{ color: 'rgba(109, 220, 45, 1)' }} />}
           color="green"
         />
       </div>
 
       {/* Avisos da Escola */}
-      {mockAnnouncements.length > 0 && (
+      {announcements.length > 0 && (
         <section className="w-full flex flex-col gap-3 md:gap-4">
           <h2 className={cn(
             "text-lg md:text-xl font-bold",
@@ -166,7 +242,7 @@ export default function AlunoDashboard() {
           </h2>
 
           <div className="flex flex-col gap-3 md:gap-4">
-            {mockAnnouncements.map(announcement => (
+            {announcements.map(announcement => (
               <AnnouncementCard key={announcement.id} {...announcement} />
             ))}
           </div>
@@ -190,7 +266,7 @@ export default function AlunoDashboard() {
           </h2>
           <div className="space-y-2 md:space-y-3">
             <Link
-              href="/aluno/aulas"
+              href="/aluno/comunidade"
               className={cn(
                 "flex items-center gap-2 md:gap-3 p-3 md:p-4 backdrop-blur-sm border rounded-lg hover:border-yellow-400/50 transition-all active:scale-[0.98] min-h-[72px]",
                 theme === 'dark'
@@ -198,7 +274,7 @@ export default function AlunoDashboard() {
                   : "bg-yellow-50/50 border-yellow-400/70 hover:border-yellow-500/80"
               )}
             >
-              <BookOpen className={cn(
+              <MessageCircle className={cn(
                 "w-4 h-4 md:w-5 md:h-5 flex-shrink-0",
                 theme === 'dark' ? "text-yellow-400" : "text-yellow-700"
               )} />
@@ -207,13 +283,13 @@ export default function AlunoDashboard() {
                   "font-medium text-sm md:text-base truncate",
                   theme === 'dark' ? "text-white" : "text-gray-900"
                 )}>
-                  Continuar Assistindo
+                  Responder Comunidade
                 </p>
                 <p className={cn(
                   "text-xs md:text-sm truncate",
                   theme === 'dark' ? "text-gray-400" : "text-gray-600"
                 )}>
-                  CSS Avançado com Flexbox
+                  Ajude outros alunos e ganhe XP
                 </p>
               </div>
             </Link>
@@ -295,52 +371,76 @@ export default function AlunoDashboard() {
             </Link>
           </div>
           <div className="space-y-2 md:space-y-3">
-            {topRanking.map((user, index) => (
-              <div
-                key={user.id}
-                className={cn(
-                  "flex items-center gap-2 md:gap-3 p-3 md:p-4 backdrop-blur-sm border rounded-lg transition-colors duration-300 min-h-[72px]",
-                  theme === 'dark'
-                    ? "bg-black/30 border-white/10"
-                    : "bg-yellow-50/80 border-yellow-400/70"
-                )}
-              >
-                <div className={cn(
-                  "text-lg md:text-2xl font-bold w-6 md:w-8 text-center",
-                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                )}>
-                  #{user.position}
-                </div>
-                <div className={cn(
-                  "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-base flex-shrink-0",
-                  theme === 'dark'
-                    ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
-                    : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
-                )}>
-                  {user.name.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={cn(
-                    "font-medium text-sm md:text-base truncate",
-                    theme === 'dark' ? "text-white" : "text-gray-900"
-                  )}>
-                    {user.name}
-                  </p>
-                  <p className={cn(
-                    "text-xs md:text-sm truncate",
+            {loadingData ? (
+              <div className={cn(
+                "text-center py-4 text-sm",
+                theme === 'dark' ? "text-gray-400" : "text-gray-600"
+              )}>
+                Carregando...
+              </div>
+            ) : topRanking.length === 0 ? (
+              <div className={cn(
+                "text-center py-4 text-sm",
+                theme === 'dark' ? "text-gray-400" : "text-gray-600"
+              )}>
+                Nenhum usuário no ranking ainda
+              </div>
+            ) : (
+              topRanking.map((user, index) => (
+                <div
+                  key={user.id}
+                  className={cn(
+                    "flex items-center gap-2 md:gap-3 p-3 md:p-4 backdrop-blur-sm border rounded-lg transition-colors duration-300 min-h-[72px]",
+                    theme === 'dark'
+                      ? "bg-black/30 border-white/10"
+                      : "bg-yellow-50/80 border-yellow-400/70"
+                  )}
+                >
+                  <div className={cn(
+                    "text-lg md:text-2xl font-bold w-6 md:w-8 text-center",
                     theme === 'dark' ? "text-gray-400" : "text-gray-600"
                   )}>
-                    Nível {user.level} • {user.xp} XP
-                  </p>
+                    #{user.position}
+                  </div>
+                  {user.avatar_url ? (
+                    <img
+                      src={user.avatar_url}
+                      alt={user.name}
+                      className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover flex-shrink-0 border border-yellow-400/50"
+                    />
+                  ) : (
+                    <div className={cn(
+                      "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-base flex-shrink-0",
+                      theme === 'dark'
+                        ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
+                        : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
+                    )}>
+                      {user.name.charAt(0)}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className={cn(
+                      "font-medium text-sm md:text-base truncate",
+                      theme === 'dark' ? "text-white" : "text-gray-900"
+                    )}>
+                      {user.name}
+                    </p>
+                    <p className={cn(
+                      "text-xs md:text-sm truncate",
+                      theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                    )}>
+                      Nível {user.level} • {user.xp} XP
+                    </p>
+                  </div>
+                  {index === 0 && (
+                    <Trophy className={cn(
+                      "w-4 h-4 md:w-5 md:h-5 flex-shrink-0",
+                      theme === 'dark' ? "text-yellow-400" : "text-yellow-700"
+                    )} />
+                  )}
                 </div>
-                {index === 0 && (
-                  <Trophy className={cn(
-                    "w-4 h-4 md:w-5 md:h-5 flex-shrink-0",
-                    theme === 'dark' ? "text-yellow-400" : "text-yellow-700"
-                  )} />
-                )}
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

@@ -10,11 +10,18 @@ import { useAuth } from '@/lib/AuthContext'
 export default function AlunoHeader() {
   const { user: authUser } = useAuth()
   // Usar usuário autenticado se disponível, senão usar mockUser como fallback
-  const user = authUser ? {
-    ...mockUser,
-    name: authUser.name,
-    email: authUser.email,
-  } : mockUser
+  const user = authUser
+    ? {
+        ...mockUser,
+        name: authUser.name,
+        email: authUser.email,
+        level: authUser.level ?? mockUser.level,
+        xp: authUser.xp ?? mockUser.xp,
+        coins: authUser.coins ?? mockUser.coins,
+        streak: authUser.streak ?? mockUser.streak,
+        avatarUrl: authUser.avatarUrl ?? null,
+      }
+    : { ...mockUser, avatarUrl: null as string | null }
   const { theme, toggleTheme } = useTheme()
 
   return (
@@ -27,14 +34,27 @@ export default function AlunoHeader() {
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 max-w-full">
         {/* User Info - Mobile: primeira linha */}
         <div className="flex items-center gap-3 sm:gap-4 w-full lg:w-auto min-w-0">
-          <div className={cn(
-            "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-base sm:text-lg flex-shrink-0",
-            theme === 'dark'
-              ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
-              : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
-          )}>
-            {user.name.charAt(0).toUpperCase()}
-          </div>
+          {user.avatarUrl ? (
+            <img
+              src={user.avatarUrl}
+              alt="Avatar"
+              className={cn(
+                "w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border flex-shrink-0",
+                theme === 'dark' ? "border-white/10" : "border-yellow-500/30"
+              )}
+            />
+          ) : (
+            <div
+              className={cn(
+                "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-base sm:text-lg flex-shrink-0",
+                theme === 'dark'
+                  ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
+                  : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
+              )}
+            >
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <h3 className={cn(
               "font-semibold text-sm sm:text-base truncate",

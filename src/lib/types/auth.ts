@@ -24,6 +24,14 @@ export interface AuthUser {
   email: string
   role: UserRole
   accessLevel?: AccessLevel // Apenas para role === "aluno"
+  avatarUrl?: string | null
+  bio?: string | null
+  level?: number
+  xp?: number
+  xpMensal?: number
+  coins?: number
+  streak?: number
+  createdAt?: string
   // TODO: Adicionar campo hasFormation quando integrar com Hotmart
   // hasFormation?: boolean
 }
@@ -44,4 +52,5 @@ export function hasLimitedAccess(user: AuthUser | null): boolean {
   if (!user) return false
   return user.role === "aluno" && user.accessLevel === "limited"
 }
+
 

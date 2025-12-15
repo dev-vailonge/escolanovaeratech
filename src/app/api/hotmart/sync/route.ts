@@ -15,7 +15,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { syncHotmartHistoricalData } from '@/lib/hotmart'
+import { fetchAllSalesHistory } from '@/lib/hotmart/sales'
+import { createUser, getUserByEmail } from '@/lib/database'
+import { upsertHotmartSubscription } from '@/lib/hotmart/subscriptions'
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,8 +55,105 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔄 Iniciando sincronização: ${startDate} até ${endDate}`)
 
-    // Executar sincronização
-    const result = await syncHotmartHistoricalData(startDate, endDate)
+    // Executar sincronização usando Sales History
+    let processed = 0
+    let errors = 0
+
+    const { totalProcessed: totalVendas, hostUsed } = await fetchAllSalesHistory(
+      {
+        maxResults: 100,
+        startDate,
+        endDate,
+        transactionStatus: ['APPROVED', 'COMPLETE'], // Buscar apenas aprovadas/completas
+      },
+      async (items, pageToken) => {
+        console.log(`📦 Processando página com ${items.length} vendas...`)
+
+        for (const sale of items) {
+          try {
+            // Filtrar apenas vendas aprovadas
+            const status = sale.status || sale.purchase?.status || sale.subscription?.status || ''
+            const statusAprovados = ['APPROVED', 'COMPLETE', 'COMPLETED', 'CONFIRMED', 'approved', 'complete', 'completed', 'confirmed']
+            
+            if (!statusAprovados.includes(status.toUpperCase())) {
+              continue // Pular vendas não aprovadas
+            }
+
+            // Extrair dados do comprador
+            const buyer = sale.buyer || sale.purchase?.buyer || sale.subscription?.buyer || {}
+            const purchase = sale.purchase || sale
+            const product = sale.product || purchase.product || sale.subscription?.product || {}
+            
+            const email = buyer.email || buyer.mail || purchase.buyer?.email
+
+            if (!email) {
+              console.warn('⚠️ Venda sem email, pulando...')
+              errors++
+              continue
+            }
+
+            // Criar ou buscar usuário
+            let user = await getUserByEmail(email)
+            
+            if (!user) {
+              const buyerName = buyer.name || buyer.first_name || buyer.full_name || buyer.fullName || email.split('@')[0] || 'Aluno'
+              
+              user = await createUser({
+                email,
+                name: buyerName,
+                role: 'aluno',
+                access_level: 'full', // Venda aprovada = acesso completo
+              })
+
+              if (!user) {
+                console.error(`❌ Erro ao criar usuário: ${email}`)
+                errors++
+                continue
+              }
+            }
+
+            // Criar ou atualizar assinatura
+            const transactionId = purchase.transaction || purchase.transaction_id || sale.transaction || sale.id
+            const productId = product.id || product.product_id || sale.product_id || 'unknown'
+            const expiresDate = purchase.expires_date || purchase.expiration_date || sale.expires_date || null
+
+            if (!transactionId) {
+              console.warn(`⚠️ Venda sem transaction_id, pulando...`)
+              errors++
+              continue
+            }
+
+            const success = await upsertHotmartSubscription(user.id, {
+              hotmart_transaction_id: transactionId.toString(),
+              product_id: productId.toString(),
+              status: 'active',
+              expires_at: expiresDate || null,
+            })
+
+            if (success) {
+              processed++
+            } else {
+              errors++
+            }
+          } catch (error) {
+            console.error('❌ Erro ao processar venda:', error)
+            errors++
+          }
+        }
+      }
+    )
+
+    const message = `Sincronização concluída: ${processed} processadas, ${errors} erros de ${totalVendas} vendas totais`
+    console.log(`✅ ${message} | Host: ${hostUsed || 'desconhecido'}`)
+
+    const result = {
+      success: errors === 0,
+      processed,
+      errors,
+      totalVendas,
+      hostUsed,
+      message,
+    }
 
     if (result.success) {
       return NextResponse.json(
@@ -63,6 +162,7 @@ export async function POST(request: NextRequest) {
           message: result.message,
           processed: result.processed,
           errors: result.errors,
+          hostUsed: result.hostUsed,
         },
         { status: 200 }
       )
@@ -73,6 +173,7 @@ export async function POST(request: NextRequest) {
           message: result.message,
           processed: result.processed,
           errors: result.errors,
+          hostUsed: result.hostUsed,
         },
         { status: 200 } // 200 porque alguns dados podem ter sido processados
       )
@@ -102,4 +203,5 @@ export async function GET() {
       : 'Credenciais não configuradas. Configure HOTMART_CLIENT_ID e HOTMART_CLIENT_SECRET.',
   })
 }
+
 

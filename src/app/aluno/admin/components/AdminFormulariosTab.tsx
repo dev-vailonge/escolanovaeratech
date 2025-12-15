@@ -30,13 +30,20 @@ export default function AdminFormulariosTab() {
       const dados = await getAllFormularios()
       setFormularios(dados)
 
-      // Carregar contagem de respostas para cada formulário
-      const counts: Record<string, number> = {}
-      for (const formulario of dados) {
-        const respostas = await getRespostasFormulario(formulario.id)
-        counts[formulario.id] = respostas.length
+      // Carregar contagem de respostas para cada formulário EM PARALELO (muito mais rápido)
+      if (dados.length > 0) {
+        const respostasPromises = dados.map(async (formulario) => {
+          const respostas = await getRespostasFormulario(formulario.id)
+          return { id: formulario.id, count: respostas.length }
+        })
+        
+        const resultados = await Promise.all(respostasPromises)
+        const counts: Record<string, number> = {}
+        resultados.forEach(({ id, count }) => {
+          counts[id] = count
+        })
+        setRespostasCount(counts)
       }
-      setRespostasCount(counts)
     } catch (err) {
       console.error('Erro ao carregar formulários:', err)
       setError('Erro ao carregar formulários. Tente novamente.')

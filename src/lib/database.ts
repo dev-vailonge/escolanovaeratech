@@ -78,6 +78,34 @@ export async function updateUserAccessLevel(userId: string, accessLevel: 'full' 
 }
 
 /**
+ * Atualiza a role de um usuário (admin ou aluno)
+ * Usado no painel administrativo
+ */
+export async function updateUserRole(userId: string, role: 'admin' | 'aluno'): Promise<boolean> {
+  if (!isSupabaseConfigured()) {
+    console.warn('Supabase não configurado - updateUserRole retornando false')
+    return false
+  }
+
+  try {
+    const { error } = await supabase
+      .from('users')
+      .update({ role, updated_at: new Date().toISOString() })
+      .eq('id', userId)
+
+    if (error) {
+      console.error('Error updating user role:', error)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error('Error in updateUserRole:', error)
+    return false
+  }
+}
+
+/**
  * Cria um usuário na tabela users
  * Usado principalmente quando recebemos dados do webhook da Hotmart
  */
@@ -121,6 +149,34 @@ export async function createUser(userData: {
   } catch (error) {
     console.error('Error in createUser:', error)
     return null
+  }
+}
+
+/**
+ * Busca todos os usuários da tabela users
+ * Usado no painel administrativo para listar alunos
+ */
+export async function getAllUsers(): Promise<DatabaseUser[]> {
+  if (!isSupabaseConfigured()) {
+    console.warn('Supabase não configurado - getAllUsers retornando []')
+    return []
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching all users:', error)
+      return []
+    }
+
+    return data || []
+  } catch (error) {
+    console.error('Error in getAllUsers:', error)
+    return []
   }
 }
 
@@ -210,47 +266,84 @@ export async function getAllQuizzes(): Promise<DatabaseQuiz[]> {
 
 export async function createQuiz(quiz: Omit<DatabaseQuiz, 'id' | 'created_at' | 'updated_at'>): Promise<DatabaseQuiz | null> {
   if (!isSupabaseConfigured()) {
+    console.error('❌ Supabase não configurado')
     return null
   }
 
   try {
+    console.log('📤 createQuiz: Enviando para Supabase...')
+    console.log('📊 Dados:', {
+      titulo: quiz.titulo,
+      tecnologia: quiz.tecnologia,
+      nivel: quiz.nivel,
+      xp: quiz.xp,
+      numQuestoes: Array.isArray(quiz.questoes) ? quiz.questoes.length : 0
+    })
+    
+    // Timeout de 30 segundos
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
+    
     const { data, error } = await supabase
       .from('quizzes')
       .insert(quiz)
       .select()
       .single()
+      .abortSignal(controller.signal)
+    
+    clearTimeout(timeoutId)
 
     if (error) {
-      console.error('Error creating quiz:', error)
+      console.error('❌ Error creating quiz:', error.message, error.details, error.hint)
       return null
     }
 
+    console.log('✅ Quiz criado no Supabase:', data?.id)
     return data
-  } catch (error) {
-    console.error('Error in createQuiz:', error)
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      console.error('❌ Timeout: criação do quiz demorou mais de 30s')
+    } else {
+      console.error('❌ Error in createQuiz:', error)
+    }
     return null
   }
 }
 
 export async function updateQuiz(quizId: string, updates: Partial<DatabaseQuiz>): Promise<boolean> {
   if (!isSupabaseConfigured()) {
+    console.error('❌ Supabase não configurado')
     return false
   }
 
   try {
+    console.log('📤 updateQuiz: Atualizando quiz', quizId)
+    
+    // Timeout de 30 segundos
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
+    
     const { error } = await supabase
       .from('quizzes')
       .update(updates)
       .eq('id', quizId)
+      .abortSignal(controller.signal)
+    
+    clearTimeout(timeoutId)
 
     if (error) {
-      console.error('Error updating quiz:', error)
+      console.error('❌ Error updating quiz:', error.message, error.details, error.hint)
       return false
     }
 
+    console.log('✅ Quiz atualizado com sucesso')
     return true
-  } catch (error) {
-    console.error('Error in updateQuiz:', error)
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      console.error('❌ Timeout: atualização do quiz demorou mais de 30s')
+    } else {
+      console.error('❌ Error in updateQuiz:', error)
+    }
     return false
   }
 }
@@ -494,7 +587,13 @@ export async function deleteNotificacao(notificacaoId: string): Promise<boolean>
 // XP E PROGRESSO
 // ============================================================
 
-export async function addXP(userId: string, amount: number, source: 'aula' | 'quiz' | 'desafio', sourceId?: string, description?: string): Promise<boolean> {
+export async function addXP(
+  userId: string,
+  amount: number,
+  source: 'aula' | 'quiz' | 'desafio' | 'comunidade',
+  sourceId?: string,
+  description?: string
+): Promise<boolean> {
   const { error } = await supabase
     .from('user_xp_history')
     .insert({
@@ -811,5 +910,115 @@ export async function deleteFormulario(formularioId: string): Promise<boolean> {
 
 export async function toggleFormularioAtivo(formularioId: string, ativo: boolean): Promise<boolean> {
   return updateFormulario(formularioId, { ativo })
+}
+
+// ============================================================
+// ESTATÍSTICAS DO USUÁRIO
+// ============================================================
+
+export interface UserStats {
+  aulasCompletas: number
+  quizCompletos: number
+  desafiosConcluidos: number
+  tempoEstudo: number // em minutos
+  participacaoComunidade: number
+}
+
+/**
+ * Busca estatísticas reais do usuário
+ * - Aulas completas: contagem única de entries no XP history com source='aula'
+ * - Quizzes completos: contagem de quizzes com completo=true
+ * - Desafios concluídos: contagem de desafios com completo=true
+ * - Tempo de estudo: estimativa baseada em atividades (30min por aula, 10min por quiz)
+ * - Participação na comunidade: contagem de respostas na comunidade no mês atual
+ */
+export async function getUserStats(userId: string): Promise<UserStats> {
+  const defaultStats: UserStats = {
+    aulasCompletas: 0,
+    quizCompletos: 0,
+    desafiosConcluidos: 0,
+    tempoEstudo: 0,
+    participacaoComunidade: 0,
+  }
+
+  if (!isSupabaseConfigured()) {
+    return defaultStats
+  }
+
+  try {
+    // Início do mês atual para filtrar participação na comunidade
+    const startOfMonth = new Date()
+    startOfMonth.setDate(1)
+    startOfMonth.setHours(0, 0, 0, 0)
+
+    // Buscar todas as estatísticas em paralelo
+    const [
+      aulasResult,
+      quizzesResult,
+      desafiosResult,
+      comunidadeResult,
+    ] = await Promise.all([
+      // Aulas completas (baseado em XP history com source='aula')
+      supabase
+        .from('user_xp_history')
+        .select('source_id')
+        .eq('user_id', userId)
+        .eq('source', 'aula'),
+      
+      // Quizzes completos
+      supabase
+        .from('user_quiz_progress')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('completo', true),
+      
+      // Desafios concluídos
+      supabase
+        .from('user_desafio_progress')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('completo', true),
+      
+      // Participação na comunidade este mês (respostas)
+      supabase
+        .from('respostas')
+        .select('id')
+        .eq('autor_id', userId)
+        .gte('created_at', startOfMonth.toISOString()),
+    ])
+
+    // Debug logs
+    if (quizzesResult.error) {
+      console.error('Erro ao buscar quizzes:', quizzesResult.error)
+    }
+    console.log('getUserStats - userId:', userId)
+    console.log('getUserStats - quizzes encontrados:', quizzesResult.data?.length, quizzesResult.data)
+
+    // Contar aulas únicas (cada source_id diferente conta como uma aula)
+    const aulasUnicas = new Set(
+      (aulasResult.data || [])
+        .filter(item => item.source_id)
+        .map(item => item.source_id)
+    )
+    const aulasCompletas = aulasUnicas.size
+
+    const quizCompletos = quizzesResult.data?.length || 0
+    const desafiosConcluidos = desafiosResult.data?.length || 0
+    const participacaoComunidade = comunidadeResult.data?.length || 0
+
+    // Estimativa de tempo de estudo (30 min por aula, 10 min por quiz, 15 min por desafio)
+    const tempoEstudo = (aulasCompletas * 30) + (quizCompletos * 10) + (desafiosConcluidos * 15)
+
+    return {
+      aulasCompletas,
+      quizCompletos,
+      desafiosConcluidos,
+      tempoEstudo,
+      participacaoComunidade,
+    }
+  } catch (error) {
+    console.error('Error fetching user stats:', error)
+    return defaultStats
+  }
 }
 

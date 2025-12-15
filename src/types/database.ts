@@ -106,7 +106,7 @@ export interface DatabaseUserDesafioProgress {
 export interface DatabaseUserXpHistory {
   id: string
   user_id: string
-  source: 'aula' | 'quiz' | 'desafio'
+  source: 'aula' | 'quiz' | 'desafio' | 'comunidade'
   source_id: string | null
   amount: number
   description: string | null
@@ -150,4 +150,5 @@ export interface DatabaseHotmartSubscription {
   updated_at: string
   expires_at: string | null
 }
+
 

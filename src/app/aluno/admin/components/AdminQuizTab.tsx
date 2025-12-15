@@ -6,7 +6,8 @@ import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
 import { Plus, Edit, Trash2, Sparkles, Loader2 } from 'lucide-react'
 import CreateQuizModal from './CreateQuizModal'
-import { getAllQuizzes, createQuiz, updateQuiz, deleteQuiz } from '@/lib/database'
+import { getAllQuizzes } from '@/lib/database'
+import { supabase } from '@/lib/supabase'
 import type { DatabaseQuiz } from '@/types/database'
 
 export default function AdminQuizTab() {
@@ -41,40 +42,119 @@ export default function AdminQuizTab() {
       setError('')
       
       // Preparar dados no formato do banco
-      const dadosQuiz: Omit<DatabaseQuiz, 'id' | 'created_at' | 'updated_at'> = {
+      const questoesArray = Array.isArray(quizData.perguntas) ? quizData.perguntas : (Array.isArray(quizData.questoes) ? quizData.questoes : [])
+      
+      console.log('📝 AdminQuizTab: Preparando para salvar quiz')
+      console.log('📊 Número de perguntas:', questoesArray.length)
+      
+      // Obter token de autenticação com timeout
+      console.log('🔑 Obtendo sessão...')
+      
+      const getSessionWithTimeout = () => {
+        return Promise.race([
+          supabase.auth.getSession(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout ao obter sessão')), 5000)
+          )
+        ]) as Promise<{ data: { session: any } }>
+      }
+      
+      let token: string | undefined
+      try {
+        const sessionResult = await getSessionWithTimeout()
+        console.log('🔑 Sessão obtida:', !!sessionResult?.data?.session)
+        token = sessionResult?.data?.session?.access_token
+      } catch (sessionError: any) {
+        console.error('❌ Erro ao obter sessão:', sessionError?.message)
+        // Tentar pegar do AuthContext como fallback
+        if (user?.id) {
+          console.log('🔄 Tentando fallback via localStorage...')
+          const storedSession = localStorage.getItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] + '-auth-token')
+          if (storedSession) {
+            try {
+              const parsed = JSON.parse(storedSession)
+              token = parsed?.access_token
+              console.log('🔑 Token obtido do localStorage')
+            } catch (e) {
+              console.error('❌ Falha ao parsear sessão do localStorage')
+            }
+          }
+        }
+      }
+      
+      if (!token) {
+        console.error('❌ Token não encontrado')
+        throw new Error('Não autenticado. Faça login novamente.')
+      }
+      console.log('🔑 Token obtido (primeiros 20 chars):', token.substring(0, 20) + '...')
+
+      const payload = {
+        id: editingQuiz?.id,
         titulo: quizData.titulo,
         descricao: quizData.descricao,
         tecnologia: quizData.tecnologia,
-        nivel: quizData.nivel as 'iniciante' | 'intermediario' | 'avancado',
-        questoes: Array.isArray(quizData.perguntas) ? quizData.perguntas : (Array.isArray(quizData.questoes) ? quizData.questoes : []),
+        nivel: quizData.nivel,
+        questoes: questoesArray,
         xp: quizData.xp,
-        disponivel: true,
-        created_by: user?.id || null
+        disponivel: true
       }
 
+      console.log('📦 Payload preparado:', { titulo: payload.titulo, numQuestoes: payload.questoes?.length })
+
       if (editingQuiz) {
-        // Atualizar quiz existente
-        const sucesso = await updateQuiz(editingQuiz.id, dadosQuiz)
-        if (sucesso) {
-          await carregarQuizzes()
-          setIsCreating(false)
-          setEditingQuiz(null)
-        } else {
-          setError('Erro ao atualizar quiz. Tente novamente.')
+        // Atualizar quiz existente via API
+        console.log('🔄 Atualizando quiz existente:', editingQuiz.id)
+        console.log('📡 Chamando PUT /api/admin/quiz...')
+        
+        const res = await fetch('/api/admin/quiz', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        })
+        
+        const json = await res.json()
+        
+        if (!res.ok) {
+          console.error('❌ Falha ao atualizar quiz:', json.error)
+          throw new Error(json.error || 'Erro ao atualizar quiz')
         }
+        
+        console.log('✅ Quiz atualizado com sucesso')
+        await carregarQuizzes()
+        setIsCreating(false)
+        setEditingQuiz(null)
       } else {
-        // Criar novo quiz
-        const novoQuiz = await createQuiz(dadosQuiz)
-        if (novoQuiz) {
-          await carregarQuizzes()
-          setIsCreating(false)
-        } else {
-          setError('Erro ao criar quiz. Tente novamente.')
+        // Criar novo quiz via API
+        console.log('🆕 Criando novo quiz via API...')
+        console.log('📡 Chamando POST /api/admin/quiz...')
+        
+        const res = await fetch('/api/admin/quiz', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        })
+        
+        const json = await res.json()
+        
+        if (!res.ok) {
+          console.error('❌ Falha ao criar quiz:', json.error)
+          throw new Error(json.error || 'Erro ao criar quiz')
         }
+        
+        console.log('✅ Quiz criado com sucesso:', json.quiz?.id)
+        await carregarQuizzes()
+        setIsCreating(false)
       }
-    } catch (err) {
-      console.error('Erro ao salvar quiz:', err)
-      setError('Erro ao salvar quiz. Tente novamente.')
+    } catch (err: any) {
+      console.error('❌ Erro ao salvar quiz:', err)
+      setError(err?.message || 'Erro ao salvar quiz. Tente novamente.')
+      throw err // Re-throw para o modal saber que falhou
     }
   }
 
@@ -85,15 +165,58 @@ export default function AdminQuizTab() {
 
     try {
       setError('')
-      const sucesso = await deleteQuiz(quizId)
-      if (sucesso) {
-        await carregarQuizzes()
-      } else {
-        setError('Erro ao excluir quiz. Tente novamente.')
+      console.log('🗑️ Excluindo quiz:', quizId)
+      
+      // Obter token de autenticação com timeout e fallback
+      let token: string | undefined
+      
+      try {
+        const sessionResult = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise<{ data: { session: null } }>((resolve) => 
+            setTimeout(() => resolve({ data: { session: null } }), 3000)
+          )
+        ])
+        token = sessionResult?.data?.session?.access_token
+      } catch {}
+      
+      // Fallback localStorage
+      if (!token) {
+        const key = 'sb-' + (process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] || '') + '-auth-token'
+        const stored = localStorage.getItem(key)
+        if (stored) {
+          try {
+            token = JSON.parse(stored)?.access_token
+          } catch {}
+        }
       }
-    } catch (err) {
-      console.error('Erro ao excluir quiz:', err)
-      setError('Erro ao excluir quiz. Tente novamente.')
+      
+      if (!token) {
+        setError('Não autenticado. Faça login novamente.')
+        return
+      }
+      
+      console.log('📡 Chamando DELETE /api/admin/quiz...')
+      const res = await fetch(`/api/admin/quiz?id=${quizId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      const json = await res.json()
+      
+      if (!res.ok) {
+        console.error('❌ Erro ao excluir:', json.error)
+        setError(json.error || 'Erro ao excluir quiz.')
+        return
+      }
+      
+      console.log('✅ Quiz excluído com sucesso')
+      await carregarQuizzes()
+    } catch (err: any) {
+      console.error('❌ Erro ao excluir quiz:', err)
+      setError(err?.message || 'Erro ao excluir quiz. Tente novamente.')
     }
   }
 
