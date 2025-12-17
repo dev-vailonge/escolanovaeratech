@@ -11,7 +11,9 @@ import {
   Trophy,
   Clock,
   HelpCircle,
-  Loader2
+  Loader2,
+  BookOpen,
+  Lightbulb
 } from 'lucide-react'
 import type { QuizQuestion } from '@/types/quiz'
 
@@ -152,6 +154,65 @@ export default function QuizPlayer({
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  // Analisar erros e gerar insights
+  const generateStudyInsights = (): string[] => {
+    if (!result) return []
+    
+    const wrongAnswers = result.respostas.filter(r => !r.correct)
+    if (wrongAnswers.length === 0) return []
+    
+    // Buscar as questões erradas
+    const wrongQuestions = wrongAnswers.map(wrong => {
+      return questoes.find(q => q.id === wrong.questionId)
+    }).filter(Boolean) as QuizQuestion[]
+    
+    // Extrair palavras-chave das questões erradas
+    const keywords: Record<string, number> = {}
+    const commonTerms: Record<string, string[]> = {
+      'JavaScript': ['variável', 'função', 'array', 'objeto', 'promise', 'async', 'await', 'evento', 'dom', 'closure', 'hoisting', 'this', 'arrow function', 'spread', 'destructuring'],
+      'CSS': ['seletor', 'flexbox', 'grid', 'box model', 'margin', 'padding', 'display', 'position', 'media query', 'pseudo-classe', 'pseudo-elemento', 'transform', 'animation'],
+      'HTML': ['tag', 'atributo', 'semântica', 'formulário', 'input', 'link', 'imagem', 'lista', 'tabela', 'meta', 'head', 'body', 'div', 'section'],
+      'React': ['componente', 'props', 'state', 'hook', 'useState', 'useEffect', 'render', 'jsx', 'virtual dom', 'key', 'event handler'],
+      'Android': ['activity', 'fragment', 'intent', 'layout', 'view', 'recyclerview', 'adapter', 'manifest', 'permission']
+    }
+    
+    // Contar ocorrências de termos comuns
+    wrongQuestions.forEach(q => {
+      const promptLower = q.prompt.toLowerCase()
+      const tech = titulo.split('—')[0]?.trim() || titulo.split('-')[0]?.trim() || ''
+      const techTerms = commonTerms[tech] || []
+      
+      techTerms.forEach(term => {
+        if (promptLower.includes(term.toLowerCase())) {
+          keywords[term] = (keywords[term] || 0) + 1
+        }
+      })
+    })
+    
+    // Gerar insights baseados nos termos mais frequentes
+    const insights: string[] = []
+    const sortedKeywords = Object.entries(keywords)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+    
+    if (sortedKeywords.length > 0) {
+      const tech = titulo.split('—')[0]?.trim() || titulo.split('-')[0]?.trim() || 'esta tecnologia'
+      
+      insights.push(`Você teve dificuldades com ${sortedKeywords.length > 1 ? 'os seguintes tópicos' : 'o seguinte tópico'} de ${tech}:`)
+      
+      sortedKeywords.forEach(([term, count]) => {
+        const termFormatted = term.charAt(0).toUpperCase() + term.slice(1)
+        insights.push(`• ${termFormatted} (${count} ${count === 1 ? 'erro' : 'erros'})`)
+      })
+      
+      insights.push(`Recomendamos revisar esses conceitos antes de refazer o quiz.`)
+    } else {
+      insights.push('Continue praticando para melhorar seu desempenho!')
+    }
+    
+    return insights
+  }
+
   // Tela de resultado
   if (quizState === 'finished' && result) {
     const passed = result.pontuacao >= 60
@@ -243,6 +304,39 @@ export default function QuizPlayer({
           </div>
         </div>
 
+        {/* Insights de Estudo */}
+        {result.total - result.acertos > 0 && (
+          <div className={cn(
+            "p-4 rounded-xl border",
+            theme === 'dark' 
+              ? "bg-blue-500/10 border-blue-500/30" 
+              : "bg-blue-50 border-blue-200"
+          )}>
+            <div className="flex items-start gap-3">
+              <Lightbulb className={cn(
+                "w-5 h-5 flex-shrink-0 mt-0.5",
+                theme === 'dark' ? "text-blue-400" : "text-blue-600"
+              )} />
+              <div className="flex-1">
+                <h3 className={cn(
+                  "font-semibold mb-2",
+                  theme === 'dark' ? "text-blue-300" : "text-blue-800"
+                )}>
+                  💡 Dicas de Estudo
+                </h3>
+                <div className={cn(
+                  "space-y-1 text-sm",
+                  theme === 'dark' ? "text-blue-200" : "text-blue-700"
+                )}>
+                  {generateStudyInsights().map((insight, idx) => (
+                    <p key={idx}>{insight}</p>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Botões */}
         <div className="flex gap-3">
           <button
@@ -325,46 +419,48 @@ export default function QuizPlayer({
         />
       </div>
 
-      {/* Indicadores de questões */}
-      <div className="flex flex-wrap gap-1.5">
-        {questoes.map((q, idx) => {
-          const answered = !!answers[q.id]
-          const isCurrent = idx === currentIndex
-          const wasCorrect = isReviewing && answers[q.id] === q.correctOptionId
-          const wasWrong = isReviewing && answers[q.id] && answers[q.id] !== q.correctOptionId
-          
-          return (
-            <button
-              key={q.id}
-              onClick={() => goToQuestion(idx)}
-              className={cn(
-                "w-8 h-8 rounded-lg text-xs font-medium transition-all",
-                isCurrent
-                  ? theme === 'dark'
-                    ? "bg-yellow-400 text-black"
-                    : "bg-yellow-500 text-white"
-                  : wasCorrect
+      {/* Indicadores de questões - apenas na revisão */}
+      {isReviewing && (
+        <div className="flex flex-wrap gap-1.5">
+          {questoes.map((q, idx) => {
+            const answered = !!answers[q.id]
+            const isCurrent = idx === currentIndex
+            const wasCorrect = answers[q.id] === q.correctOptionId
+            const wasWrong = answers[q.id] && answers[q.id] !== q.correctOptionId
+            
+            return (
+              <button
+                key={q.id}
+                onClick={() => goToQuestion(idx)}
+                className={cn(
+                  "w-8 h-8 rounded-lg text-xs font-medium transition-all",
+                  isCurrent
                     ? theme === 'dark'
-                      ? "bg-green-500/30 text-green-400 border border-green-500/50"
-                      : "bg-green-100 text-green-700 border border-green-300"
-                    : wasWrong
+                      ? "bg-yellow-400 text-black"
+                      : "bg-yellow-500 text-white"
+                    : wasCorrect
                       ? theme === 'dark'
-                        ? "bg-red-500/30 text-red-400 border border-red-500/50"
-                        : "bg-red-100 text-red-700 border border-red-300"
-                      : answered
+                        ? "bg-green-500/30 text-green-400 border border-green-500/50"
+                        : "bg-green-100 text-green-700 border border-green-300"
+                      : wasWrong
                         ? theme === 'dark'
-                          ? "bg-white/20 text-white"
-                          : "bg-gray-200 text-gray-700"
-                        : theme === 'dark'
-                          ? "bg-white/5 text-gray-500 border border-white/10"
-                          : "bg-gray-50 text-gray-400 border border-gray-200"
-              )}
-            >
-              {idx + 1}
-            </button>
-          )
-        })}
-      </div>
+                          ? "bg-red-500/30 text-red-400 border border-red-500/50"
+                          : "bg-red-100 text-red-700 border border-red-300"
+                        : answered
+                          ? theme === 'dark'
+                            ? "bg-white/20 text-white"
+                            : "bg-gray-200 text-gray-700"
+                          : theme === 'dark'
+                            ? "bg-white/5 text-gray-500 border border-white/10"
+                            : "bg-gray-50 text-gray-400 border border-gray-200"
+                )}
+              >
+                {idx + 1}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* Pergunta */}
       {currentQuestion && (
@@ -460,14 +556,15 @@ export default function QuizPlayer({
             </div>
           )}
 
-          {/* Pontos da questão */}
-          <div className={cn(
-            "mt-3 text-xs",
-            theme === 'dark' ? "text-gray-500" : "text-gray-400"
-          )}>
-            Vale {currentQuestion.points || 10} pontos
-            {currentQuestion.penalty ? ` • Penalidade: -${currentQuestion.penalty}` : ''}
-          </div>
+          {/* Informações da questão */}
+          {currentQuestion.penalty && (
+            <div className={cn(
+              "mt-3 text-xs",
+              theme === 'dark' ? "text-gray-500" : "text-gray-400"
+            )}>
+              Penalidade por erro: -{currentQuestion.penalty} pontos
+            </div>
+          )}
         </div>
       )}
 

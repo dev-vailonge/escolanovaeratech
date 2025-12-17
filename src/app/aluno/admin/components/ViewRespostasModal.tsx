@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
-import { getRespostasFormulario, getUserById } from '@/lib/database'
-import type { DatabaseFormularioResposta } from '@/types/database'
-import { Loader2, User, Mail, Phone, MessageSquare, Calendar } from 'lucide-react'
+import { getRespostasFormulario, getUserById, getFormularioById } from '@/lib/database'
+import type { DatabaseFormularioResposta, DatabaseFormulario } from '@/types/database'
+import { Loader2, User, Mail, Phone, MessageSquare, Calendar, HelpCircle } from 'lucide-react'
 
 interface ViewRespostasModalProps {
   isOpen: boolean
@@ -28,6 +28,7 @@ export default function ViewRespostasModal({
 }: ViewRespostasModalProps) {
   const { theme } = useTheme()
   const [respostas, setRespostas] = useState<RespostaCompleta[]>([])
+  const [formulario, setFormulario] = useState<DatabaseFormulario | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -45,6 +46,18 @@ export default function ViewRespostasModal({
     try {
       setLoading(true)
       setError('')
+      
+      // Buscar o formulário para ter acesso às perguntas (sem filtro de ativo para admin)
+      const { supabase } = await import('@/lib/supabase')
+      const { data: formularioData, error: formularioError } = await supabase
+        .from('formularios')
+        .select('*')
+        .eq('id', formularioId)
+        .single()
+      
+      if (!formularioError && formularioData) {
+        setFormulario(formularioData as DatabaseFormulario)
+      }
       
       // Buscar todas as respostas do formulário
       const respostasData = await getRespostasFormulario(formularioId)
@@ -86,7 +99,8 @@ export default function ViewRespostasModal({
       nome: resposta.nome || resposta.name || '',
       email: resposta.email || '',
       telefone: resposta.telefone || resposta.phone || '',
-      mensagem: resposta.mensagem || resposta.message || resposta.texto || ''
+      mensagem: resposta.mensagem || resposta.message || resposta.texto || '',
+      respostasPerguntas: resposta.respostasPerguntas || {}
     }
   }
 
@@ -289,8 +303,62 @@ export default function ViewRespostasModal({
                       </div>
                     )}
 
+                    {/* Respostas das Perguntas Customizadas */}
+                    {campos.respostasPerguntas && Object.keys(campos.respostasPerguntas).length > 0 && formulario?.perguntas && (
+                      <div className="mt-4 pt-4 border-t" style={{
+                        borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(234, 179, 8, 0.3)'
+                      }}>
+                        <p className={cn(
+                          "text-xs font-semibold mb-3 flex items-center gap-2",
+                          theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                        )}>
+                          <HelpCircle className="w-4 h-4" />
+                          Respostas das Perguntas
+                        </p>
+                        <div className="space-y-3">
+                          {formulario.perguntas.map((pergunta) => {
+                            const resposta = campos.respostasPerguntas[pergunta.id]
+                            if (!resposta) return null
+
+                            return (
+                              <div
+                                key={pergunta.id}
+                                className={cn(
+                                  "p-3 rounded-lg border",
+                                  theme === 'dark'
+                                    ? "bg-black/40 border-white/10"
+                                    : "bg-gray-50 border-gray-200"
+                                )}
+                              >
+                                <p className={cn(
+                                  "text-xs font-medium mb-2",
+                                  theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                                )}>
+                                  {pergunta.texto}
+                                </p>
+                                <div className={cn(
+                                  "text-sm",
+                                  theme === 'dark' ? "text-white" : "text-gray-900"
+                                )}>
+                                  {Array.isArray(resposta) ? (
+                                    <ul className="list-disc list-inside space-y-1">
+                                      {resposta.map((item, idx) => (
+                                        <li key={idx}>{item}</li>
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    <p className="whitespace-pre-wrap">{String(resposta)}</p>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Se não houver campos conhecidos, mostrar o JSON completo */}
-                    {!campos.nome && !campos.email && !campos.telefone && !campos.mensagem && (
+                    {!campos.nome && !campos.email && !campos.telefone && !campos.mensagem && (!campos.respostasPerguntas || Object.keys(campos.respostasPerguntas).length === 0) && (
                       <div className="flex items-start gap-3">
                         <MessageSquare className={cn(
                           "w-4 h-4 mt-0.5 flex-shrink-0",

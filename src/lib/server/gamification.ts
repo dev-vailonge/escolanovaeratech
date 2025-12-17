@@ -123,13 +123,39 @@ export async function completarQuiz(params: { userId: string; quizId: string; po
 
   if (upsertError) throw upsertError
 
-  // Calcular XP proporcional à pontuação (0-100)
-  // Se pontuacao = 100%, ganha 100% do XP
-  // Se pontuacao = 50%, ganha 50% do XP
-  const xpGanho = Math.round((params.pontuacao / 100) * quiz.xp)
+  // Buscar XP total já ganho deste quiz específico
+  const { data: xpHistory, error: xpHistoryError } = await supabase
+    .from('user_xp_history')
+    .select('amount')
+    .eq('user_id', params.userId)
+    .eq('source', 'quiz')
+    .eq('source_id', params.quizId)
+
+  if (xpHistoryError) throw xpHistoryError
+
+  // Calcular XP total já ganho
+  const xpTotalGanho = (xpHistory || []).reduce((sum, entry) => sum + (entry.amount || 0), 0)
   
-  // Regra do produto: pode refazer ilimitado e ganhar XP a cada tentativa completa
-  // XP é proporcional à pontuação obtida
+  // Calcular XP remanescente (limite máximo do quiz menos o que já foi ganho)
+  const xpRemanescente = Math.max(0, quiz.xp - xpTotalGanho)
+  
+  // Se não há XP remanescente, não conceder XP
+  if (xpRemanescente <= 0) {
+    return { 
+      awarded: false as const, 
+      reason: 'xp_limit_reached' as const,
+      xp: 0,
+      tentativas: newTentativas, 
+      melhorPontuacao: bestScore 
+    }
+  }
+
+  // Calcular XP ganho proporcional à pontuação sobre o remanescente
+  // Se pontuacao = 100%, ganha 100% do XP remanescente
+  // Se pontuacao = 50%, ganha 50% do XP remanescente
+  const xpGanho = Math.round((params.pontuacao / 100) * xpRemanescente)
+  
+  // Registrar XP ganho
   await insertXpEntry({
     userId: params.userId,
     source: 'quiz',
@@ -138,7 +164,13 @@ export async function completarQuiz(params: { userId: string; quizId: string; po
     description: `Quiz concluído: ${quiz.titulo} (${params.pontuacao}% - tentativa ${newTentativas})`,
   })
 
-  return { awarded: true as const, xp: xpGanho, tentativas: newTentativas, melhorPontuacao: bestScore }
+  return { 
+    awarded: true as const, 
+    xp: xpGanho, 
+    xpRemanescente: xpRemanescente - xpGanho,
+    tentativas: newTentativas, 
+    melhorPontuacao: bestScore 
+  }
 }
 
 export async function responderComunidade(params: { userId: string; perguntaId: string; conteudo: string }) {

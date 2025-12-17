@@ -8,6 +8,14 @@ export async function GET(request: Request) {
     const url = new URL(request.url)
     const searchParams = url.searchParams
 
+    // Tentar obter userId do token (opcional, para saber se curtiu)
+    let currentUserId: string | null = null
+    try {
+      currentUserId = await requireUserIdFromBearer(request).catch(() => null)
+    } catch {
+      // Usuário não autenticado, mas pode ver as perguntas
+    }
+
     // Filtros opcionais
     const autorId = searchParams.get('autor_id')
     const categoria = searchParams.get('categoria')
@@ -84,9 +92,24 @@ export async function GET(request: Request) {
       })
     })
 
+    // Buscar votos do usuário atual (se autenticado)
+    const votosMap = new Map<string, boolean>()
+    if (currentUserId && perguntaIds.length > 0) {
+      const { data: votos } = await supabase
+        .from('pergunta_votos')
+        .select('pergunta_id')
+        .eq('user_id', currentUserId)
+        .in('pergunta_id', perguntaIds)
+
+      votos?.forEach((v) => {
+        votosMap.set(v.pergunta_id, true)
+      })
+    }
+
     const perguntasComRespostas = perguntas?.map((p) => ({
       ...p,
       respostas: countMap.get(p.id) || 0,
+      curtida: votosMap.get(p.id) || false,
       autor: autorMap.get(p.autor_id) || {
         id: p.autor_id,
         nome: 'Usuário',

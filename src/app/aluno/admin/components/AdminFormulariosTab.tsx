@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { Plus, Edit, Trash2, ToggleLeft, ToggleRight, Eye, Loader2 } from 'lucide-react'
 import CreateFormularioModal from './CreateFormularioModal'
 import ViewRespostasModal from './ViewRespostasModal'
-import { getAllFormularios, createFormulario, updateFormulario, deleteFormulario, toggleFormularioAtivo, getRespostasFormulario } from '@/lib/database'
+import { getAllFormularios, createFormulario, updateFormulario, deleteFormulario, toggleFormularioAtivo, getRespostasFormulario, createNotificacao } from '@/lib/database'
 import type { DatabaseFormulario } from '@/types/database'
 
 export default function AdminFormulariosTab() {
@@ -90,6 +90,36 @@ export default function AdminFormulariosTab() {
         const novoFormulario = await createFormulario(dadosFormulario, user?.id)
         if (novoFormulario) {
           console.log('✅ Formulário criado com sucesso:', novoFormulario.id)
+          
+          // Criar notificação para todos os alunos sobre o novo formulário
+          if (novoFormulario.ativo) {
+            try {
+              const agora = new Date()
+              const dataFim = new Date()
+              dataFim.setMonth(dataFim.getMonth() + 1) // Notificação válida por 1 mês
+              
+              const notificacao = await createNotificacao({
+                titulo: 'Novo Formulário Disponível',
+                mensagem: `Um novo formulário "${novoFormulario.nome}" está disponível para você responder.`,
+                tipo: 'info',
+                data_inicio: agora.toISOString(),
+                data_fim: dataFim.toISOString(),
+                publico_alvo: 'todos',
+                action_url: `/aluno/formularios/${novoFormulario.id}`,
+                created_by: user?.id || null
+              })
+              
+              if (notificacao) {
+                console.log('✅ Notificação criada com sucesso:', notificacao.id)
+              } else {
+                console.warn('⚠️ Formulário criado, mas falha ao criar notificação')
+              }
+            } catch (notifError) {
+              console.error('❌ Erro ao criar notificação:', notifError)
+              // Não falhar o processo se a notificação falhar
+            }
+          }
+          
           // Fechar modal primeiro
           setIsCreating(false)
           // Aguardar um pouco para garantir que o banco processou

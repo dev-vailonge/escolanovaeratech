@@ -1059,6 +1059,8 @@ export interface UserStats {
   desafiosConcluidos: number
   tempoEstudo: number // em minutos
   participacaoComunidade: number
+  perguntasRespondidas: number
+  perguntasFeitas: number
 }
 
 /**
@@ -1068,6 +1070,8 @@ export interface UserStats {
  * - Desafios concluídos: contagem de desafios com completo=true
  * - Tempo de estudo: estimativa baseada em atividades (30min por aula, 10min por quiz)
  * - Participação na comunidade: contagem de respostas na comunidade no mês atual
+ * - Perguntas respondidas: contagem total de respostas na comunidade
+ * - Perguntas feitas: contagem total de perguntas criadas pelo usuário
  */
 export async function getUserStats(userId: string): Promise<UserStats> {
   const defaultStats: UserStats = {
@@ -1076,6 +1080,8 @@ export async function getUserStats(userId: string): Promise<UserStats> {
     desafiosConcluidos: 0,
     tempoEstudo: 0,
     participacaoComunidade: 0,
+    perguntasRespondidas: 0,
+    perguntasFeitas: 0,
   }
 
   if (!isSupabaseConfigured()) {
@@ -1094,6 +1100,8 @@ export async function getUserStats(userId: string): Promise<UserStats> {
       quizzesResult,
       desafiosResult,
       comunidadeResult,
+      perguntasRespondidasResult,
+      perguntasFeitasResult,
     ] = await Promise.all([
       // Aulas completas (baseado em XP history com source='aula')
       supabase
@@ -1122,6 +1130,18 @@ export async function getUserStats(userId: string): Promise<UserStats> {
         .select('id')
         .eq('autor_id', userId)
         .gte('created_at', startOfMonth.toISOString()),
+      
+      // Total de perguntas respondidas (todas as respostas)
+      supabase
+        .from('respostas')
+        .select('id')
+        .eq('autor_id', userId),
+      
+      // Total de perguntas feitas pelo usuário
+      supabase
+        .from('perguntas')
+        .select('id')
+        .eq('autor_id', userId),
     ])
 
     // Debug logs
@@ -1142,6 +1162,8 @@ export async function getUserStats(userId: string): Promise<UserStats> {
     const quizCompletos = quizzesResult.data?.length || 0
     const desafiosConcluidos = desafiosResult.data?.length || 0
     const participacaoComunidade = comunidadeResult.data?.length || 0
+    const perguntasRespondidas = perguntasRespondidasResult.data?.length || 0
+    const perguntasFeitas = perguntasFeitasResult.data?.length || 0
 
     // Estimativa de tempo de estudo (30 min por aula, 10 min por quiz, 15 min por desafio)
     const tempoEstudo = (aulasCompletas * 30) + (quizCompletos * 10) + (desafiosConcluidos * 15)
@@ -1152,6 +1174,8 @@ export async function getUserStats(userId: string): Promise<UserStats> {
       desafiosConcluidos,
       tempoEstudo,
       participacaoComunidade,
+      perguntasRespondidas,
+      perguntasFeitas,
     }
   } catch (error) {
     console.error('Error fetching user stats:', error)

@@ -21,6 +21,8 @@ export async function GET(request: NextRequest) {
       quizzesResult,
       desafiosResult,
       comunidadeResult,
+      perguntasRespondidasResult,
+      perguntasFeitasResult,
     ] = await Promise.all([
       // Aulas completas (baseado em XP history com source='aula')
       supabaseAdmin
@@ -49,6 +51,18 @@ export async function GET(request: NextRequest) {
         .select('id')
         .eq('autor_id', userId)
         .gte('created_at', startOfMonth.toISOString()),
+      
+      // Total de perguntas respondidas (todas as respostas)
+      supabaseAdmin
+        .from('respostas')
+        .select('id')
+        .eq('autor_id', userId),
+      
+      // Total de perguntas feitas pelo usuário
+      supabaseAdmin
+        .from('perguntas')
+        .select('id')
+        .eq('autor_id', userId),
     ])
 
     // Debug logs
@@ -67,6 +81,8 @@ export async function GET(request: NextRequest) {
     const quizCompletos = quizzesResult.data?.length || 0
     const desafiosConcluidos = desafiosResult.data?.length || 0
     const participacaoComunidade = comunidadeResult.data?.length || 0
+    const perguntasRespondidas = perguntasRespondidasResult.data?.length || 0
+    const perguntasFeitas = perguntasFeitasResult.data?.length || 0
 
     // Estimativa de tempo de estudo (30 min por aula, 10 min por quiz, 15 min por desafio)
     const tempoEstudo = (aulasCompletas * 30) + (quizCompletos * 10) + (desafiosConcluidos * 15)
@@ -77,6 +93,8 @@ export async function GET(request: NextRequest) {
       desafiosConcluidos,
       tempoEstudo,
       participacaoComunidade,
+      perguntasRespondidas,
+      perguntasFeitas,
     })
   } catch (error: any) {
     console.error('Erro ao buscar estatísticas:', error)

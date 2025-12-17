@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { mockRanking } from '@/data/aluno/mockRanking'
 import { mockUser } from '@/data/aluno/mockUser'
-import { Trophy, Medal, Award, TrendingUp } from 'lucide-react'
+import { Trophy, TrendingUp, HelpCircle, MessageSquare, CheckCircle, Target, FileText, Award } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/AuthContext'
 import { supabase } from '@/lib/supabase'
+import Modal from '@/components/ui/Modal'
 
 type RankingType = 'mensal' | 'geral'
 
@@ -19,7 +20,40 @@ export default function RankingPage() {
   const [error, setError] = useState<string>('')
   const [hotmartStatus, setHotmartStatus] = useState<string>('')
   const [ranking, setRanking] = useState<any[] | null>(null)
+  const [rankingMensal, setRankingMensal] = useState<any[] | null>(null)
+  const [isPontuacaoModalOpen, setIsPontuacaoModalOpen] = useState(false)
   
+  // Buscar ranking mensal para o Card Mural (sempre)
+  useEffect(() => {
+    let mounted = true
+    const run = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+        if (!token) return
+
+        const res = await fetch(`/api/ranking?type=mensal`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) return
+
+        if (!mounted) return
+        setRankingMensal(json?.ranking || [])
+      } catch (e: any) {
+        // Silencioso - não precisa mostrar erro aqui
+      }
+    }
+
+    run()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  // Buscar ranking conforme o tipo selecionado (para a lista)
+  // Mensal: ranking do mês atual (ordenado por xp_mensal)
+  // Geral: ranking all time (ordenado por xp total)
   useEffect(() => {
     let mounted = true
     const run = async () => {
@@ -30,6 +64,7 @@ export default function RankingPage() {
         const token = session?.access_token
         if (!token) throw new Error('Não autenticado')
 
+        // Busca ranking mensal ou geral conforme o seletor
         const res = await fetch(`/api/ranking?type=${rankingType}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -37,6 +72,9 @@ export default function RankingPage() {
         if (!res.ok) throw new Error(json?.error || 'Erro ao carregar ranking')
 
         if (!mounted) return
+        // ranking contém lista ordenada:
+        // - Se mensal: ordenado por xp_mensal (maior pontuação do mês)
+        // - Se geral: ordenado por xp (maior pontuação all time)
         setRanking(json?.ranking || [])
         setHotmartStatus(json?.hotmart?.message || '')
       } catch (e: any) {
@@ -54,17 +92,56 @@ export default function RankingPage() {
     }
   }, [rankingType])
 
+  const fallbackRankingMensal = useMemo(() => {
+    return mockRanking
+      .filter(user => user.accessLevel === 'full')
+      .sort((a, b) => b.xpMensal - a.xpMensal)
+      .map((user, index) => ({ ...user, position: index + 1, avatarUrl: user.avatar || null }))
+  }, [])
+
+  // Fallback ranking para quando a API não retornar dados
+  // Mensal: ordena por xpMensal (maior pontuação do mês)
+  // Geral: ordena por xp (maior pontuação all time)
   const fallbackRanking = useMemo(() => {
     return mockRanking
       .filter(user => user.accessLevel === 'full')
       .sort((a, b) => {
+        // Mensal: ordena por XP do mês
+        // Geral: ordena por XP total (all time)
         const xpA = rankingType === 'mensal' ? a.xpMensal : a.xp
         const xpB = rankingType === 'mensal' ? b.xpMensal : b.xp
-        return xpB - xpA
+        return xpB - xpA // Descendente (maior primeiro)
       })
       .map((user, index) => ({ ...user, position: index + 1, avatarUrl: user.avatar || null }))
   }, [rankingType])
 
+  // Campeão do mês para o Card Mural
+  const campeaoMensal = useMemo(() => {
+    if (rankingMensal && rankingMensal.length > 0) {
+      const u = rankingMensal[0]
+      return {
+        id: u.id,
+        name: u.name,
+        level: u.level,
+        xpMensal: u.xp_mensal,
+        avatarUrl: u.avatar_url || null,
+      }
+    }
+    // Fallback para mock
+    const fallback = fallbackRankingMensal[0]
+    return fallback ? {
+      id: fallback.id,
+      name: fallback.name,
+      level: fallback.level,
+      xpMensal: fallback.xpMensal,
+      avatarUrl: fallback.avatarUrl,
+    } : null
+  }, [rankingMensal, fallbackRankingMensal])
+
+  // Normaliza dados do ranking da API para o formato esperado
+  // A API já retorna ordenado corretamente:
+  // - Mensal: ordenado por xp_mensal (maior pontuação do mês primeiro)
+  // - Geral: ordenado por xp (maior pontuação all time primeiro)
   const filteredRanking = useMemo(() => {
     if (!ranking) return fallbackRanking
     // Adapter: API retorna xp/xp_mensal/level (snake_case), aqui normalizamos
@@ -72,15 +149,14 @@ export default function RankingPage() {
       id: u.id,
       name: u.name,
       level: u.level,
-      xp: u.xp,
-      xpMensal: u.xp_mensal,
+      xp: u.xp, // XP total (all time)
+      xpMensal: u.xp_mensal, // XP do mês
       position: u.position ?? idx + 1,
       accessLevel: 'full',
       avatarUrl: u.avatar_url || null,
     }))
   }, [ranking, fallbackRanking])
 
-  const top3 = filteredRanking.slice(0, 3)
   const currentUserId = authUser?.id || mockUser.id
   const currentUser = filteredRanking.find(u => u.id === currentUserId)
   const currentUserPosition = currentUser?.position || 0
@@ -120,9 +196,75 @@ export default function RankingPage() {
             {!loading && !error && hotmartStatus && `Hotmart: ${hotmartStatus}`}
           </div>
         )}
+      </div>
+
+      {/* Card Mural - Campeão do Mês */}
+      {campeaoMensal && (
+        <div className={cn(
+          "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
+          theme === 'dark'
+            ? "bg-black/20 border-white/10"
+            : "bg-white border-yellow-400/90 shadow-md"
+        )}>
+          <h2 className={cn(
+            "text-lg md:text-xl font-bold mb-4 md:mb-6 text-center",
+            theme === 'dark' ? "text-white" : "text-gray-900"
+          )}>
+            Campeão do Mês
+          </h2>
+          <div className="flex flex-col items-center justify-center max-w-md mx-auto">
+            <div className={cn(
+              "backdrop-blur-sm border rounded-xl p-4 md:p-6 w-full transition-colors duration-300",
+              theme === 'dark'
+                ? "bg-black/30 border-yellow-400/50"
+                : "bg-yellow-50 border-yellow-300"
+            )}>
+              <Trophy className={cn(
+                "w-8 h-8 md:w-12 md:h-12 mx-auto mb-3 md:mb-4",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )} />
+              {campeaoMensal.avatarUrl ? (
+                <img
+                  src={campeaoMensal.avatarUrl}
+                  alt={campeaoMensal.name}
+                  className="w-20 h-20 md:w-24 md:h-24 rounded-full mx-auto mb-3 md:mb-4 object-cover border-2 border-yellow-400"
+                />
+              ) : (
+                <div className={cn(
+                  "w-20 h-20 md:w-24 md:h-24 rounded-full mx-auto mb-3 md:mb-4 flex items-center justify-center font-bold text-2xl md:text-3xl",
+                  theme === 'dark'
+                    ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
+                    : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
+                )}>
+                  {campeaoMensal.name.charAt(0)}
+                </div>
+              )}
+              <p className={cn(
+                "font-semibold text-lg md:text-xl text-center mb-2",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                {campeaoMensal.name}
+              </p>
+              <p className={cn(
+                "text-sm md:text-base text-center mb-2",
+                theme === 'dark' ? "text-gray-400" : "text-gray-600"
+              )}>
+                Nível {campeaoMensal.level}
+              </p>
+              <p className={cn(
+                "font-bold text-center text-base md:text-lg",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )}>
+                {campeaoMensal.xpMensal.toLocaleString('pt-BR')} XP
+              </p>
+            </div>
+          </div>
+          </div>
+        )}
         
-        {/* Tabs Mensal/Geral */}
-        <div className="flex gap-2 mb-4">
+      {/* Seletores Mensal/Geral */}
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex gap-2 justify-center">
           <button
             onClick={() => setRankingType('mensal')}
             className={cn(
@@ -154,196 +296,18 @@ export default function RankingPage() {
             Geral
           </button>
         </div>
-      </div>
-
-      {/* Pódio */}
-      <div className={cn(
-        "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
+        <button
+          onClick={() => setIsPontuacaoModalOpen(true)}
+          className={cn(
+            "flex items-center gap-2 text-xs md:text-sm transition-colors",
         theme === 'dark'
-          ? "bg-black/20 border-white/10"
-          : "bg-white border-yellow-400/90 shadow-md"
-      )}>
-        <h2 className={cn(
-          "text-lg md:text-xl font-bold mb-4 md:mb-6 text-center",
-          theme === 'dark' ? "text-white" : "text-gray-900"
-        )}>
-          Pódio
-        </h2>
-        <div className="flex items-end justify-center gap-2 md:gap-4 max-w-2xl mx-auto">
-          {/* 2º Lugar */}
-          {top3[1] && (
-            <div className="flex-1 text-center min-w-0">
-              <div className={cn(
-                "backdrop-blur-sm border rounded-t-xl p-2 md:p-4 pb-6 md:pb-8 transition-colors duration-300",
-                theme === 'dark'
-                  ? "bg-black/30 border-white/10"
-                  : "bg-gray-50 border-gray-200"
-              )}>
-                <Medal className={cn(
-                  "w-6 h-6 md:w-8 md:h-8 mx-auto mb-1 md:mb-2",
-                  theme === 'dark' ? "text-gray-400" : "text-gray-500"
-                )} />
-                {top3[1].avatarUrl ? (
-                  <img
-                    src={top3[1].avatarUrl}
-                    alt={top3[1].name}
-                    className="w-12 h-12 md:w-16 md:h-16 rounded-full mx-auto mb-1 md:mb-2 object-cover border-2 border-gray-400"
-                  />
-                ) : (
-                  <div className={cn(
-                    "w-12 h-12 md:w-16 md:h-16 rounded-full mx-auto mb-1 md:mb-2 flex items-center justify-center font-bold text-base md:text-xl",
-                    theme === 'dark'
-                      ? "bg-gradient-to-br from-gray-400 to-gray-600 text-black"
-                      : "bg-gradient-to-br from-gray-500 to-gray-600 text-white"
-                  )}>
-                    {top3[1].name.charAt(0)}
-                  </div>
-                )}
-                <p className={cn(
-                  "font-semibold text-sm md:text-base truncate px-1",
-                  theme === 'dark' ? "text-white" : "text-gray-900"
-                )}>
-                  {top3[1].name}
-                </p>
-                <p className={cn(
-                  "text-xs md:text-sm",
-                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                )}>
-                  Nível {top3[1].level}
-                </p>
-                <p className={cn(
-                  "font-bold mt-1 md:mt-2 text-xs md:text-sm",
-                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                )}>
-                  {rankingType === 'mensal' ? top3[1].xpMensal : top3[1].xp} XP
-                </p>
-              </div>
-              <div className={cn(
-                "font-bold py-1 md:py-2 rounded-b-xl border text-xs md:text-sm transition-colors duration-300",
-                theme === 'dark'
-                  ? "bg-yellow-400/20 text-yellow-400 border-yellow-400/30"
-                  : "bg-yellow-100 text-yellow-700 border-yellow-300"
-              )}>
-                #2
-              </div>
-            </div>
+              ? "text-gray-400 hover:text-yellow-400"
+              : "text-gray-600 hover:text-yellow-600"
           )}
-
-          {/* 1º Lugar */}
-          {top3[0] && (
-            <div className="flex-1 text-center min-w-0">
-              <div className={cn(
-                "backdrop-blur-sm border rounded-t-xl p-2 md:p-4 pb-8 md:pb-12 transition-colors duration-300",
-                theme === 'dark'
-                  ? "bg-black/30 border-yellow-400/50"
-                  : "bg-yellow-50 border-yellow-300"
-              )}>
-                <Trophy className={cn(
-                  "w-8 h-8 md:w-12 md:h-12 mx-auto mb-1 md:mb-2",
-                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                )} />
-                {top3[0].avatarUrl ? (
-                  <img
-                    src={top3[0].avatarUrl}
-                    alt={top3[0].name}
-                    className="w-14 h-14 md:w-20 md:h-20 rounded-full mx-auto mb-1 md:mb-2 object-cover border-2 border-yellow-400"
-                  />
-                ) : (
-                  <div className={cn(
-                    "w-14 h-14 md:w-20 md:h-20 rounded-full mx-auto mb-1 md:mb-2 flex items-center justify-center font-bold text-lg md:text-2xl",
-                    theme === 'dark'
-                      ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
-                      : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
-                  )}>
-                    {top3[0].name.charAt(0)}
-                  </div>
-                )}
-                <p className={cn(
-                  "font-semibold text-sm md:text-base truncate px-1",
-                  theme === 'dark' ? "text-white" : "text-gray-900"
-                )}>
-                  {top3[0].name}
-                </p>
-                <p className={cn(
-                  "text-xs md:text-sm",
-                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                )}>
-                  Nível {top3[0].level}
-                </p>
-                <p className={cn(
-                  "font-bold mt-1 md:mt-2 text-xs md:text-sm",
-                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                )}>
-                  {rankingType === 'mensal' ? top3[0].xpMensal : top3[0].xp} XP
-                </p>
-              </div>
-              <div className={cn(
-                "font-bold py-1 md:py-2 rounded-b-xl text-xs md:text-sm transition-colors duration-300",
-                theme === 'dark'
-                  ? "bg-yellow-400 text-black"
-                  : "bg-yellow-500 text-white"
-              )}>
-                #1
-              </div>
-            </div>
-          )}
-
-          {/* 3º Lugar */}
-          {top3[2] && (
-            <div className="flex-1 text-center min-w-0">
-              <div className={cn(
-                "backdrop-blur-sm border rounded-t-xl p-2 md:p-4 pb-4 md:pb-6 transition-colors duration-300",
-                theme === 'dark'
-                  ? "bg-black/30 border-white/10"
-                  : "bg-orange-50 border-orange-200"
-              )}>
-                <Award className="w-6 h-6 md:w-8 md:h-8 text-orange-500 mx-auto mb-1 md:mb-2" />
-                {top3[2].avatarUrl ? (
-                  <img
-                    src={top3[2].avatarUrl}
-                    alt={top3[2].name}
-                    className="w-12 h-12 md:w-16 md:h-16 rounded-full mx-auto mb-1 md:mb-2 object-cover border-2 border-orange-400"
-                  />
-                ) : (
-                  <div className={cn(
-                    "w-12 h-12 md:w-16 md:h-16 rounded-full mx-auto mb-1 md:mb-2 flex items-center justify-center font-bold text-base md:text-xl",
-                    theme === 'dark'
-                      ? "bg-gradient-to-br from-orange-400 to-orange-600 text-black"
-                      : "bg-gradient-to-br from-orange-500 to-orange-600 text-white"
-                  )}>
-                    {top3[2].name.charAt(0)}
-                  </div>
-                )}
-                <p className={cn(
-                  "font-semibold text-sm md:text-base truncate px-1",
-                  theme === 'dark' ? "text-white" : "text-gray-900"
-                )}>
-                  {top3[2].name}
-                </p>
-                <p className={cn(
-                  "text-xs md:text-sm",
-                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                )}>
-                  Nível {top3[2].level}
-                </p>
-                <p className={cn(
-                  "font-bold mt-1 md:mt-2 text-xs md:text-sm",
-                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                )}>
-                  {rankingType === 'mensal' ? top3[2].xpMensal : top3[2].xp} XP
-                </p>
-              </div>
-              <div className={cn(
-                "font-bold py-1 md:py-2 rounded-b-xl border text-xs md:text-sm transition-colors duration-300",
-                theme === 'dark'
-                  ? "bg-orange-500/20 text-orange-400 border-orange-500/30"
-                  : "bg-orange-100 text-orange-700 border-orange-300"
-              )}>
-                #3
-              </div>
-            </div>
-          )}
-        </div>
+        >
+          <HelpCircle className="w-4 h-4" />
+          Como funcionam os pontos?
+        </button>
       </div>
 
       {/* Ranking Completo */}
@@ -433,6 +397,7 @@ export default function RankingPage() {
                   "font-bold text-xs md:text-sm",
                   theme === 'dark' ? "text-white" : "text-gray-900"
                 )}>
+                  {/* Mensal: mostra XP do mês | Geral: mostra XP total (all time) */}
                   {(rankingType === 'mensal' ? user.xpMensal : user.xp).toLocaleString('pt-BR')} XP
                 </p>
                 <p className={cn(
@@ -446,6 +411,283 @@ export default function RankingPage() {
           ))}
         </div>
       </div>
+
+      {/* Modal Como funcionam os pontos */}
+      <Modal
+        isOpen={isPontuacaoModalOpen}
+        onClose={() => setIsPontuacaoModalOpen(false)}
+        title="Como funcionam os pontos?"
+        size="lg"
+      >
+        <div className="space-y-4 md:space-y-6">
+          {/* Seção Comunidade */}
+          <div>
+            <div className="flex items-center gap-2 mb-2 md:mb-3">
+              <MessageSquare className={cn(
+                "w-4 h-4 md:w-5 md:h-5 flex-shrink-0",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )} />
+              <h3 className={cn(
+                "text-base md:text-lg font-bold",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                Comunidade
+              </h3>
+            </div>
+            <div className="space-y-2">
+              <div className={cn(
+                "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
+                theme === 'dark' 
+                  ? "bg-black/30 border-white/10" 
+                  : "bg-gray-50 border-gray-200"
+              )}>
+                <span className={cn(
+                  "text-xs md:text-sm flex-1 min-w-0",
+                  theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                )}>
+                  Pergunta
+                </span>
+                <span className={cn(
+                  "font-bold text-sm md:text-base flex-shrink-0",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )}>
+                  10 XP
+                </span>
+              </div>
+              <div className={cn(
+                "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
+                theme === 'dark' 
+                  ? "bg-black/30 border-white/10" 
+                  : "bg-gray-50 border-gray-200"
+              )}>
+                <span className={cn(
+                  "text-xs md:text-sm flex-1 min-w-0",
+                  theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                )}>
+                  Resposta
+                </span>
+                <span className={cn(
+                  "font-bold text-sm md:text-base flex-shrink-0",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )}>
+                  1 XP
+                </span>
+              </div>
+              <div className={cn(
+                "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
+                theme === 'dark' 
+                  ? "bg-black/30 border-white/10" 
+                  : "bg-gray-50 border-gray-200"
+              )}>
+                <span className={cn(
+                  "text-xs md:text-sm flex-1 min-w-0 break-words",
+                  theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                )}>
+                  Resposta marcada como certa pelo autor
+                </span>
+                <span className={cn(
+                  "font-bold text-sm md:text-base flex-shrink-0",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )}>
+                  100 XP
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Seção Quiz */}
+          <div>
+            <div className="flex items-center gap-2 mb-2 md:mb-3">
+              <CheckCircle className={cn(
+                "w-4 h-4 md:w-5 md:h-5 flex-shrink-0",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )} />
+              <h3 className={cn(
+                "text-base md:text-lg font-bold",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                Quiz
+              </h3>
+            </div>
+            <div className={cn(
+              "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
+              theme === 'dark' 
+                ? "bg-black/30 border-white/10" 
+                : "bg-gray-50 border-gray-200"
+            )}>
+              <span className={cn(
+                "text-xs md:text-sm flex-1 min-w-0",
+                theme === 'dark' ? "text-gray-300" : "text-gray-700"
+              )}>
+                Quiz (percentual de acertos)
+              </span>
+              <span className={cn(
+                "font-bold text-sm md:text-base flex-shrink-0",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )}>
+                20 XP
+              </span>
+            </div>
+            <p className={cn(
+              "text-xs mt-2 leading-relaxed",
+              theme === 'dark' ? "text-gray-400" : "text-gray-600"
+            )}>
+              Se acertou todas as perguntas, leva a pontuação toda. Se não acertou todas, leva o percentual de acerto × o valor total. Ex: 80% de acerto = 16 XP
+            </p>
+          </div>
+
+          {/* Seção Desafios */}
+          <div>
+            <div className="flex items-center gap-2 mb-2 md:mb-3">
+              <Target className={cn(
+                "w-4 h-4 md:w-5 md:h-5 flex-shrink-0",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )} />
+              <h3 className={cn(
+                "text-base md:text-lg font-bold",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                Desafios
+              </h3>
+            </div>
+            <div className={cn(
+              "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
+              theme === 'dark' 
+                ? "bg-black/30 border-white/10" 
+                : "bg-gray-50 border-gray-200"
+            )}>
+              <span className={cn(
+                "text-xs md:text-sm flex-1 min-w-0",
+                theme === 'dark' ? "text-gray-300" : "text-gray-700"
+              )}>
+                Desafio concluído
+              </span>
+              <span className={cn(
+                "font-bold text-sm md:text-base flex-shrink-0",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )}>
+                40 XP
+              </span>
+            </div>
+          </div>
+
+          {/* Seção Formulários */}
+          <div>
+            <div className="flex items-center gap-2 mb-2 md:mb-3">
+              <FileText className={cn(
+                "w-4 h-4 md:w-5 md:h-5 flex-shrink-0",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )} />
+              <h3 className={cn(
+                "text-base md:text-lg font-bold",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                Formulários
+              </h3>
+            </div>
+            <div className={cn(
+              "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
+              theme === 'dark' 
+                ? "bg-black/30 border-white/10" 
+                : "bg-gray-50 border-gray-200"
+            )}>
+              <span className={cn(
+                "text-xs md:text-sm flex-1 min-w-0",
+                theme === 'dark' ? "text-gray-300" : "text-gray-700"
+              )}>
+                Formulário preenchido
+              </span>
+              <span className={cn(
+                "font-bold text-sm md:text-base flex-shrink-0",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )}>
+                1 XP
+              </span>
+            </div>
+          </div>
+
+          {/* Seção Níveis */}
+          <div>
+            <div className="flex items-center gap-2 mb-2 md:mb-3">
+              <Award className={cn(
+                "w-4 h-4 md:w-5 md:h-5 flex-shrink-0",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )} />
+              <h3 className={cn(
+                "text-base md:text-lg font-bold",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                Níveis
+              </h3>
+            </div>
+            <p className={cn(
+              "text-xs md:text-sm mb-3 md:mb-4",
+              theme === 'dark' ? "text-gray-300" : "text-gray-700"
+            )}>
+              Os níveis vão de 1 a 9, sendo:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-3">
+              <div className={cn(
+                "p-3 md:p-4 rounded-lg text-center border",
+                theme === 'dark' 
+                  ? "bg-black/30 border-white/10" 
+                  : "bg-gray-50 border-gray-200"
+              )}>
+                <p className={cn(
+                  "font-bold text-xs md:text-sm mb-1",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )}>
+                  Iniciante
+                </p>
+                <p className={cn(
+                  "text-xs",
+                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                )}>
+                  Níveis 1 a 3
+                </p>
+              </div>
+              <div className={cn(
+                "p-3 md:p-4 rounded-lg text-center border",
+                theme === 'dark' 
+                  ? "bg-black/30 border-white/10" 
+                  : "bg-gray-50 border-gray-200"
+              )}>
+                <p className={cn(
+                  "font-bold text-xs md:text-sm mb-1",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )}>
+                  Intermediário
+                </p>
+                <p className={cn(
+                  "text-xs",
+                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                )}>
+                  Níveis 4 a 6
+                </p>
+              </div>
+              <div className={cn(
+                "p-3 md:p-4 rounded-lg text-center border",
+                theme === 'dark' 
+                  ? "bg-black/30 border-white/10" 
+                  : "bg-gray-50 border-gray-200"
+              )}>
+                <p className={cn(
+                  "font-bold text-xs md:text-sm mb-1",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )}>
+                  Avançado
+                </p>
+                <p className={cn(
+                  "text-xs",
+                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                )}>
+                  Níveis 7 a 9
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

@@ -432,9 +432,9 @@ export default function FormularioPage() {
       setSuccess(true)
       setJaRespondido(true)
       
-      // Redirecionar após 2 segundos
+      // Redirecionar para página inicial após 2 segundos
       setTimeout(() => {
-        router.push('/aluno/formularios')
+        router.push('/aluno')
       }, 2000)
     } catch (error: any) {
       console.error('Erro ao salvar resposta:', error)

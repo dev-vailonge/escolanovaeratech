@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useRouter } from 'next/navigation'
 import { X, Bell, Info, AlertTriangle, RefreshCw, Check, CheckCheck } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { useNotifications } from '@/lib/NotificationsContext'
@@ -65,13 +66,16 @@ function NotificationIcon({ tipo }: { tipo: DatabaseNotificacao['tipo'] }) {
 function NotificationCard({ 
   notification, 
   isRead, 
-  onMarkAsRead 
+  onMarkAsRead,
+  onClose
 }: { 
   notification: DatabaseNotificacao
   isRead: boolean
   onMarkAsRead: () => void
+  onClose?: () => void
 }) {
   const { theme } = useTheme()
+  const router = useRouter()
   
   const tipoLabel = {
     info: 'Informação',
@@ -79,13 +83,27 @@ function NotificationCard({
     warning: 'Aviso',
   }
 
+  const handleClick = () => {
+    if (notification.action_url) {
+      onMarkAsRead()
+      if (onClose) {
+        onClose()
+      }
+      router.push(notification.action_url)
+    }
+  }
+
+  const isClickable = !!notification.action_url
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
+      onClick={handleClick}
       className={cn(
         "p-4 rounded-xl border transition-all duration-200",
+        isClickable && "cursor-pointer",
         isRead 
           ? theme === 'dark' 
             ? "bg-white/5 border-white/5 opacity-50" 
@@ -131,7 +149,10 @@ function NotificationCard({
             
             {!isRead && (
               <button
-                onClick={onMarkAsRead}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onMarkAsRead()
+                }}
                 className={cn(
                   "p-1.5 rounded-lg transition-colors flex-shrink-0",
                   theme === 'dark'
@@ -389,6 +410,7 @@ export default function NotificationsModal() {
             ) : (
               notifications.map((notification) => (
                 <NotificationCard
+                  onClose={closeModal}
                   key={notification.id}
                   notification={notification}
                   isRead={readIds.has(notification.id)}

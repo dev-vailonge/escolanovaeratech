@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import Link from 'next/link'
 
 export default function Home() {
   const [email, setEmail] = useState('')
@@ -170,12 +171,20 @@ export default function Home() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-sm border-b border-white/10">
         <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-white">Nova Era</h1>
-          <a 
-            href="/materiais-gratuitos"
-            className="text-yellow-400 hover:text-yellow-300 transition-colors font-medium"
-          >
-            Materiais Gratuitos
-          </a>
+          <div className="flex items-center gap-4">
+            <a 
+              href="/materiais-gratuitos"
+              className="text-yellow-400 hover:text-yellow-300 transition-colors font-medium"
+            >
+              Materiais Gratuitos
+            </a>
+            <Link
+              href="/aluno/login"
+              className="px-4 py-2 rounded-lg bg-yellow-400/20 text-yellow-300 font-semibold border border-yellow-400 hover:bg-yellow-400/30 transition-all"
+            >
+              Entrar na área de membros
+            </Link>
+          </div>
         </nav>
       </header>
 

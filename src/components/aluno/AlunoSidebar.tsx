@@ -37,20 +37,22 @@ const mainMenuItems = [
 // NOTA: Painel Admin foi removido daqui - será adicionado dinamicamente se o usuário for admin
 // NOTA: Perfil foi movido para a bottom bar, então foi removido daqui
 // NOTA: Comunidade foi movida para a bottom bar, então foi removida daqui
-// NOTA: Aulas foi movida da bottom bar para a modal
+// NOTA: Plano de Estudos aparece apenas no menu modal e no sidebar desktop
+// NOTA: Formulários foi removido - acesso apenas via notificações
 const baseMenuModalItems = [
-  { icon: BookOpen, label: 'Aulas', href: '/aluno/aulas' },
+  { icon: BookOpen, label: 'Plano de Estudos', href: '/aluno/aulas' },
   { icon: HelpCircle, label: 'Quiz', href: '/aluno/quiz' },
   { icon: Target, label: 'Desafios', href: '/aluno/desafios' },
-  { icon: ClipboardList, label: 'Formulários', href: '/aluno/formularios' },
 ]
 
 // Menu items secundários (apenas no sidebar desktop)
 // NOTA: Perfil e Comunidade foram removidos daqui pois já estão em mainMenuItems
+// NOTA: Plano de Estudos aparece aqui também para o sidebar desktop
+// NOTA: Formulários foi removido - acesso apenas via notificações
 const secondaryMenuItems = [
+  { icon: BookOpen, label: 'Plano de Estudos', href: '/aluno/aulas' },
   { icon: HelpCircle, label: 'Quiz', href: '/aluno/quiz' },
   { icon: Target, label: 'Desafios', href: '/aluno/desafios' },
-  { icon: ClipboardList, label: 'Formulários', href: '/aluno/formularios' },
 ]
 
 // Menu items administrativos (apenas para admins)
@@ -275,7 +277,7 @@ export default function AlunoSidebar() {
         }}
       >
         <div className="relative flex items-center justify-between px-4 sm:px-6 md:px-4 lg:px-6 py-2 safe-area-bottom max-w-full">
-          {/* Primeiros dois itens: Início e Aulas */}
+          {/* Primeiros dois itens: Início e Ranking */}
           {mainMenuItems.slice(0, 2).map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
@@ -377,7 +379,7 @@ export default function AlunoSidebar() {
             </button>
           </div>
 
-          {/* Últimos dois itens: Ranking e Perfil */}
+          {/* Últimos dois itens: Comunidade e Perfil */}
           {mainMenuItems.slice(2).map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href

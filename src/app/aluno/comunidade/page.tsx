@@ -1,6 +1,6 @@
 'use client'
 
-import { MessageSquare, ThumbsUp, Eye, CheckCircle2, Tag, Search, Plus, Filter, Edit, Trash2 } from 'lucide-react'
+import { MessageSquare, ThumbsUp, Eye, CheckCircle2, Tag, Search, Plus, Filter, Edit, Trash2, RefreshCw } from 'lucide-react'
 import { useState, useMemo, useRef, useLayoutEffect, useEffect } from 'react'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
@@ -32,6 +32,7 @@ interface Pergunta {
   melhorRespostaId?: string | null
   categoria: string | null
   created_at: string
+  curtida?: boolean // Se o usuário atual curtiu esta pergunta
 }
 
 interface Resposta {
@@ -53,6 +54,8 @@ export default function ComunidadePage() {
   const [perguntas, setPerguntas] = useState<Pergunta[]>([])
   const [respostas, setRespostas] = useState<Map<string, Resposta[]>>(new Map())
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [avatarErrors, setAvatarErrors] = useState<Set<string>>(new Set())
   const { theme } = useTheme()
   const { user } = useAuth()
 
@@ -84,13 +87,13 @@ export default function ComunidadePage() {
   const [error, setError] = useState<string>('')
   const [success, setSuccess] = useState<string>('')
   const [respostaMensagem, setRespostaMensagem] = useState<Map<string, string>>(new Map())
+  const [visualizacoesRegistradas, setVisualizacoesRegistradas] = useState<Set<string>>(new Set())
 
   // Buscar perguntas do banco
   const fetchPerguntas = async () => {
     try {
       setLoading(true)
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
+      const token = await getAuthToken()
 
       const params = new URLSearchParams()
       if (filterOwner === 'mine' && currentUserId) {
@@ -126,8 +129,7 @@ export default function ComunidadePage() {
   // Buscar respostas de uma pergunta
   const fetchRespostas = async (perguntaId: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
+      const token = await getAuthToken()
 
       const res = await fetch(`/api/comunidade/perguntas/${perguntaId}/respostas`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -149,6 +151,22 @@ export default function ComunidadePage() {
   useEffect(() => {
     fetchPerguntas()
   }, [filterOwner, filterStatus, filterTechnology, searchQuery, currentUserId])
+
+  // Função para atualizar a página
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    try {
+      await fetchPerguntas()
+      // Recarregar respostas de todas as perguntas abertas
+      if (showRespostas) {
+        await fetchRespostas(showRespostas)
+      }
+    } catch (e) {
+      console.error('Erro ao atualizar:', e)
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   const selectedPergunta = useMemo(
     () => perguntas.find((p) => p.id === selectedPerguntaId) || null,
@@ -232,9 +250,11 @@ export default function ComunidadePage() {
 
       setSuccess('✅ Resposta enviada! O autor da pergunta pode marcar como válida para você ganhar XP.')
       setRespostaConteudo('')
+      const perguntaIdParaAtualizar = selectedPergunta.id
       setSelectedPerguntaId(null)
+      setIsSubmitting(false) // Desativar loading antes de recarregar
       await fetchPerguntas()
-      await fetchRespostas(selectedPergunta.id)
+      await fetchRespostas(perguntaIdParaAtualizar)
     } catch (e: any) {
       setError(e?.message || 'Erro ao enviar resposta')
     } finally {
@@ -370,6 +390,7 @@ export default function ComunidadePage() {
       setPerguntaTags('')
       setPerguntaCategoria('')
       setShowCriarPergunta(false)
+      setIsSubmitting(false) // Desativar loading antes de recarregar
       await fetchPerguntas()
     } catch (e: any) {
       console.error('❌ Exceção ao criar pergunta:', e)
@@ -378,6 +399,45 @@ export default function ComunidadePage() {
     } finally {
       console.log('🏁 Finalizando (setIsSubmitting(false))')
       setIsSubmitting(false)
+    }
+  }
+
+  const curtirPergunta = async (perguntaId: string) => {
+    if (!user?.id) {
+      setError('Você precisa estar logado para curtir perguntas.')
+      return
+    }
+
+    try {
+      const token = await getAuthToken()
+      if (!token) {
+        setError('Não foi possível obter o token de autenticação.')
+        return
+      }
+
+      const res = await fetch(`/api/comunidade/perguntas/${perguntaId}/votar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      })
+
+      const json = await res.json()
+
+      if (!res.ok) {
+        setError(json?.error || 'Erro ao curtir pergunta')
+        return
+      }
+
+      // Atualizar o estado local da pergunta
+      setPerguntas((prev) =>
+        prev.map((p) =>
+          p.id === perguntaId
+            ? { ...p, votos: json.votos, curtida: json.curtida }
+            : p
+        )
+      )
+    } catch (e: any) {
+      console.error('Erro ao curtir pergunta:', e)
+      setError(e?.message || 'Erro ao curtir pergunta')
     }
   }
 
@@ -471,11 +531,44 @@ export default function ComunidadePage() {
     }
   }
 
+  // Registrar visualização de uma pergunta
+  const registrarVisualizacao = async (perguntaId: string) => {
+    // Evitar registrar múltiplas vezes na mesma sessão
+    if (visualizacoesRegistradas.has(perguntaId)) {
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/comunidade/perguntas/${perguntaId}/visualizar`, {
+        method: 'POST',
+      })
+
+      if (res.ok) {
+        const json = await res.json()
+        // Atualizar o estado local
+        setPerguntas((prev) =>
+          prev.map((p) =>
+            p.id === perguntaId
+              ? { ...p, visualizacoes: json.visualizacoes }
+              : p
+          )
+        )
+        // Marcar como registrada
+        setVisualizacoesRegistradas((prev) => new Set(prev).add(perguntaId))
+      }
+    } catch (e) {
+      // Silenciosamente falhar - não é crítico
+      console.warn('Erro ao registrar visualização:', e)
+    }
+  }
+
   const toggleRespostas = async (perguntaId: string) => {
     if (showRespostas === perguntaId) {
       setShowRespostas(null)
     } else {
       setShowRespostas(perguntaId)
+      // Registrar visualização quando abre as respostas
+      await registrarVisualizacao(perguntaId)
       if (!respostas.has(perguntaId)) {
         await fetchRespostas(perguntaId)
       }
@@ -978,15 +1071,31 @@ export default function ComunidadePage() {
             Faça perguntas e ajude outros alunos
           </p>
         </div>
-        {canCreate && (
+        <div className="flex items-center gap-2">
           <button 
-            className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto"
-            onClick={() => setShowCriarPergunta(true)}
+            className={cn(
+              "flex items-center justify-center gap-2 px-4 py-2 rounded-lg border transition-colors",
+              theme === 'dark'
+                ? "bg-black/50 border-white/10 text-white hover:bg-black/70 hover:border-white/20"
+                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400",
+              refreshing && "opacity-50 cursor-not-allowed"
+            )}
+            onClick={handleRefresh}
+            disabled={refreshing}
           >
-          <Plus className="w-4 h-4 md:w-5 md:h-5" />
-          <span className="text-sm md:text-base">Fazer Pergunta</span>
-        </button>
-        )}
+            <RefreshCw className={cn("w-4 h-4 md:w-5 md:h-5", refreshing && "animate-spin")} />
+            <span className="text-sm md:text-base">Atualizar</span>
+          </button>
+          {canCreate && (
+            <button 
+              className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto"
+              onClick={() => setShowCriarPergunta(true)}
+            >
+              <Plus className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="text-sm md:text-base">Fazer Pergunta</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stats */}
@@ -1201,27 +1310,43 @@ export default function ComunidadePage() {
                     ? "bg-black/20 border-white/10 hover:border-yellow-400/50"
                     : "bg-white border-yellow-400/90 shadow-md hover:border-yellow-500 hover:shadow-lg"
               )}
+              onMouseEnter={() => {
+                // Registrar visualização quando o mouse entra no card (hover)
+                registrarVisualizacao(pergunta.id)
+              }}
             >
               <div className="flex gap-3 md:gap-4">
                 {/* Votes */}
                 <div className="flex flex-col items-center gap-2 flex-shrink-0">
-                  <div className={cn(
-                    "flex flex-col items-center p-2 md:p-3 backdrop-blur-sm rounded-lg border",
-                    theme === 'dark'
-                      ? "bg-black/30 border-white/10"
-                      : "bg-gray-50 border-gray-200"
-                  )}>
+                  <button
+                    onClick={() => curtirPergunta(pergunta.id)}
+                    className={cn(
+                      "flex flex-col items-center p-2 md:p-3 backdrop-blur-sm rounded-lg border transition-all duration-200 cursor-pointer",
+                      pergunta.curtida
+                        ? theme === 'dark'
+                          ? "bg-yellow-500/20 border-yellow-400/50 hover:bg-yellow-500/30"
+                          : "bg-yellow-100 border-yellow-400 hover:bg-yellow-200"
+                        : theme === 'dark'
+                          ? "bg-black/30 border-white/10 hover:bg-black/50 hover:border-yellow-400/30"
+                          : "bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-yellow-400"
+                    )}
+                    title={pergunta.curtida ? "Descurtir pergunta" : "Curtir pergunta"}
+                  >
                     <ThumbsUp className={cn(
-                      "w-4 h-4 md:w-5 md:h-5",
-                      theme === 'dark' ? "text-gray-400" : "text-gray-500"
+                      "w-4 h-4 md:w-5 md:h-5 transition-colors",
+                      pergunta.curtida
+                        ? "text-yellow-400"
+                        : theme === 'dark' ? "text-gray-400" : "text-gray-500"
                     )} />
                     <span className={cn(
-                      "font-semibold mt-1 text-xs md:text-sm",
-                      theme === 'dark' ? "text-white" : "text-gray-900"
+                      "font-semibold mt-1 text-xs md:text-sm transition-colors",
+                      pergunta.curtida
+                        ? "text-yellow-400"
+                        : theme === 'dark' ? "text-white" : "text-gray-900"
                     )}>
                       {pergunta.votos}
                     </span>
-                  </div>
+                  </button>
                   {pergunta.resolvida && (
                     <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
                   )}
@@ -1290,14 +1415,25 @@ export default function ComunidadePage() {
                       <span className="whitespace-nowrap">{pergunta.respostas} respostas</span>
                     </div>
                     <span className="flex items-center gap-1 truncate">
-                      <div className={cn(
-                        "w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0",
-                        theme === 'dark'
-                          ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
-                          : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
-                      )}>
-                        {pergunta.autor.nome.charAt(0)}
-                      </div>
+                      {pergunta.autor.avatar && !avatarErrors.has(`pergunta-${pergunta.autor.id}`) ? (
+                        <img
+                          src={pergunta.autor.avatar}
+                          alt={pergunta.autor.nome}
+                          className="w-4 h-4 md:w-5 md:h-5 rounded-full object-cover flex-shrink-0 border border-white/10"
+                          onError={() => {
+                            setAvatarErrors((prev) => new Set(prev).add(`pergunta-${pergunta.autor.id}`))
+                          }}
+                        />
+                      ) : (
+                        <div className={cn(
+                          "w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0",
+                          theme === 'dark'
+                            ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
+                            : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
+                        )}>
+                          {pergunta.autor.nome.charAt(0)}
+                        </div>
+                      )}
                       <span className="truncate">{pergunta.autor.nome} • Nível {pergunta.autor.nivel}</span>
                     </span>
                   </div>
@@ -1378,14 +1514,25 @@ export default function ComunidadePage() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2">
-                                      <div className={cn(
-                                        "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                                        theme === 'dark'
-                                          ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
-                                          : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
-                                      )}>
-                                        {resposta.autor.nome.charAt(0)}
-                                      </div>
+                                      {resposta.autor.avatar && !avatarErrors.has(`resposta-${resposta.autor.id}`) ? (
+                                        <img
+                                          src={resposta.autor.avatar}
+                                          alt={resposta.autor.nome}
+                                          className="w-6 h-6 rounded-full object-cover flex-shrink-0 border border-white/10"
+                                          onError={() => {
+                                            setAvatarErrors((prev) => new Set(prev).add(`resposta-${resposta.autor.id}`))
+                                          }}
+                                        />
+                                      ) : (
+                                        <div className={cn(
+                                          "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                                          theme === 'dark'
+                                            ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
+                                            : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
+                                        )}>
+                                          {resposta.autor.nome.charAt(0)}
+                                        </div>
+                                      )}
                                       <span className={cn(
                                         "text-xs font-medium",
                                         theme === 'dark' ? "text-gray-300" : "text-gray-700"

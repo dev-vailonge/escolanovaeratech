@@ -24,7 +24,7 @@ export default function PerfilPage() {
     coins: authUser.coins ?? mockUser.coins,
     streak: authUser.streak ?? mockUser.streak,
     avatarUrl: authUser.avatarUrl ?? null,
-    bio: authUser.bio ?? mockUser.bio,
+    bio: authUser.bio ?? null, // Não usar mockUser.bio como fallback - deixar null para novos usuários
     joinDate: authUser.createdAt ?? mockUser.joinDate,
   } : mockUser
   const stats = mockStats
@@ -43,7 +43,7 @@ export default function PerfilPage() {
 
   const [editOpen, setEditOpen] = useState(false)
   const [name, setName] = useState(user.name)
-  const [bio, setBio] = useState(user.bio || '')
+  const [bio, setBio] = useState(user.bio || '') // Estado do formulário - pode estar vazio
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(avatarUrl)
   const [saving, setSaving] = useState(false)
@@ -157,60 +157,104 @@ export default function PerfilPage() {
   }
 
   const cropAvatarToFile = async (): Promise<File | null> => {
-    if (!avatarFile || !imgNatural || cropBoxSize <= 0) return avatarFile
-
-    const S = cropBoxSize
-    const baseScale = Math.max(S / imgNatural.w, S / imgNatural.h)
-    const scale = baseScale * cropZoom
-    const drawW = imgNatural.w * scale
-    const drawH = imgNatural.h * scale
-
-    // posição do canto superior esquerdo do image no box
-    const imgLeft = (S - drawW) / 2 + cropOffset.x
-    const imgTop = (S - drawH) / 2 + cropOffset.y
-
-    let srcX = (0 - imgLeft) / scale
-    let srcY = (0 - imgTop) / scale
-    const srcSize = S / scale
-
-    // clamp na imagem
-    srcX = Math.max(0, Math.min(imgNatural.w - srcSize, srcX))
-    srcY = Math.max(0, Math.min(imgNatural.h - srcSize, srcY))
-
-    const outSize = 512
-    const canvas = document.createElement('canvas')
-    canvas.width = outSize
-    canvas.height = outSize
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return avatarFile
-
-    // load image
-    let bitmap: ImageBitmap | null = null
-    if ('createImageBitmap' in window) {
-      try {
-        bitmap = await createImageBitmap(avatarFile)
-      } catch {
-        bitmap = null
+    try {
+      if (!avatarFile) return null
+      
+      // Se não há dados de crop, retornar o arquivo original
+      if (!imgNatural || cropBoxSize <= 0) {
+        return avatarFile
       }
-    }
 
-    if (bitmap) {
-      ctx.drawImage(bitmap, srcX, srcY, srcSize, srcSize, 0, 0, outSize, outSize)
-      bitmap.close()
-    } else {
-      const url = URL.createObjectURL(avatarFile)
-      const img = new Image()
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve()
-        img.onerror = () => reject(new Error('Falha ao carregar imagem'))
-        img.src = url
-      })
-      ctx.drawImage(img, srcX, srcY, srcSize, srcSize, 0, 0, outSize, outSize)
-      URL.revokeObjectURL(url)
-    }
+      const S = cropBoxSize
+      const baseScale = Math.max(S / imgNatural.w, S / imgNatural.h)
+      const scale = baseScale * cropZoom
+      const drawW = imgNatural.w * scale
+      const drawH = imgNatural.h * scale
 
-    const blob: Blob = await new Promise((resolve) => canvas.toBlob((b) => resolve(b as Blob), 'image/jpeg', 0.9))
-    return new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
+      // posição do canto superior esquerdo do image no box
+      const imgLeft = (S - drawW) / 2 + cropOffset.x
+      const imgTop = (S - drawH) / 2 + cropOffset.y
+
+      let srcX = (0 - imgLeft) / scale
+      let srcY = (0 - imgTop) / scale
+      const srcSize = S / scale
+
+      // clamp na imagem
+      srcX = Math.max(0, Math.min(imgNatural.w - srcSize, srcX))
+      srcY = Math.max(0, Math.min(imgNatural.h - srcSize, srcY))
+
+      const outSize = 512
+      const canvas = document.createElement('canvas')
+      canvas.width = outSize
+      canvas.height = outSize
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        console.warn('Não foi possível obter contexto 2D do canvas')
+        return avatarFile
+      }
+
+      // Criar máscara circular
+      ctx.beginPath()
+      ctx.arc(outSize / 2, outSize / 2, outSize / 2, 0, Math.PI * 2)
+      ctx.clip()
+
+      // load image com timeout
+      let bitmap: ImageBitmap | null = null
+      if ('createImageBitmap' in window) {
+        try {
+          bitmap = await Promise.race([
+            createImageBitmap(avatarFile),
+            new Promise<ImageBitmap>((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout ao carregar imagem')), 5000)
+            )
+          ])
+        } catch (err) {
+          console.warn('Erro ao criar ImageBitmap:', err)
+          bitmap = null
+        }
+      }
+
+      if (bitmap) {
+        ctx.drawImage(bitmap, srcX, srcY, srcSize, srcSize, 0, 0, outSize, outSize)
+        bitmap.close()
+      } else {
+        const url = URL.createObjectURL(avatarFile)
+        try {
+          const img = new Image()
+          await Promise.race([
+            new Promise<void>((resolve, reject) => {
+              img.onload = () => resolve()
+              img.onerror = () => reject(new Error('Falha ao carregar imagem'))
+              img.src = url
+            }),
+            new Promise<void>((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout ao carregar imagem')), 5000)
+            )
+          ])
+          ctx.drawImage(img, srcX, srcY, srcSize, srcSize, 0, 0, outSize, outSize)
+        } finally {
+          URL.revokeObjectURL(url)
+        }
+      }
+
+      const blob: Blob = await Promise.race([
+        new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((b) => {
+            if (b) resolve(b)
+            else reject(new Error('Falha ao converter canvas para blob'))
+          }, 'image/jpeg', 0.9)
+        }),
+        new Promise<Blob>((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout ao converter canvas')), 5000)
+        )
+      ])
+      
+      return new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
+    } catch (error) {
+      console.error('Erro ao processar avatar:', error)
+      // Em caso de erro, retornar o arquivo original ou null
+      return avatarFile || null
+    }
   }
 
   const handleSave = async () => {
@@ -229,21 +273,39 @@ export default function PerfilPage() {
     }
 
     setSaving(true)
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
-      if (!token) throw new Error('Não autenticado')
+      if (!token) {
+        throw new Error('Não autenticado')
+      }
 
       const form = new FormData()
       form.set('name', trimmedName)
       form.set('bio', bio.trim())
+      
+      // Processar avatar apenas se houver arquivo
       if (avatarFile) {
-        const cropped = await cropAvatarToFile()
-        if (cropped) form.set('avatar', cropped)
+        try {
+          const cropped = await cropAvatarToFile()
+          if (cropped) {
+            form.set('avatar', cropped)
+          }
+        } catch (cropError: any) {
+          console.error('Erro ao processar avatar:', cropError)
+          // Continuar sem avatar se houver erro no processamento
+          if (cropError?.message?.includes('Timeout')) {
+            setError('O processamento da imagem demorou demais. Tente com uma imagem menor.')
+            return
+          }
+        }
       }
 
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 30_000)
+      timeoutId = setTimeout(() => {
+        controller.abort()
+      }, 30_000)
 
       const res = await fetch('/api/users/me', {
         method: 'PATCH',
@@ -251,22 +313,45 @@ export default function PerfilPage() {
         body: form,
         signal: controller.signal,
       })
-      clearTimeout(timeout)
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json?.error || 'Erro ao atualizar perfil')
+      
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+        timeoutId = null
+      }
 
-      await refreshSession()
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(json?.error || 'Erro ao atualizar perfil')
+      }
+
+      // Atualizar sessão com timeout
+      try {
+        await Promise.race([
+          refreshSession(),
+          new Promise<void>((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout ao atualizar sessão')), 5000)
+          )
+        ])
+      } catch (refreshError: any) {
+        console.warn('Erro ao atualizar sessão (continuando):', refreshError)
+        // Continuar mesmo se o refresh falhar
+      }
+
       setSuccess('✅ Perfil atualizado com sucesso.')
       setAvatarFile(null)
       // fechar depois de um pequeno delay para o usuário perceber o feedback
       setTimeout(() => setEditOpen(false), 350)
     } catch (e: any) {
-      if (e?.name === 'AbortError') {
-        setError('O salvamento demorou demais. Verifique o bucket/policies e tente novamente.')
+      if (e?.name === 'AbortError' || e?.message?.includes('Timeout')) {
+        setError('O salvamento demorou demais. Verifique sua conexão e tente novamente.')
       } else {
         setError(e?.message || 'Erro ao atualizar perfil')
       }
+      console.error('Erro ao salvar perfil:', e)
     } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
       setSaving(false)
     }
   }
@@ -344,7 +429,7 @@ export default function PerfilPage() {
               <div
                 ref={cropBoxRef}
                 className={cn(
-                  "relative w-full max-w-[320px] mx-auto aspect-square rounded-xl overflow-hidden border touch-none select-none",
+                  "relative w-full max-w-[320px] mx-auto aspect-square rounded-full overflow-hidden border touch-none select-none",
                   theme === 'dark' ? "border-white/10 bg-black/30" : "border-gray-200 bg-gray-50"
                 )}
                 onPointerDown={onCropPointerDown}
@@ -364,9 +449,11 @@ export default function PerfilPage() {
                     pointerEvents: 'none',
                   }}
                 />
+                {/* Overlay circular para indicar área de crop */}
                 <div
                   className="absolute inset-0 pointer-events-none"
                   style={{
+                    borderRadius: '50%',
                     boxShadow: 'inset 0 0 0 2px rgba(234,179,8,0.75)',
                   }}
                 />
@@ -532,12 +619,19 @@ export default function PerfilPage() {
               </button>
             </div>
 
-            {user.bio && (
+            {user.bio ? (
               <p className={cn(
                 "mb-4",
                 theme === 'dark' ? "text-gray-300" : "text-gray-700"
               )}>
                 {user.bio}
+              </p>
+            ) : (
+              <p className={cn(
+                "mb-4 italic",
+                theme === 'dark' ? "text-gray-500" : "text-gray-400"
+              )}>
+                Fale mais sobre você...
               </p>
             )}
 

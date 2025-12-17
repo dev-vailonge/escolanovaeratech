@@ -60,6 +60,7 @@ export interface DatabaseNotificacao {
   data_inicio: string
   data_fim: string
   publico_alvo: 'todos' | 'alunos-full' | 'alunos-limited'
+  action_url?: string | null // URL para navegação quando a notificação é clicada
   created_at: string
   updated_at: string
   created_by: string | null

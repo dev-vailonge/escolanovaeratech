@@ -19,6 +19,8 @@ interface UserStats {
   desafiosConcluidos: number
   tempoEstudo: number
   participacaoComunidade: number
+  perguntasRespondidas: number
+  perguntasFeitas: number
 }
 
 // Tipos para avisos/notificações
@@ -134,6 +136,8 @@ export default function AlunoDashboard() {
     desafiosConcluidos: 0,
     tempoEstudo: 0,
     participacaoComunidade: 0,
+    perguntasRespondidas: 0,
+    perguntasFeitas: 0,
   })
   
   // Estado para avisos/notificações reais
@@ -198,7 +202,9 @@ export default function AlunoDashboard() {
                     quizCompletos: 0,
                     desafiosConcluidos: 0,
                     tempoEstudo: 0,
-                    participacaoComunidade: 0
+                    participacaoComunidade: 0,
+                    perguntasRespondidas: 0,
+                    perguntasFeitas: 0
                   }
                 }
                 return r.json()
@@ -210,7 +216,9 @@ export default function AlunoDashboard() {
                   quizCompletos: 0,
                   desafiosConcluidos: 0,
                   tempoEstudo: 0,
-                  participacaoComunidade: 0
+                  participacaoComunidade: 0,
+                  perguntasRespondidas: 0,
+                  perguntasFeitas: 0
                 }
               })
           : Promise.resolve({
@@ -218,7 +226,9 @@ export default function AlunoDashboard() {
               quizCompletos: 0,
               desafiosConcluidos: 0,
               tempoEstudo: 0,
-              participacaoComunidade: 0
+              participacaoComunidade: 0,
+              perguntasRespondidas: 0,
+              perguntasFeitas: 0
             }),
         // Notificações (já iniciado acima)
         notificacoesPromise,
@@ -310,7 +320,7 @@ export default function AlunoDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <ProgressCard
           title="Aulas Completas"
           count={stats.aulasCompletas}
@@ -328,6 +338,12 @@ export default function AlunoDashboard() {
           count={stats.desafiosConcluidos}
           icon={<Target className="w-6 h-6 text-green-500" style={{ color: 'rgba(109, 220, 45, 1)' }} />}
           color="green"
+        />
+        <ProgressCard
+          title="Perguntas Respondidas"
+          count={stats.perguntasRespondidas}
+          icon={<MessageCircle className="w-6 h-6 text-purple-500" />}
+          color="purple"
         />
       </div>
 
@@ -603,13 +619,13 @@ export default function AlunoDashboard() {
             "text-2xl md:text-3xl font-bold mb-1",
             theme === 'dark' ? "text-white" : "text-gray-900"
           )}>
-            {stats.participacaoComunidade}
+            {stats.perguntasFeitas}
           </p>
           <p className={cn(
             "text-xs md:text-sm",
             theme === 'dark' ? "text-gray-400" : "text-gray-600"
           )}>
-            Contribuições este mês
+            Perguntas feitas
           </p>
         </div>
       </div>
