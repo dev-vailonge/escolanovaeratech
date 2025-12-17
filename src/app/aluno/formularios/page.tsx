@@ -33,11 +33,11 @@ export default function FormulariosPage() {
   const carregarFormularios = async () => {
     try {
       setLoading(true)
-      console.log('Carregando formulários - User:', user)
       
       // Buscar diretamente do Supabase usando o cliente do frontend
       if (!user) {
         console.log('Usuário não autenticado ainda')
+        setLoading(false)
         return
       }
 
@@ -69,31 +69,27 @@ export default function FormulariosPage() {
         throw error
       }
 
-      console.log('Formulários encontrados:', formularios?.length || 0)
       setFormularios(formularios || [])
       
-      if ((formularios || []).length === 0 && user?.role === 'admin') {
-        console.warn('⚠️ Admin não encontrou formulários. Verifique se há formulários no banco de dados.')
-      }
-
-      // Verificar status de respostas para cada formulário
+      // Verificar status de respostas em paralelo usando uma única query quando possível
       if (user?.id && formularios && formularios.length > 0) {
-        const statusPromises = formularios.map(async (form: Formulario) => {
-          const { data: resposta } = await supabase
-            .from('formulario_respostas')
-            .select('id')
-            .eq('formulario_id', form.id)
-            .eq('user_id', user.id)
-            .maybeSingle()
-          
-          return { id: form.id, respondido: !!resposta }
-        })
-
-        const statuses = await Promise.all(statusPromises)
+        // Buscar todas as respostas do usuário de uma vez
+        const { data: todasRespostas } = await supabase
+          .from('formulario_respostas')
+          .select('formulario_id')
+          .eq('user_id', user.id)
+        
+        // Criar um Set para lookup rápido
+        const formulariosRespondidos = new Set(
+          (todasRespostas || []).map((r: any) => r.formulario_id)
+        )
+        
+        // Criar mapa de status
         const statusMap: Record<string, boolean> = {}
-        statuses.forEach(({ id, respondido }) => {
-          statusMap[id] = respondido
+        formularios.forEach((form: Formulario) => {
+          statusMap[form.id] = formulariosRespondidos.has(form.id)
         })
+        
         setRespostasStatus(statusMap)
       }
     } catch (error) {

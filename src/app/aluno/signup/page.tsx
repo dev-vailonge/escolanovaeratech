@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/AuthContext'
 import { useTheme, ThemeProvider } from '@/lib/ThemeContext'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { cn } from '@/lib/utils'
 
 function AlunoSignUpContent() {
@@ -51,6 +52,7 @@ function AlunoSignUpContent() {
     }
 
     try {
+      // Criar conta no Supabase Auth
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -61,16 +63,81 @@ function AlunoSignUpContent() {
         }
       })
 
-      if (signUpError) throw signUpError
+      // Verificar se houve erro no signUp
+      if (signUpError) {
+        console.error('Erro no signUp:', signUpError)
+        throw signUpError
+      }
 
-      if (data) {
+      // Verificar se o usuário foi criado
+      if (!data?.user?.id) {
+        throw new Error('Usuário não foi criado. Por favor, tente novamente.')
+      }
+
+      const userId = data.user.id
+
+      // Criar usuário na tabela users via API server-side (contorna RLS)
+      // A API também confirma o email automaticamente
+      try {
+        const response = await fetch('/api/users/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: userId, // Usar o ID do auth.users
+            email: formData.email,
+            name: formData.name,
+            role: 'aluno',
+            access_level: 'limited' // Usuários criados manualmente começam como limited
+          }),
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || !result.success) {
+          console.error('Erro ao criar usuário na tabela users:', result.error)
+          // Se o erro for que o usuário já existe, isso é OK (trigger pode ter criado)
+          if (result.error?.includes('já existe') || result.error?.includes('already exists')) {
+            console.log('✅ Usuário já existe na tabela users, continuando...')
+          } else {
+            setError('Conta criada, mas houve um erro ao configurar seu perfil. Por favor, tente fazer login.')
+            setIsLoading(false)
+            return
+          }
+        }
+
+        // Forçar refresh da sessão no AuthContext
+        await initializeAuth()
+
+        // Aguardar um pouco para o AuthContext atualizar
+        await new Promise(resolve => setTimeout(resolve, 500))
+
         router.push('/aluno')
+      } catch (apiError: any) {
+        console.error('Erro ao chamar API de criar usuário:', apiError)
+        // Se o erro for que o usuário já existe, isso é OK
+        if (apiError?.message?.includes('já existe') || apiError?.message?.includes('already exists')) {
+          console.log('✅ Usuário já existe, continuando...')
+          await initializeAuth()
+          await new Promise(resolve => setTimeout(resolve, 500))
+          router.push('/aluno')
+        } else {
+          setError('Conta criada, mas houve um erro ao configurar seu perfil. Por favor, tente fazer login.')
+          setIsLoading(false)
+          return
+        }
       }
     } catch (err: any) {
-      if (err?.message?.includes('User already registered')) {
+      console.error('Erro no signup:', err)
+      if (err?.message?.includes('User already registered') || err?.message?.includes('already registered')) {
         setError('Este email já está cadastrado. Tente fazer login.')
       } else if (err?.message?.includes('Password')) {
         setError('A senha deve ter pelo menos 6 caracteres')
+      } else if (err?.message?.includes('Invalid email')) {
+        setError('Email inválido. Por favor, verifique o email digitado.')
+      } else if (err?.message?.includes('Invalid login credentials')) {
+        setError('Credenciais inválidas. Tente fazer login.')
       } else {
         setError(err?.message || 'Erro ao criar conta. Por favor, tente novamente.')
       }
@@ -192,65 +259,27 @@ function AlunoSignUpContent() {
             />
           </div>
 
-          <div>
-            <label 
-              htmlFor="password" 
-              className={cn(
-                "block text-sm font-medium mb-2",
-                theme === 'dark' ? "text-gray-300" : "text-gray-700"
-              )}
-            >
-              Senha
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className={cn(
-                "w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all",
-                theme === 'dark'
-                  ? "bg-black/50 border border-white/10"
-                  : "bg-white/90 border border-yellow-500/30 text-gray-900 placeholder-gray-400"
-              )}
-              placeholder="••••••••"
-              required
-              minLength={6}
-            />
-            <p className={cn(
-              "mt-1 text-xs",
-              theme === 'dark' ? "text-gray-500" : "text-gray-600"
-            )}>
-              Mínimo de 6 caracteres
-            </p>
-          </div>
+          <PasswordInput
+            id="password"
+            label="Senha"
+            value={formData.password}
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            required
+            minLength={6}
+            theme={theme}
+            showHelperText
+            helperText="Mínimo de 6 caracteres"
+          />
 
-          <div>
-            <label 
-              htmlFor="confirmPassword" 
-              className={cn(
-                "block text-sm font-medium mb-2",
-                theme === 'dark' ? "text-gray-300" : "text-gray-700"
-              )}
-            >
-              Confirmar Senha
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-              className={cn(
-                "w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all",
-                theme === 'dark'
-                  ? "bg-black/50 border border-white/10"
-                  : "bg-white/90 border border-yellow-500/30 text-gray-900 placeholder-gray-400"
-              )}
-              placeholder="••••••••"
-              required
-              minLength={6}
-            />
-          </div>
+          <PasswordInput
+            id="confirmPassword"
+            label="Confirmar Senha"
+            value={formData.confirmPassword}
+            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+            required
+            minLength={6}
+            theme={theme}
+          />
 
           {error && (
             <div className={cn(

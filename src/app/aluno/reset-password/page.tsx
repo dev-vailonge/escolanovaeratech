@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { useTheme, ThemeProvider } from '@/lib/ThemeContext'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { cn } from '@/lib/utils'
 
 function ResetPasswordForm() {
@@ -243,65 +244,27 @@ function ResetPasswordForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label 
-              htmlFor="password" 
-              className={cn(
-                "block text-sm font-medium mb-2",
-                theme === 'dark' ? "text-gray-300" : "text-gray-700"
-              )}
-            >
-              Nova Senha
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={cn(
-                "w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all",
-                theme === 'dark'
-                  ? "bg-black/50 border border-white/10"
-                  : "bg-white/90 border border-yellow-500/30 text-gray-900 placeholder-gray-400"
-              )}
-              placeholder="••••••••"
-              required
-              minLength={6}
-            />
-            <p className={cn(
-              "mt-1 text-xs",
-              theme === 'dark' ? "text-gray-500" : "text-gray-600"
-            )}>
-              Mínimo de 6 caracteres
-            </p>
-          </div>
+          <PasswordInput
+            id="password"
+            label="Nova Senha"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+            theme={theme}
+            showHelperText
+            helperText="Mínimo de 6 caracteres"
+          />
 
-          <div>
-            <label 
-              htmlFor="confirmPassword" 
-              className={cn(
-                "block text-sm font-medium mb-2",
-                theme === 'dark' ? "text-gray-300" : "text-gray-700"
-              )}
-            >
-              Confirmar Nova Senha
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className={cn(
-                "w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all",
-                theme === 'dark'
-                  ? "bg-black/50 border border-white/10"
-                  : "bg-white/90 border border-yellow-500/30 text-gray-900 placeholder-gray-400"
-              )}
-              placeholder="••••••••"
-              required
-              minLength={6}
-            />
-          </div>
+          <PasswordInput
+            id="confirmPassword"
+            label="Confirmar Nova Senha"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            minLength={6}
+            theme={theme}
+          />
 
           {error && (
             <div className={cn(

@@ -46,6 +46,7 @@ export interface DatabaseDesafio {
   periodicidade: 'semanal' | 'mensal' | 'especial'
   prazo: string | null
   requisitos: any[] // JSONB - array de requisitos
+  curso_id?: string | null // ID do curso/formação vinculado: 'android', 'frontend', 'backend', 'ios', 'analise-dados', 'norte-tech', 'logica-programacao', ou null para desafios gerais
   created_at: string
   updated_at: string
   created_by: string | null
@@ -64,11 +65,22 @@ export interface DatabaseNotificacao {
   created_by: string | null
 }
 
+// Pergunta do formulário
+export interface FormularioPergunta {
+  id: string
+  texto: string
+  tipo: 'texto' | 'multipla_escolha' | 'checkbox' | 'escala'
+  opcoes?: string[] // Para múltipla escolha e checkbox
+  obrigatoria: boolean
+  pontos?: number // Pontos ganhos ao responder (opcional)
+}
+
 export interface DatabaseFormulario {
   id: string
   nome: string
   tipo: string
   ativo: boolean
+  perguntas?: FormularioPergunta[] // JSONB - array de perguntas (opcional para retrocompatibilidade)
   created_at: string
   updated_at: string
   created_by: string | null

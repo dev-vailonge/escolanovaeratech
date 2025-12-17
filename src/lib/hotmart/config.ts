@@ -30,3 +30,4 @@ export function getApiBaseSandbox(): string {
   return process.env.HOTMART_API_BASE_SANDBOX || 'https://sandbox.hotmart.com'
 }
 
+

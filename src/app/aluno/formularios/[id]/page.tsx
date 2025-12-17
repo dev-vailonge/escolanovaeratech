@@ -7,12 +7,14 @@ import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
 import { FileText, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import type { FormularioPergunta } from '@/types/database'
 
 interface Formulario {
   id: string
   nome: string
   tipo: string
   ativo: boolean
+  perguntas?: FormularioPergunta[]
   created_at: string
   updated_at: string
 }
@@ -22,25 +24,28 @@ interface FormData {
   email: string
   telefone: string
   mensagem: string
+  respostasPerguntas?: Record<string, any> // ID da pergunta -> resposta
 }
 
 export default function FormularioPage() {
   const params = useParams()
   const router = useRouter()
   const { theme } = useTheme()
-  const { user } = useAuth()
+  const { user, refreshSession } = useAuth()
   const [formulario, setFormulario] = useState<Formulario | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
   const [jaRespondido, setJaRespondido] = useState(false)
+  const [pontosGanhos, setPontosGanhos] = useState(0)
   
   const [formData, setFormData] = useState<FormData>({
     nome: user?.name || '',
     email: user?.email || '',
     telefone: '',
-    mensagem: ''
+    mensagem: '',
+    respostasPerguntas: {}
   })
 
   useEffect(() => {
@@ -106,7 +111,8 @@ export default function FormularioPage() {
           nome: respostas.nome || user?.name || '',
           email: respostas.email || user?.email || '',
           telefone: respostas.telefone || '',
-          mensagem: respostas.mensagem || ''
+          mensagem: respostas.mensagem || '',
+          respostasPerguntas: respostas.respostasPerguntas || {}
         })
       }
     } catch (error) {
@@ -122,11 +128,33 @@ export default function FormularioPage() {
     setError('')
     setSubmitting(true)
 
-    // Validação
-    if (!formData.nome.trim() || !formData.email.trim() || !formData.mensagem.trim()) {
-      setError('Por favor, preencha todos os campos obrigatórios.')
-      setSubmitting(false)
-      return
+    // Validação básica (só se não houver perguntas customizadas)
+    const temPerguntasCustomizadas = formulario?.perguntas && formulario.perguntas.length > 0
+    
+    if (!temPerguntasCustomizadas) {
+      if (!formData.nome.trim() || !formData.email.trim() || !formData.mensagem.trim()) {
+        setError('Por favor, preencha todos os campos obrigatórios.')
+        setSubmitting(false)
+        return
+      }
+    } else {
+      // Validar campos básicos
+      if (!formData.nome.trim() || !formData.email.trim()) {
+        setError('Por favor, preencha nome e e-mail.')
+        setSubmitting(false)
+        return
+      }
+
+      // Validar perguntas obrigatórias
+      const perguntasObrigatorias = (formulario.perguntas || []).filter(p => p.obrigatoria)
+      for (const pergunta of perguntasObrigatorias) {
+        const resposta = formData.respostasPerguntas?.[pergunta.id]
+        if (!resposta || (Array.isArray(resposta) && resposta.length === 0) || (typeof resposta === 'string' && !resposta.trim())) {
+          setError(`Por favor, responda a pergunta obrigatória: "${pergunta.texto}"`)
+          setSubmitting(false)
+          return
+        }
+      }
     }
 
     // Validação de email
@@ -150,10 +178,25 @@ export default function FormularioPage() {
         throw new Error('Sessão não encontrada')
       }
 
+      // Calcular pontos ganhos baseado nas perguntas respondidas
+      let pontosGanhos = 0
+      if (formulario?.perguntas && formData.respostasPerguntas) {
+        for (const pergunta of formulario.perguntas) {
+          const resposta = formData.respostasPerguntas[pergunta.id]
+          // Se a pergunta tem pontos configurados e foi respondida, adiciona os pontos
+          if (pergunta.pontos && pergunta.pontos > 0 && resposta && 
+              (typeof resposta === 'string' ? resposta.trim() : Array.isArray(resposta) ? resposta.length > 0 : true)) {
+            pontosGanhos += pergunta.pontos
+            console.log(`  ✓ Pergunta "${pergunta.texto}": +${pergunta.pontos} pontos`)
+          }
+        }
+        console.log(`💰 Total de pontos a ganhar: ${pontosGanhos}`)
+      }
+
       // Verificar se já existe resposta
       const { data: respostaExistente } = await supabase
         .from('formulario_respostas')
-        .select('id')
+        .select('id, respostas')
         .eq('formulario_id', params.id)
         .eq('user_id', user.id)
         .maybeSingle()
@@ -162,10 +205,35 @@ export default function FormularioPage() {
         nome: formData.nome.trim(),
         email: formData.email.trim().toLowerCase(),
         telefone: formData.telefone.trim() || null,
-        mensagem: formData.mensagem.trim()
+        mensagem: temPerguntasCustomizadas ? (formData.mensagem?.trim() || '') : formData.mensagem.trim(),
+        respostasPerguntas: formData.respostasPerguntas || {},
+        pontosGanhos: pontosGanhos
       }
 
-      let result
+      // Verificar se já ganhou XP para este formulário
+      let jaGanhouXP = false
+      if (respostaExistente?.respostas?.pontosGanhos) {
+        // Se já tinha pontos ganhos, não adiciona novamente
+        console.log('ℹ️ Resposta existente já tinha pontos ganhos:', respostaExistente.respostas.pontosGanhos)
+        jaGanhouXP = true
+      } else {
+        // Verificar no histórico de XP se já ganhou pontos para este formulário
+        const { data: xpHistory } = await supabase
+          .from('user_xp_history')
+          .select('id, amount')
+          .eq('user_id', user.id)
+          .eq('source', 'comunidade')
+          .eq('source_id', formulario?.id)
+          .maybeSingle()
+        
+        if (xpHistory) {
+          console.log('ℹ️ Já existe registro de XP para este formulário:', xpHistory.amount, 'pontos')
+          jaGanhouXP = true
+        } else {
+          console.log('✅ Não há registro de XP para este formulário - pode adicionar')
+        }
+      }
+
       if (respostaExistente) {
         // Atualizar resposta existente
         const { error } = await supabase
@@ -174,6 +242,94 @@ export default function FormularioPage() {
           .eq('id', respostaExistente.id)
         
         if (error) throw error
+
+        // Adicionar XP apenas se ainda não ganhou e há pontos
+        if (pontosGanhos > 0 && !jaGanhouXP) {
+          console.log(`💰 Adicionando ${pontosGanhos} XP ao usuário por responder formulário`)
+          
+          // Tentar usar API route primeiro (bypassa RLS)
+          let sucesso = false
+          try {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session?.access_token) {
+              const res = await fetch('/api/xp/add', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({
+                  amount: pontosGanhos,
+                  source: 'comunidade',
+                  sourceId: formulario?.id,
+                  description: `Formulário: ${formulario?.nome} (${pontosGanhos} pontos)`
+                })
+              })
+              
+              if (res.ok) {
+                sucesso = true
+                console.log('✅ XP adicionado via API route')
+              } else {
+                const errorData = await res.json().catch(() => ({}))
+                console.error('❌ Erro na API route:', errorData)
+              }
+            }
+          } catch (apiError) {
+            console.error('❌ Erro ao chamar API route:', apiError)
+          }
+          
+          // Fallback para método direto
+          if (!sucesso) {
+            const { addXP } = await import('@/lib/database')
+            sucesso = await addXP(
+              user.id,
+              pontosGanhos,
+              'comunidade',
+              formulario?.id,
+              `Formulário: ${formulario?.nome} (${pontosGanhos} pontos)`
+            )
+          }
+          if (sucesso) {
+            console.log('✅ XP adicionado ao histórico com sucesso')
+            setPontosGanhos(pontosGanhos)
+            
+            // Aguardar mais tempo para o trigger do banco processar a atualização
+            console.log('⏳ Aguardando trigger do banco processar...')
+            await new Promise(resolve => setTimeout(resolve, 1500))
+            
+            // Verificar diretamente no banco se o XP foi atualizado
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('xp, xp_mensal, level')
+              .eq('id', user.id)
+              .single()
+            
+            if (userError) {
+              console.error('❌ Erro ao verificar XP do usuário:', userError)
+            } else if (userData) {
+              console.log(`📊 XP atualizado no banco: ${userData.xp} XP (esperado: ${(user.xp || 0) + pontosGanhos}), Nível ${userData.level}`)
+              
+              // Atualizar dados do usuário no contexto para refletir o novo XP
+              console.log('🔄 Atualizando dados do usuário no contexto...')
+              await refreshSession()
+              
+              // Verificar novamente após refresh
+              const { data: userDataAfterRefresh } = await supabase
+                .from('users')
+                .select('xp, level')
+                .eq('id', user.id)
+                .single()
+              
+              if (userDataAfterRefresh) {
+                console.log(`✅ XP após refresh: ${userDataAfterRefresh.xp} XP, Nível ${userDataAfterRefresh.level}`)
+              }
+            }
+          } else {
+            console.error('❌ Erro ao adicionar XP')
+          }
+        } else if (jaGanhouXP) {
+          console.log('ℹ️ Usuário já ganhou XP para este formulário anteriormente')
+        }
       } else {
         // Criar nova resposta
         const { error } = await supabase
@@ -185,6 +341,92 @@ export default function FormularioPage() {
           })
         
         if (error) throw error
+
+        // Adicionar XP se houver pontos ganhos (sempre adiciona para nova resposta)
+        if (pontosGanhos > 0) {
+          console.log(`💰 Adicionando ${pontosGanhos} XP ao usuário por responder formulário`)
+          
+          // Tentar usar API route primeiro (bypassa RLS)
+          let sucesso = false
+          try {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session?.access_token) {
+              const res = await fetch('/api/xp/add', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({
+                  amount: pontosGanhos,
+                  source: 'comunidade',
+                  sourceId: formulario?.id,
+                  description: `Formulário: ${formulario?.nome} (${pontosGanhos} pontos)`
+                })
+              })
+              
+              if (res.ok) {
+                sucesso = true
+                console.log('✅ XP adicionado via API route')
+              } else {
+                const errorData = await res.json().catch(() => ({}))
+                console.error('❌ Erro na API route:', errorData)
+              }
+            }
+          } catch (apiError) {
+            console.error('❌ Erro ao chamar API route:', apiError)
+          }
+          
+          // Fallback para método direto
+          if (!sucesso) {
+            const { addXP } = await import('@/lib/database')
+            sucesso = await addXP(
+              user.id,
+              pontosGanhos,
+              'comunidade',
+              formulario?.id,
+              `Formulário: ${formulario?.nome} (${pontosGanhos} pontos)`
+            )
+          }
+          if (sucesso) {
+            console.log('✅ XP adicionado ao histórico com sucesso')
+            setPontosGanhos(pontosGanhos)
+            
+            // Aguardar mais tempo para o trigger do banco processar a atualização
+            console.log('⏳ Aguardando trigger do banco processar...')
+            await new Promise(resolve => setTimeout(resolve, 1500))
+            
+            // Verificar diretamente no banco se o XP foi atualizado
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('xp, xp_mensal, level')
+              .eq('id', user.id)
+              .single()
+            
+            if (userError) {
+              console.error('❌ Erro ao verificar XP do usuário:', userError)
+            } else if (userData) {
+              console.log(`📊 XP atualizado no banco: ${userData.xp} XP (esperado: ${(user.xp || 0) + pontosGanhos}), Nível ${userData.level}`)
+              
+              // Atualizar dados do usuário no contexto para refletir o novo XP
+              console.log('🔄 Atualizando dados do usuário no contexto...')
+              await refreshSession()
+              
+              // Verificar novamente após refresh
+              const { data: userDataAfterRefresh } = await supabase
+                .from('users')
+                .select('xp, level')
+                .eq('id', user.id)
+                .single()
+              
+              if (userDataAfterRefresh) {
+                console.log(`✅ XP após refresh: ${userDataAfterRefresh.xp} XP, Nível ${userDataAfterRefresh.level}`)
+              }
+            }
+          } else {
+            console.error('❌ Erro ao adicionar XP')
+          }
+        }
       }
 
       setSuccess(true)
@@ -200,6 +442,16 @@ export default function FormularioPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const atualizarRespostaPergunta = (perguntaId: string, valor: any) => {
+    setFormData({
+      ...formData,
+      respostasPerguntas: {
+        ...formData.respostasPerguntas,
+        [perguntaId]: valor
+      }
+    })
   }
 
   if (loading) {
@@ -278,6 +530,21 @@ export default function FormularioPage() {
           )}>
             Resposta enviada com sucesso!
           </h2>
+          {pontosGanhos > 0 && (
+            <div className={cn(
+              "mb-4 p-4 rounded-lg border mx-auto max-w-md",
+              theme === 'dark'
+                ? "bg-yellow-400/20 border-yellow-400/50 text-yellow-400"
+                : "bg-yellow-100 border-yellow-400 text-yellow-700"
+            )}>
+              <p className="text-lg font-semibold">
+                🎉 Você ganhou {pontosGanhos} pontos de XP!
+              </p>
+              <p className="text-sm mt-1">
+                Seus pontos foram adicionados ao seu perfil.
+              </p>
+            </div>
+          )}
           <p className={cn(
             "text-sm md:text-base",
             theme === 'dark' ? "text-gray-400" : "text-gray-600"
@@ -427,38 +694,242 @@ export default function FormularioPage() {
             />
           </div>
 
-          {/* Mensagem */}
-          <div>
-            <label className={cn(
-              "block text-sm font-medium mb-2",
-              theme === 'dark' ? "text-gray-300" : "text-gray-700"
-            )}>
-              {formulario?.tipo === 'feedback' && 'Seu feedback *'}
-              {formulario?.tipo === 'depoimento' && 'Seu depoimento *'}
-              {formulario?.tipo === 'pesquisa' && 'Sua resposta *'}
-              {!['feedback', 'depoimento', 'pesquisa'].includes(formulario?.tipo || '') && 'Mensagem *'}
-            </label>
-            <textarea
-              value={formData.mensagem}
-              onChange={(e) => setFormData({ ...formData, mensagem: e.target.value })}
-              rows={6}
-              className={cn(
-                "w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-colors resize-none",
-                theme === 'dark'
-                  ? "bg-black/50 border-white/10 text-white focus:border-yellow-400 focus:ring-yellow-400/20"
-                  : "bg-white border-gray-300 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500/20"
+          {/* Perguntas Customizadas */}
+          {formulario?.perguntas && formulario.perguntas.length > 0 && (() => {
+            const totalPontos = formulario.perguntas.reduce((acc, p) => acc + (p.pontos || 0), 0)
+            
+            return (
+            <div className="space-y-4 pt-4 border-t" style={{
+              borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(234, 179, 8, 0.3)'
+            }}>
+              <h3 className={cn(
+                "text-lg font-semibold",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                Perguntas
+              </h3>
+              {formulario.perguntas.map((pergunta, index) => {
+                const respostaAtual = formData.respostasPerguntas?.[pergunta.id]
+
+                return (
+                  <div key={pergunta.id} className={cn(
+                    "p-4 rounded-lg border",
+                    theme === 'dark'
+                      ? "bg-black/30 border-white/10"
+                      : "bg-gray-50 border-gray-200"
+                  )}>
+                    <label className={cn(
+                      "block text-sm font-medium mb-2",
+                      theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                    )}>
+                      {pergunta.texto}
+                      {pergunta.obrigatoria && <span className="text-red-500 ml-1">*</span>}
+                      {pergunta.pontos && (
+                        <span className={cn(
+                          "ml-2 text-xs px-2 py-0.5 rounded-full",
+                          theme === 'dark'
+                            ? "bg-yellow-400/20 text-yellow-400"
+                            : "bg-yellow-100 text-yellow-700"
+                        )}>
+                          +{pergunta.pontos} pontos
+                        </span>
+                      )}
+                    </label>
+
+                    {/* Tipo: Texto */}
+                    {pergunta.tipo === 'texto' && (
+                      <textarea
+                        value={typeof respostaAtual === 'string' ? respostaAtual : ''}
+                        onChange={(e) => atualizarRespostaPergunta(pergunta.id, e.target.value)}
+                        rows={4}
+                        className={cn(
+                          "w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-colors resize-none",
+                          theme === 'dark'
+                            ? "bg-black/50 border-white/10 text-white focus:border-yellow-400 focus:ring-yellow-400/20"
+                            : "bg-white border-gray-300 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500/20"
+                        )}
+                        placeholder="Digite sua resposta aqui..."
+                        required={pergunta.obrigatoria}
+                        disabled={submitting}
+                      />
+                    )}
+
+                    {/* Tipo: Múltipla Escolha */}
+                    {pergunta.tipo === 'multipla_escolha' && (
+                      <div className="space-y-2">
+                        {pergunta.opcoes?.map((opcao, opcaoIndex) => (
+                          <label
+                            key={opcaoIndex}
+                            className={cn(
+                              "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                              theme === 'dark'
+                                ? respostaAtual === opcao
+                                  ? "bg-yellow-400/20 border-yellow-400/50"
+                                  : "bg-black/50 border-white/10 hover:bg-black/70"
+                                : respostaAtual === opcao
+                                  ? "bg-yellow-100 border-yellow-400"
+                                  : "bg-white border-gray-300 hover:bg-gray-50"
+                            )}
+                          >
+                            <input
+                              type="radio"
+                              name={`pergunta-${pergunta.id}`}
+                              value={opcao}
+                              checked={respostaAtual === opcao}
+                              onChange={(e) => atualizarRespostaPergunta(pergunta.id, e.target.value)}
+                              required={pergunta.obrigatoria}
+                              disabled={submitting}
+                              className="w-4 h-4 text-yellow-500 focus:ring-yellow-500"
+                            />
+                            <span className={cn(
+                              "flex-1",
+                              theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                            )}>
+                              {opcao}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Tipo: Checkbox */}
+                    {pergunta.tipo === 'checkbox' && (
+                      <div className="space-y-2">
+                        {pergunta.opcoes?.map((opcao, opcaoIndex) => {
+                          const respostasArray = Array.isArray(respostaAtual) ? respostaAtual : []
+                          const estaSelecionada = respostasArray.includes(opcao)
+                          
+                          return (
+                            <label
+                              key={opcaoIndex}
+                              className={cn(
+                                "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                                theme === 'dark'
+                                  ? estaSelecionada
+                                    ? "bg-yellow-400/20 border-yellow-400/50"
+                                    : "bg-black/50 border-white/10 hover:bg-black/70"
+                                  : estaSelecionada
+                                    ? "bg-yellow-100 border-yellow-400"
+                                    : "bg-white border-gray-300 hover:bg-gray-50"
+                              )}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={estaSelecionada}
+                                onChange={(e) => {
+                                  const respostasArray = Array.isArray(respostaAtual) ? respostaAtual : []
+                                  if (e.target.checked) {
+                                    atualizarRespostaPergunta(pergunta.id, [...respostasArray, opcao])
+                                  } else {
+                                    atualizarRespostaPergunta(pergunta.id, respostasArray.filter(r => r !== opcao))
+                                  }
+                                }}
+                                disabled={submitting}
+                                className="w-4 h-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-500"
+                              />
+                              <span className={cn(
+                                "flex-1",
+                                theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                              )}>
+                                {opcao}
+                              </span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {/* Tipo: Escala */}
+                    {pergunta.tipo === 'escala' && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className={cn("text-sm", theme === 'dark' ? "text-gray-400" : "text-gray-600")}>1</span>
+                          <div className="flex-1 flex items-center justify-center gap-2 mx-4">
+                            {[1, 2, 3, 4, 5].map((valor) => (
+                              <label
+                                key={valor}
+                                className={cn(
+                                  "flex items-center justify-center w-12 h-12 rounded-lg border cursor-pointer transition-colors",
+                                  theme === 'dark'
+                                    ? respostaAtual === valor.toString()
+                                      ? "bg-yellow-400/20 border-yellow-400/50 text-yellow-400"
+                                      : "bg-black/50 border-white/10 text-gray-400 hover:bg-black/70"
+                                    : respostaAtual === valor.toString()
+                                      ? "bg-yellow-100 border-yellow-400 text-yellow-700"
+                                      : "bg-white border-gray-300 text-gray-600 hover:bg-gray-50"
+                                )}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`pergunta-escala-${pergunta.id}`}
+                                  value={valor}
+                                  checked={respostaAtual === valor.toString()}
+                                  onChange={(e) => atualizarRespostaPergunta(pergunta.id, e.target.value)}
+                                  required={pergunta.obrigatoria}
+                                  disabled={submitting}
+                                  className="sr-only"
+                                />
+                                <span className="font-semibold">{valor}</span>
+                              </label>
+                            ))}
+                          </div>
+                          <span className={cn("text-sm", theme === 'dark' ? "text-gray-400" : "text-gray-600")}>5</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              {totalPontos > 0 && (
+                <div className={cn(
+                  "p-3 rounded-lg border",
+                  theme === 'dark'
+                    ? "bg-yellow-400/10 border-yellow-400/30 text-yellow-400"
+                    : "bg-yellow-50 border-yellow-200 text-yellow-700"
+                )}>
+                  <p className="text-sm font-medium">
+                    💰 Respondendo todas as perguntas, você pode ganhar até {totalPontos} pontos!
+                  </p>
+                </div>
               )}
-              placeholder={
-                formulario?.tipo === 'feedback' 
-                  ? 'Compartilhe sua opinião, sugestões ou críticas...'
-                  : formulario?.tipo === 'depoimento'
-                  ? 'Conte sua experiência, resultados alcançados...'
-                  : 'Escreva sua resposta aqui...'
-              }
-              required
-              disabled={submitting}
-            />
-          </div>
+            </div>
+            )
+          })()}
+
+          {/* Mensagem (só aparece se não houver perguntas customizadas) */}
+          {(!formulario?.perguntas || formulario.perguntas.length === 0) && (
+            <div>
+              <label className={cn(
+                "block text-sm font-medium mb-2",
+                theme === 'dark' ? "text-gray-300" : "text-gray-700"
+              )}>
+                {formulario?.tipo === 'feedback' && 'Seu feedback *'}
+                {formulario?.tipo === 'depoimento' && 'Seu depoimento *'}
+                {formulario?.tipo === 'pesquisa' && 'Sua resposta *'}
+                {!['feedback', 'depoimento', 'pesquisa'].includes(formulario?.tipo || '') && 'Mensagem *'}
+              </label>
+              <textarea
+                value={formData.mensagem}
+                onChange={(e) => setFormData({ ...formData, mensagem: e.target.value })}
+                rows={6}
+                className={cn(
+                  "w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-colors resize-none",
+                  theme === 'dark'
+                    ? "bg-black/50 border-white/10 text-white focus:border-yellow-400 focus:ring-yellow-400/20"
+                    : "bg-white border-gray-300 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500/20"
+                )}
+                placeholder={
+                  formulario?.tipo === 'feedback' 
+                    ? 'Compartilhe sua opinião, sugestões ou críticas...'
+                    : formulario?.tipo === 'depoimento'
+                    ? 'Conte sua experiência, resultados alcançados...'
+                    : 'Escreva sua resposta aqui...'
+                }
+                required
+                disabled={submitting}
+              />
+            </div>
+          )}
 
           {/* Botões */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t" style={{

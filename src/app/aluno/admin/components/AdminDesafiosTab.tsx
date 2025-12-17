@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
-import { Plus, Edit, Trash2, Sparkles, Loader2 } from 'lucide-react'
+import { Plus, Edit, Trash2, Sparkles, Loader2, Filter } from 'lucide-react'
 import CreateDesafioModal from './CreateDesafioModal'
 import { getAllDesafios, createDesafio, updateDesafio, deleteDesafio } from '@/lib/database'
 import type { DatabaseDesafio } from '@/types/database'
+import { getCursoNome, CURSOS_COM_GERAL, type CursoId } from '@/lib/constants/cursos'
 
 export default function AdminDesafiosTab() {
   const { theme } = useTheme()
@@ -17,6 +18,7 @@ export default function AdminDesafiosTab() {
   const [isCreating, setIsCreating] = useState(false)
   const [editingDesafio, setEditingDesafio] = useState<DatabaseDesafio | null>(null)
   const [error, setError] = useState('')
+  const [filtroCurso, setFiltroCurso] = useState<CursoId | 'todos'>('todos')
 
   useEffect(() => {
     carregarDesafios()
@@ -50,6 +52,7 @@ export default function AdminDesafiosTab() {
         periodicidade: desafioData.periodicidade as 'semanal' | 'mensal' | 'especial',
         prazo: null, // Pode ser adicionado depois se necessário
         requisitos: Array.isArray(desafioData.requisitos) ? desafioData.requisitos : [],
+        curso_id: desafioData.curso_id || null,
         created_by: user?.id || null
       }
 
@@ -166,6 +169,33 @@ export default function AdminDesafiosTab() {
         desafio={editingDesafio}
       />
 
+      {/* Filtro por Curso */}
+      {desafios.length > 0 && (
+        <div className="flex items-center gap-2">
+          <Filter className={cn(
+            "w-4 h-4",
+            theme === 'dark' ? "text-gray-400" : "text-gray-600"
+          )} />
+          <select
+            value={filtroCurso || 'todos'}
+            onChange={(e) => setFiltroCurso(e.target.value as CursoId | 'todos')}
+            className={cn(
+              "px-3 py-1.5 rounded-lg border text-sm focus:outline-none focus:ring-2 transition-colors",
+              theme === 'dark'
+                ? "bg-black/50 border-white/10 text-white focus:border-yellow-400 focus:ring-yellow-400/20"
+                : "bg-white border-gray-300 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500/20"
+            )}
+          >
+            <option value="todos">Todos os cursos</option>
+            {CURSOS_COM_GERAL.map((curso) => (
+              <option key={curso.id || 'geral'} value={curso.id || 'geral'}>
+                {curso.nome}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {desafios.length === 0 ? (
         <div className={cn(
           "p-8 text-center rounded-lg border",
@@ -177,7 +207,13 @@ export default function AdminDesafiosTab() {
         </div>
       ) : (
         <div className="space-y-3">
-          {desafios.map((desafio) => (
+          {desafios
+            .filter((desafio) => {
+              if (filtroCurso === 'todos') return true
+              if (filtroCurso === null) return !desafio.curso_id
+              return desafio.curso_id === filtroCurso
+            })
+            .map((desafio) => (
             <div
               key={desafio.id}
               className={cn(
@@ -212,6 +248,26 @@ export default function AdminDesafiosTab() {
                     )}>
                       {desafio.periodicidade}
                     </span>
+                    {desafio.curso_id && (
+                      <span className={cn(
+                        "px-2 py-1 text-xs rounded-full border",
+                        theme === 'dark'
+                          ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                          : "bg-blue-100 text-blue-700 border-blue-300"
+                      )}>
+                        {getCursoNome(desafio.curso_id as CursoId)}
+                      </span>
+                    )}
+                    {!desafio.curso_id && (
+                      <span className={cn(
+                        "px-2 py-1 text-xs rounded-full border",
+                        theme === 'dark'
+                          ? "bg-gray-500/20 text-gray-400 border-gray-500/30"
+                          : "bg-gray-100 text-gray-700 border-gray-300"
+                      )}>
+                        Geral
+                      </span>
+                    )}
                   </div>
                   <p className={cn(
                     "text-sm mb-2",
@@ -260,6 +316,20 @@ export default function AdminDesafiosTab() {
               </div>
             </div>
           ))}
+          {desafios.filter((desafio) => {
+            if (filtroCurso === 'todos') return false
+            if (filtroCurso === null) return !!desafio.curso_id
+            return desafio.curso_id !== filtroCurso
+          }).length === desafios.length && (
+            <div className={cn(
+              "p-8 text-center rounded-lg border",
+              theme === 'dark'
+                ? "bg-black/20 border-white/10 text-gray-400"
+                : "bg-gray-50 border-gray-200 text-gray-600"
+            )}>
+              Nenhum desafio encontrado para o filtro selecionado.
+            </div>
+          )}
         </div>
       )}
 

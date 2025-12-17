@@ -14,3 +14,4 @@ export type { SalesHistoryParams, SalesHistoryResponse } from './sales'
 // Assinaturas e acesso (mantido do arquivo original)
 export { checkHotmartAccess, upsertHotmartSubscription, syncUserAccessLevel } from './subscriptions'
 
+

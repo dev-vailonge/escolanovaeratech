@@ -3,8 +3,8 @@
 import { useState, lazy, Suspense, useCallback, memo, useEffect } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useTheme } from '@/lib/ThemeContext'
+import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
-import { mockUser } from '@/data/aluno/mockUser'
 import { HelpCircle, Target, Bell, FileText, Users, Loader2 } from 'lucide-react'
 
 // Lazy loading dos componentes das abas para melhor performance
@@ -34,6 +34,7 @@ const TabLoading = memo(function TabLoading({ theme }: { theme: string }) {
 
 export default function AdminPage() {
   const { theme } = useTheme()
+  const { user, loading } = useAuth()
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -45,6 +46,30 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>(initialTab)
   // Rastrear quais abas já foram visitadas para manter os dados em cache
   const [visitedTabs, setVisitedTabs] = useState<Set<AdminTab>>(new Set([initialTab]))
+
+  // Redirecionar para login se não estiver autenticado
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/aluno/login?redirect=' + encodeURIComponent('/aluno/admin'))
+    }
+  }, [user, loading, router])
+
+  // Pré-carregar a aba inicial assim que o componente montar para evitar delay
+  useEffect(() => {
+    // Pré-carregar a aba inicial para evitar delay no primeiro acesso
+    const tabToPreload = tabFromUrl && validTabs.includes(tabFromUrl) ? tabFromUrl : 'quiz'
+    if (tabToPreload === 'quiz') {
+      import('./components/AdminQuizTab')
+    } else if (tabToPreload === 'desafios') {
+      import('./components/AdminDesafiosTab')
+    } else if (tabToPreload === 'notificacoes') {
+      import('./components/AdminNotificacoesTab')
+    } else if (tabToPreload === 'formularios') {
+      import('./components/AdminFormulariosTab')
+    } else if (tabToPreload === 'alunos') {
+      import('./components/AdminAlunosTab')
+    }
+  }, [tabFromUrl]) // Executar quando a aba da URL mudar
 
   // Sincroniza o estado com a URL quando ela muda (ex: botão voltar do navegador)
   useEffect(() => {
@@ -66,8 +91,28 @@ export default function AdminPage() {
     router.push(`${pathname}?${params.toString()}`, { scroll: false })
   }, [searchParams, router, pathname])
 
-  // Verificar se é admin (em produção, isso virá do contexto de autenticação)
-  if (mockUser.role !== 'admin') {
+  // Mostrar loading enquanto verifica autenticação
+  if (loading) {
+    return (
+      <div className={cn(
+        "backdrop-blur-md border rounded-xl p-8 md:p-12 text-center",
+        theme === 'dark'
+          ? "bg-black/20 border-white/10"
+          : "bg-white border-yellow-400/90 shadow-md"
+      )}>
+        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+        <p className={cn(
+          "text-sm md:text-base",
+          theme === 'dark' ? "text-gray-400" : "text-gray-600"
+        )}>
+          Verificando permissões...
+        </p>
+      </div>
+    )
+  }
+
+  // Verificar se é admin usando o usuário autenticado
+  if (!user || user.role !== 'admin') {
     return (
       <div className={cn(
         "backdrop-blur-md border rounded-xl p-8 md:p-12 text-center",
@@ -85,7 +130,7 @@ export default function AdminPage() {
           "text-sm md:text-base",
           theme === 'dark' ? "text-gray-400" : "text-gray-600"
         )}>
-          Você não tem permissão para acessar esta área.
+          Você não tem permissão para acessar esta área. Apenas administradores podem acessar o painel administrativo.
         </p>
       </div>
     )
@@ -161,20 +206,21 @@ export default function AdminPage() {
       )}>
         <Suspense fallback={<TabLoading theme={theme} />}>
           {/* Renderiza abas visitadas com display:none para manter cache dos dados */}
+          {/* Sempre renderiza a aba ativa ou visitada para garantir carregamento */}
           <div style={{ display: activeTab === 'quiz' ? 'block' : 'none' }}>
-            {visitedTabs.has('quiz') && <AdminQuizTab />}
+            {(activeTab === 'quiz' || visitedTabs.has('quiz')) && <AdminQuizTab />}
           </div>
           <div style={{ display: activeTab === 'desafios' ? 'block' : 'none' }}>
-            {visitedTabs.has('desafios') && <AdminDesafiosTab />}
+            {(activeTab === 'desafios' || visitedTabs.has('desafios')) && <AdminDesafiosTab />}
           </div>
           <div style={{ display: activeTab === 'notificacoes' ? 'block' : 'none' }}>
-            {visitedTabs.has('notificacoes') && <AdminNotificacoesTab />}
+            {(activeTab === 'notificacoes' || visitedTabs.has('notificacoes')) && <AdminNotificacoesTab />}
           </div>
           <div style={{ display: activeTab === 'formularios' ? 'block' : 'none' }}>
-            {visitedTabs.has('formularios') && <AdminFormulariosTab />}
+            {(activeTab === 'formularios' || visitedTabs.has('formularios')) && <AdminFormulariosTab />}
           </div>
           <div style={{ display: activeTab === 'alunos' ? 'block' : 'none' }}>
-            {visitedTabs.has('alunos') && <AdminAlunosTab />}
+            {(activeTab === 'alunos' || visitedTabs.has('alunos')) && <AdminAlunosTab />}
           </div>
         </Suspense>
       </div>

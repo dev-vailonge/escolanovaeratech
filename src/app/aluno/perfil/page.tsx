@@ -31,11 +31,21 @@ export default function PerfilPage() {
   const courses = mockCourseProgress
   const { theme } = useTheme()
 
+  // Helper para obter avatarUrl corretamente (mockUser usa 'avatar', authUser usa 'avatarUrl')
+  const getAvatarUrl = (): string | null => {
+    if (authUser) {
+      return authUser.avatarUrl ?? null
+    }
+    return mockUser.avatar ?? null
+  }
+
+  const avatarUrl = getAvatarUrl()
+
   const [editOpen, setEditOpen] = useState(false)
   const [name, setName] = useState(user.name)
   const [bio, setBio] = useState(user.bio || '')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatarUrl || null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(avatarUrl)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -50,9 +60,9 @@ export default function PerfilPage() {
 
   useEffect(() => {
     setName(user.name)
-    setAvatarPreview(user.avatarUrl || null)
+    setAvatarPreview(avatarUrl)
     setBio(user.bio || '')
-  }, [user.name, user.avatarUrl])
+  }, [user.name, avatarUrl, user.bio])
 
   const canEdit = !!authUser?.id
 
@@ -113,7 +123,7 @@ export default function PerfilPage() {
       setCropOffset({ x: 0, y: 0 })
       setCropZoom(1.2)
     } else {
-      setAvatarPreview(user.avatarUrl || null)
+      setAvatarPreview(avatarUrl)
     }
   }
 
@@ -463,10 +473,10 @@ export default function PerfilPage() {
               : "bg-white border-yellow-400/90 shadow-md"
           )}>
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4 md:mb-6">
-              <div className="flex items-center gap-3 md:gap-4">
-                {user.avatarUrl ? (
+              <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+                {avatarUrl ? (
                   <img
-                    src={user.avatarUrl}
+                    src={avatarUrl}
                     alt="Avatar"
                     className={cn(
                       "w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border flex-shrink-0",
@@ -505,7 +515,15 @@ export default function PerfilPage() {
                 </div>
               </div>
               <button
-                className={cn("btn-secondary flex items-center justify-center gap-2 w-full sm:w-auto", !canEdit && "opacity-60 cursor-not-allowed")}
+                className={cn(
+                  "px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-200",
+                  "flex items-center justify-center gap-2 w-full sm:w-auto flex-shrink-0",
+                  theme === 'dark'
+                    ? "border border-yellow-400 bg-yellow-400/20 text-yellow-400 hover:bg-yellow-400/30 hover:border-yellow-500"
+                    : "border border-yellow-600 bg-yellow-400/30 text-yellow-700 hover:bg-yellow-400/40 hover:border-yellow-700",
+                  !canEdit && "opacity-60 cursor-not-allowed",
+                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                )}
                 onClick={() => canEdit && setEditOpen(true)}
                 disabled={!canEdit}
               >

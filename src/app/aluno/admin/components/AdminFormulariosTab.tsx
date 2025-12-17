@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
 import { Plus, Edit, Trash2, ToggleLeft, ToggleRight, Eye, Loader2 } from 'lucide-react'
 import CreateFormularioModal from './CreateFormularioModal'
+import ViewRespostasModal from './ViewRespostasModal'
 import { getAllFormularios, createFormulario, updateFormulario, deleteFormulario, toggleFormularioAtivo, getRespostasFormulario } from '@/lib/database'
 import type { DatabaseFormulario } from '@/types/database'
 
@@ -16,6 +17,7 @@ export default function AdminFormulariosTab() {
   const [loading, setLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
   const [editingFormulario, setEditingFormulario] = useState<DatabaseFormulario | null>(null)
+  const [viewingRespostas, setViewingRespostas] = useState<DatabaseFormulario | null>(null)
   const [error, setError] = useState('')
   const [respostasCount, setRespostasCount] = useState<Record<string, number>>({})
 
@@ -27,7 +29,10 @@ export default function AdminFormulariosTab() {
     try {
       setLoading(true)
       setError('')
+      console.log('🔄 Carregando formulários...')
       const dados = await getAllFormularios()
+      console.log(`📊 Formulários carregados: ${dados.length}`)
+      console.log('📋 Dados:', dados)
       setFormularios(dados)
 
       // Carregar contagem de respostas para cada formulário EM PARALELO (muito mais rápido)
@@ -61,10 +66,13 @@ export default function AdminFormulariosTab() {
         nome: formularioData.nome,
         tipo: formularioData.tipo,
         ativo: formularioData.ativo !== undefined ? formularioData.ativo : true,
+        perguntas: formularioData.perguntas && Array.isArray(formularioData.perguntas) && formularioData.perguntas.length > 0 
+          ? formularioData.perguntas 
+          : undefined,
         created_by: user?.id || null
       }
 
-      console.log('Dados do formulário a serem salvos:', dadosFormulario)
+      console.log('📋 Dados do formulário a serem salvos:', dadosFormulario)
 
       if (editingFormulario) {
         // Atualizar formulário existente
@@ -78,22 +86,39 @@ export default function AdminFormulariosTab() {
         }
       } else {
         // Criar novo formulário
+        console.log('🔄 Criando novo formulário...')
         const novoFormulario = await createFormulario(dadosFormulario, user?.id)
         if (novoFormulario) {
-          await carregarFormularios()
+          console.log('✅ Formulário criado com sucesso:', novoFormulario.id)
+          // Fechar modal primeiro
           setIsCreating(false)
+          // Aguardar um pouco para garantir que o banco processou
+          await new Promise(resolve => setTimeout(resolve, 300))
+          // Recarregar formulários
+          await carregarFormularios()
         } else {
-          setError('Erro ao criar formulário. Tente novamente.')
+          console.error('❌ Falha ao criar formulário - createFormulario retornou null')
+          setError('Erro ao criar formulário. Verifique o console para mais detalhes.')
         }
       }
-    } catch (err) {
-      console.error('Erro ao salvar formulário:', err)
-      setError('Erro ao salvar formulário. Tente novamente.')
+    } catch (err: any) {
+      console.error('❌ Erro ao salvar formulário:', err)
+      setError(`Erro ao salvar formulário: ${err?.message || 'Erro desconhecido'}`)
     }
   }
 
   const handleDelete = async (formularioId: string) => {
-    if (!confirm('Tem certeza que deseja excluir este formulário? Todas as respostas também serão excluídas. Esta ação não pode ser desfeita.')) {
+    // Buscar informações do formulário antes de deletar
+    const formulario = formularios.find(f => f.id === formularioId)
+    const nomeFormulario = formulario?.nome || 'este formulário'
+    
+    const mensagem = `Tem certeza que deseja excluir "${nomeFormulario}"?\n\n` +
+      `⚠️ ATENÇÃO:\n` +
+      `- Todas as respostas serão excluídas\n` +
+      `- Os pontos de XP ganhos por responder este formulário serão SUBTRAÍDOS dos usuários\n` +
+      `- Esta ação não pode ser desfeita`
+    
+    if (!confirm(mensagem)) {
       return
     }
 
@@ -192,6 +217,14 @@ export default function AdminFormulariosTab() {
         formulario={editingFormulario}
       />
 
+      {/* Modal Visualizar Respostas */}
+      <ViewRespostasModal
+        isOpen={!!viewingRespostas}
+        onClose={() => setViewingRespostas(null)}
+        formularioId={viewingRespostas?.id || ''}
+        formularioNome={viewingRespostas?.nome || ''}
+      />
+
       {formularios.length === 0 ? (
         <div className={cn(
           "p-8 text-center rounded-lg border",
@@ -274,10 +307,7 @@ export default function AdminFormulariosTab() {
                         : "hover:bg-gray-200 text-gray-600 hover:text-gray-900"
                     )}
                     title="Ver Respostas"
-                    onClick={() => {
-                      // TODO: Implementar visualização de respostas
-                      alert(`Este formulário tem ${respostasCount[formulario.id] || 0} resposta(s). A visualização detalhada será implementada em breve.`)
-                    }}
+                    onClick={() => setViewingRespostas(formulario)}
                   >
                     <Eye className="w-4 h-4" />
                   </button>

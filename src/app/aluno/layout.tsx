@@ -4,8 +4,10 @@ import { useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import AlunoSidebar from '@/components/aluno/AlunoSidebar'
 import AlunoHeader from '@/components/aluno/AlunoHeader'
+import NotificationsModal from '@/components/aluno/NotificationsModal'
 import { SidebarProvider, useSidebar } from '@/lib/SidebarContext'
 import { ThemeProvider, useTheme } from '@/lib/ThemeContext'
+import { NotificationsProvider } from '@/lib/NotificationsContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
 
@@ -24,19 +26,15 @@ function AlunoLayoutContent({
 }) {
   const { isExpanded } = useSidebar()
   const { theme } = useTheme()
-  const { user, loading, initializeAuth } = useAuth()
+  const { user, loading, initialized } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
   const isPublicRoute = publicRoutes.includes(pathname)
 
   useEffect(() => {
-    initializeAuth()
-  }, [initializeAuth])
-
-  useEffect(() => {
-    // Se não é rota pública e não está carregando
-    if (!isPublicRoute && !loading) {
+    // Se não é rota pública e a autenticação foi inicializada e não está carregando
+    if (!isPublicRoute && initialized && !loading) {
       if (!user) {
         // Verificar ambiente e configuração do Supabase
         const isProduction = process.env.NODE_ENV === 'production'
@@ -57,15 +55,15 @@ function AlunoLayoutContent({
         // Se não tem Supabase válido em desenvolvimento, permite acesso (modo desenvolvimento)
       }
     }
-  }, [user, loading, isPublicRoute, pathname, router])
+  }, [user, loading, initialized, isPublicRoute, pathname, router])
 
   // Se é rota pública, mostrar conteúdo sem sidebar/header
   if (isPublicRoute) {
     return <>{children}</>
   }
 
-  // Se está carregando, mostrar loading
-  if (loading) {
+  // Se está carregando ou ainda não inicializou, mostrar loading
+  if (loading || !initialized) {
     return (
       <div className={cn(
         "min-h-screen overflow-x-hidden relative transition-colors duration-300 flex items-center justify-center",
@@ -86,57 +84,62 @@ function AlunoLayoutContent({
 
   // Mostrar layout completo (com ou sem autenticação, dependendo da configuração)
   return (
-    <div className={cn(
-      "min-h-screen overflow-x-hidden relative transition-colors duration-300",
-      theme === 'dark' ? "bg-black" : "bg-white"
-    )}>
-      {/* Background Gradient */}
+    <NotificationsProvider>
       <div className={cn(
-        "fixed inset-0 pointer-events-none transition-colors duration-300",
-        theme === 'dark' 
-          ? "bg-gradient-to-br from-black via-black to-yellow-600/20"
-          : "bg-gradient-to-br from-white via-white to-yellow-50/30"
-      )}></div>
-      
-      {/* Geometric Grid Pattern */}
-      <div className={cn(
-        "fixed inset-0 pointer-events-none transition-opacity duration-300",
-        theme === 'dark' ? "opacity-10" : "opacity-[0.15]"
+        "min-h-screen overflow-x-hidden relative transition-colors duration-300",
+        theme === 'dark' ? "bg-black" : "bg-white"
       )}>
-        <div className="absolute inset-0" style={{
-          backgroundImage: theme === 'dark'
-            ? `
-              linear-gradient(rgba(255, 255, 0, 0.3) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255, 255, 0, 0.3) 1px, transparent 1px)
-            `
-            : `
-              linear-gradient(rgba(234, 179, 8, 0.4) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(234, 179, 8, 0.4) 1px, transparent 1px)
-            `,
-          backgroundSize: '60px 60px'
-        }}></div>
-      </div>
-      
-      <AlunoSidebar />
-      {/* Mobile: sem margem, Desktop: margem para sidebar flutuante */}
-      <div 
-        className={cn(
-          "lg:transition-all lg:duration-300 relative z-10",
-          isExpanded ? "lg:ml-[280px]" : "lg:ml-[104px]"
-        )}
-      >
-        {/* Mobile/Tablet: padding bottom para a bottom nav bar, Desktop: padding normal */}
-        <main 
-          className="p-4 lg:p-6 pb-20 md:pb-20 lg:pb-6 min-h-screen overflow-x-hidden max-w-full"
-          style={{
-            paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))',
-          }}
+        {/* Background Gradient */}
+        <div className={cn(
+          "fixed inset-0 pointer-events-none transition-colors duration-300",
+          theme === 'dark' 
+            ? "bg-gradient-to-br from-black via-black to-yellow-600/20"
+            : "bg-gradient-to-br from-white via-white to-yellow-50/30"
+        )}></div>
+        
+        {/* Geometric Grid Pattern */}
+        <div className={cn(
+          "fixed inset-0 pointer-events-none transition-opacity duration-300",
+          theme === 'dark' ? "opacity-10" : "opacity-[0.15]"
+        )}>
+          <div className="absolute inset-0" style={{
+            backgroundImage: theme === 'dark'
+              ? `
+                linear-gradient(rgba(255, 255, 0, 0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 0, 0.3) 1px, transparent 1px)
+              `
+              : `
+                linear-gradient(rgba(234, 179, 8, 0.4) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(234, 179, 8, 0.4) 1px, transparent 1px)
+              `,
+            backgroundSize: '60px 60px'
+          }}></div>
+        </div>
+        
+        <AlunoSidebar />
+        {/* Mobile: sem margem, Desktop: margem para sidebar flutuante */}
+        <div 
+          className={cn(
+            "lg:transition-all lg:duration-300 relative z-10",
+            isExpanded ? "lg:ml-[280px]" : "lg:ml-[104px]"
+          )}
         >
-          <AlunoHeader />
-          {children}
-        </main>
+          {/* Mobile/Tablet: padding bottom para a bottom nav bar, Desktop: padding normal */}
+          <main 
+            className="p-4 lg:p-6 pb-20 md:pb-20 lg:pb-6 min-h-screen overflow-x-hidden max-w-full"
+            style={{
+              paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))',
+            }}
+          >
+            <AlunoHeader />
+            {children}
+          </main>
+        </div>
+        
+        {/* Modal de Notificações */}
+        <NotificationsModal />
       </div>
-    </div>
+    </NotificationsProvider>
   )
 }
 

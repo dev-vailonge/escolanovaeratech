@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from './supabase'
 import { User } from '@supabase/supabase-js'
 import { getUserById } from './database'
@@ -10,6 +10,7 @@ import type { DatabaseUser } from '@/types/database'
 interface AuthContextType {
   user: AuthUser | null
   loading: boolean
+  initialized: boolean
   signOut: () => Promise<void>
   refreshSession: () => Promise<void>
   initializeAuth: () => Promise<void>
@@ -40,20 +41,66 @@ function convertToAuthUser(dbUser: DatabaseUser | null, supabaseUser: User | nul
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true) // Inicia como true para evitar flash de login
   const [initialized, setInitialized] = useState(false)
 
   // Buscar dados completos do usuário do banco
+  // IMPORTANTE: Esta função só é chamada quando há um usuário autenticado (supabaseUser)
+  // A API /api/users/create valida que o usuário existe no auth.users antes de criar
   const fetchUserData = async (supabaseUser: User | null): Promise<AuthUser | null> => {
     if (!supabaseUser) return null
 
     try {
-      const dbUser = await getUserById(supabaseUser.id)
+      let dbUser = await getUserById(supabaseUser.id)
       
+      // Se o usuário não existe na tabela users, criar automaticamente
+      // SEGURANÇA: Só cria se o usuário estiver autenticado (supabaseUser existe)
+      // A API valida que o ID corresponde a um usuário válido no auth.users
       if (!dbUser) {
-        console.warn(`⚠️ Usuário ${supabaseUser.id} não encontrado na tabela users. Verifique se o usuário foi criado corretamente.`)
-        // Retornar null para que o sistema saiba que precisa criar o usuário
-        return null
+        console.warn(`⚠️ Usuário ${supabaseUser.id} não encontrado na tabela users. Criando automaticamente...`)
+        
+        try {
+          // Chamar API para criar o usuário e confirmar email
+          // A API valida que o usuário existe no auth.users antes de criar
+          const response = await fetch('/api/users/create', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              id: supabaseUser.id,
+              email: supabaseUser.email || '',
+              name: supabaseUser.user_metadata?.name || 
+                    supabaseUser.user_metadata?.full_name || 
+                    supabaseUser.user_metadata?.display_name ||
+                    supabaseUser.email?.split('@')[0] || 
+                    'Usuário',
+              role: 'aluno',
+              access_level: 'limited'
+            }),
+          })
+
+          const result = await response.json()
+
+          if (response.ok && result.success && result.user) {
+            console.log(`✅ Usuário criado automaticamente: ${supabaseUser.email}`)
+            dbUser = result.user
+          } else {
+            console.error('❌ Erro ao criar usuário automaticamente:', result.error)
+            // Tentar buscar novamente (pode ter sido criado pelo trigger ou outra fonte)
+            dbUser = await getUserById(supabaseUser.id)
+            if (!dbUser) {
+              return null
+            }
+          }
+        } catch (apiError: any) {
+          console.error('❌ Erro ao chamar API de criar usuário:', apiError)
+          // Tentar buscar novamente (pode ter sido criado por outra fonte)
+          dbUser = await getUserById(supabaseUser.id)
+          if (!dbUser) {
+            return null
+          }
+        }
       }
       
       return convertToAuthUser(dbUser, supabaseUser)
@@ -63,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const initializeAuth = async () => {
+  const initializeAuth = useCallback(async () => {
     if (initialized) return
     
     setLoading(true)
@@ -89,7 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [initialized])
 
   const refreshSession = async () => {
     try {
@@ -124,6 +171,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // Inicializar autenticação automaticamente quando o componente monta
+  useEffect(() => {
+    initializeAuth()
+  }, [initializeAuth])
+
   useEffect(() => {
     let mounted = true
 
@@ -155,7 +207,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [initialized])
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut, refreshSession, initializeAuth }}>
+    <AuthContext.Provider value={{ user, loading, initialized, signOut, refreshSession, initializeAuth }}>
       {children}
     </AuthContext.Provider>
   )

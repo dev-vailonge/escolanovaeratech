@@ -1,5 +1,6 @@
 'use client'
 
+import { memo, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
@@ -11,13 +12,16 @@ interface ProgressCardProps {
   color?: string
 }
 
-export default function ProgressCard({
+function ProgressCard({
   title,
   count,
   icon,
   color = 'yellow',
 }: ProgressCardProps) {
   const { theme } = useTheme()
+
+  // Memoizar formatação do número
+  const formattedCount = useMemo(() => count.toLocaleString('pt-BR'), [count])
 
   const bgGradientClasses = {
     yellow: theme === 'dark' 
@@ -50,7 +54,7 @@ export default function ProgressCard({
           "text-2xl md:text-3xl font-bold mb-1",
           theme === 'dark' ? "text-white" : "text-gray-900"
         )}>
-          {count.toLocaleString('pt-BR')}
+          {formattedCount}
         </div>
         <p className={cn(
           "text-xs mt-1",
@@ -62,4 +66,6 @@ export default function ProgressCard({
     </Card>
   )
 }
+
+export default memo(ProgressCard)
 

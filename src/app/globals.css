@@ -1,3 +1,5 @@
+/* stylelint-disable */
+/* postcss-ignore */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -31,4 +33,85 @@
 
 .animate-spotlight {
   animation: spotlight 2s ease 0.75s 1 forwards;
+}
+
+/* Scrollbar amarela - Modo Dark (padrão) */
+/* Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #18181b; /* zinc-900 */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #facc15; /* yellow-400 */
+  border-radius: 6px;
+  border: 2px solid #18181b;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #fbbf24; /* yellow-500 */
+}
+
+/* Scrollbar amarela - Modo Light */
+/* Quando o body tem a classe theme-light, aplicar scrollbar com fundo branco */
+body.theme-light ::-webkit-scrollbar-track {
+  background: #ffffff !important; /* branco */
+}
+
+body.theme-light ::-webkit-scrollbar-thumb {
+  background: #facc15 !important; /* yellow-400 */
+  border: 2px solid #ffffff !important; /* borda branca */
+}
+
+body.theme-light ::-webkit-scrollbar-thumb:hover {
+  background: #fbbf24 !important; /* yellow-500 */
+}
+
+/* Firefox - Modo Dark (padrão) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #facc15 #18181b; /* thumb track */
+}
+
+/* Firefox - Modo Light */
+body.theme-light * {
+  scrollbar-color: #facc15 #ffffff !important; /* thumb track branco */
+}
+
+/* Botões customizados */
+@layer components {
+  /* stylelint-disable-next-line */
+  .btn-primary {
+    /* stylelint-disable-next-line */
+    @apply px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-200;
+    /* stylelint-disable-next-line */
+    @apply bg-yellow-400 text-black hover:bg-yellow-500;
+    /* stylelint-disable-next-line */
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* stylelint-disable-next-line */
+  .btn-secondary {
+    /* stylelint-disable-next-line */
+    @apply px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-200;
+    /* stylelint-disable-next-line */
+    @apply border text-gray-300 hover:bg-white/5 hover:text-white;
+    /* stylelint-disable-next-line */
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .dark .btn-secondary {
+    /* stylelint-disable-next-line */
+    @apply border-white/10 text-gray-300 hover:bg-white/5 hover:text-white;
+  }
+  
+  .btn-secondary:not(.dark) {
+    /* stylelint-disable-next-line */
+    @apply border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900;
+  }
 }

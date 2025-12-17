@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
-import { Loader2, RefreshCw, Mail, Phone, Calendar, ShoppingBag, DollarSign, Search, Download, Database, ExternalLink, Trophy, Zap, Coins, Shield, User, Lock, Unlock } from 'lucide-react'
+import { Loader2, RefreshCw, Mail, Phone, Calendar, ShoppingBag, DollarSign, Search, Database, ExternalLink, Trophy, Zap, Coins, Shield, User, Lock, Unlock } from 'lucide-react'
 import { getAllUsers, updateUserRole, updateUserAccessLevel } from '@/lib/database'
 import type { DatabaseUser } from '@/types/database'
 
@@ -429,22 +429,6 @@ export default function AdminAlunosTab() {
               )}
             />
           </div>
-          {activeTab === 'hotmart' && (
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors text-sm md:text-base",
-                theme === 'dark'
-                  ? "bg-blue-500 text-white hover:bg-blue-400 disabled:opacity-50"
-                  : "bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-              )}
-              title="Sincronizar dados históricos da Hotmart (último ano)"
-            >
-              <Download className={cn("w-4 h-4", syncing && "animate-pulse")} />
-              {syncing ? 'Sincronizando...' : 'Sincronizar'}
-            </button>
-          )}
           <button
             onClick={handleRefresh}
             disabled={refreshing}

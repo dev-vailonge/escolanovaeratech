@@ -6,6 +6,8 @@ import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { isFeatureEnabled } from '@/lib/features'
 import { useAuth } from '@/lib/AuthContext'
+import { useNotifications } from '@/lib/NotificationsContext'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export default function AlunoHeader() {
   const { user: authUser } = useAuth()
@@ -23,10 +25,11 @@ export default function AlunoHeader() {
       }
     : { ...mockUser, avatarUrl: null as string | null }
   const { theme, toggleTheme } = useTheme()
+  const { unreadCount, openModal, hasNewNotification } = useNotifications()
 
   return (
     <header className={cn(
-      "backdrop-blur-xl rounded-xl p-4 mb-6 shadow-lg transition-colors duration-300 overflow-x-hidden max-w-full",
+      "backdrop-blur-xl rounded-xl p-4 mb-6 shadow-lg transition-colors duration-300 max-w-full overflow-visible",
       theme === 'dark' 
         ? "bg-black/40 border border-white/10 shadow-black/30"
         : "bg-yellow-400/90 border border-yellow-500/30 shadow-yellow-400/20"
@@ -88,22 +91,55 @@ export default function AlunoHeader() {
                 <Moon className="w-4 h-4 text-yellow-700" />
               )}
             </button>
-            <button className={cn(
-              "p-2 rounded-lg border transition-colors",
-              theme === 'dark'
-                ? "bg-[#0f0f0f] border-white/10 hover:bg-white/5"
-                : "bg-yellow-500/20 border-yellow-600/30 hover:bg-yellow-500/30"
-            )}>
+            <button 
+              onClick={openModal}
+              className={cn(
+                "p-2 rounded-lg border transition-colors relative",
+                theme === 'dark'
+                  ? "bg-[#0f0f0f] border-white/10 hover:bg-white/5"
+                  : "bg-yellow-500/20 border-yellow-600/30 hover:bg-yellow-500/30"
+              )}
+            >
               <Bell className={cn(
                 "w-4 h-4",
                 theme === 'dark' ? "text-gray-400" : "text-gray-700"
               )} />
+              {/* Badge de notificações não lidas */}
+              <AnimatePresence>
+                {unreadCount > 0 && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                    className={cn(
+                      "absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold rounded-full z-50 shadow-lg",
+                      theme === 'dark'
+                        ? "bg-yellow-400 text-black"
+                        : "bg-red-500 text-white"
+                    )}
+                  >
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+              {/* Indicador de nova notificação */}
+              <AnimatePresence>
+                {hasNewNotification && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: [1, 1.2, 1] }}
+                    exit={{ scale: 0 }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                    className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-black z-50"
+                  />
+                )}
+              </AnimatePresence>
             </button>
           </div>
         </div>
 
         {/* Stats - Mobile: segunda linha com XP | Desktop: todos alinhados à direita */}
-        <div className="flex items-center flex-nowrap gap-2 sm:gap-3 w-full lg:w-auto lg:gap-4 overflow-x-auto">
+        <div className="flex items-center flex-nowrap gap-2 sm:gap-3 w-full lg:w-auto lg:gap-4">
           {/* XP Total */}
           <div className={cn(
             "flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border flex-shrink-0",
@@ -182,16 +218,49 @@ export default function AlunoHeader() {
                 <Moon className="w-5 h-5 text-yellow-700" />
               )}
             </button>
-            <button className={cn(
-              "p-2 rounded-lg border transition-colors",
-              theme === 'dark'
-                ? "bg-[#0f0f0f] border-white/10 hover:bg-white/5"
-                : "bg-yellow-500/20 border-yellow-600/30 hover:bg-yellow-500/30"
-            )}>
+            <button 
+              onClick={openModal}
+              className={cn(
+                "p-2 rounded-lg border transition-colors relative",
+                theme === 'dark'
+                  ? "bg-[#0f0f0f] border-white/10 hover:bg-white/5"
+                  : "bg-yellow-500/20 border-yellow-600/30 hover:bg-yellow-500/30"
+              )}
+            >
               <Bell className={cn(
                 "w-5 h-5",
                 theme === 'dark' ? "text-gray-400" : "text-gray-700"
               )} />
+              {/* Badge de notificações não lidas */}
+              <AnimatePresence>
+                {unreadCount > 0 && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                    className={cn(
+                      "absolute -top-2 -right-2 min-w-[20px] h-[20px] flex items-center justify-center text-xs font-bold rounded-full z-50 shadow-lg",
+                      theme === 'dark'
+                        ? "bg-yellow-400 text-black"
+                        : "bg-red-500 text-white"
+                    )}
+                  >
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+              {/* Indicador de nova notificação */}
+              <AnimatePresence>
+                {hasNewNotification && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: [1, 1.2, 1] }}
+                    exit={{ scale: 0 }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                    className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-black z-50"
+                  />
+                )}
+              </AnimatePresence>
             </button>
           </div>
         </div>

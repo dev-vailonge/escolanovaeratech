@@ -2,15 +2,18 @@
 
 import { mockDesafios } from '@/data/aluno/mockDesafios'
 import { mockUser } from '@/data/aluno/mockUser'
-import { Target, Clock, CheckCircle2, Coins, Trophy, Users, Calendar, Lock } from 'lucide-react'
+import { Target, Clock, CheckCircle2, Coins, Trophy, Users, Calendar, Lock, BookOpen } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { isFeatureEnabled } from '@/lib/features'
 import { hasFullAccess } from '@/lib/types/auth'
 import { useAuth } from '@/lib/AuthContext'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import Modal from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
+import { getDesafios } from '@/lib/database'
+import type { DatabaseDesafio } from '@/types/database'
+import { getCursoNome, type CursoId } from '@/lib/constants/cursos'
 
 export default function DesafiosPage() {
   const { theme } = useTheme()
@@ -20,11 +23,48 @@ export default function DesafiosPage() {
     : mockUser
   const canParticipate = hasFullAccess({ ...user, role: user.role as 'aluno' | 'admin', accessLevel: user.accessLevel })
 
+  // Alunos com access_level = 'full' têm acesso a todos os cursos
+  const userCourses = canParticipate 
+    ? (['android', 'frontend', 'backend', 'ios', 'analise-dados', 'norte-tech', 'logica-programacao'] as CursoId[])
+    : []
+
+  const [desafiosDB, setDesafiosDB] = useState<DatabaseDesafio[]>([])
+  const [loadingDesafios, setLoadingDesafios] = useState(true)
   const [desafios, setDesafios] = useState(mockDesafios)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string>('')
   const [success, setSuccess] = useState<string>('')
   const [selectedDesafioId, setSelectedDesafioId] = useState<string | null>(null)
+
+  // Carregar desafios do banco
+  useEffect(() => {
+    const loadDesafios = async () => {
+      try {
+        setLoadingDesafios(true)
+        const dados = await getDesafios()
+        setDesafiosDB(dados)
+        // Converter DatabaseDesafio para o formato usado na página (temporário até migrar completamente)
+        // Por enquanto, continuamos usando mockDesafios mas podemos adicionar indicadores baseados em desafiosDB
+      } catch (err) {
+        console.error('Erro ao carregar desafios:', err)
+      } finally {
+        setLoadingDesafios(false)
+      }
+    }
+    loadDesafios()
+  }, [])
+
+  // Função helper para verificar se um desafio é do curso do aluno
+  const isDesafioDoCursoDoAluno = (cursoId: CursoId): boolean => {
+    if (!cursoId) return true // Desafios gerais são sempre visíveis
+    return userCourses.includes(cursoId)
+  }
+
+  // Função helper para obter curso_id de um desafio mockado (temporário até migrar completamente)
+  const getCursoIdFromMock = (desafioId: string): CursoId => {
+    const desafioDB = desafiosDB.find(d => d.id === desafioId)
+    return (desafioDB?.curso_id ?? null) as CursoId
+  }
 
   const desafiosAtivos = useMemo(() => desafios.filter(d => !d.completo), [desafios])
   const desafiosCompletos = useMemo(() => desafios.filter(d => d.completo), [desafios])
@@ -259,6 +299,8 @@ export default function DesafiosPage() {
         {desafiosAtivos.map((desafio) => {
           const prazo = new Date(desafio.prazo)
           const diasRestantes = Math.ceil((prazo.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+          const cursoId = getCursoIdFromMock(desafio.id)
+          const isDoMeuCurso = isDesafioDoCursoDoAluno(cursoId)
 
           return (
             <div
@@ -266,7 +308,8 @@ export default function DesafiosPage() {
               className={cn(
                 "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-all duration-300",
                 getTipoColor(desafio.tipo),
-                theme === 'light' && "shadow-md"
+                theme === 'light' && "shadow-md",
+                isDoMeuCurso && cursoId && "ring-2 ring-yellow-400/50"
               )}
             >
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -287,7 +330,34 @@ export default function DesafiosPage() {
                     )}>
                       {desafio.tipo}
                     </span>
+                    {cursoId && (
+                      <span
+                        className={cn(
+                          "px-2 py-1 text-xs rounded-full border flex items-center gap-1",
+                          isDoMeuCurso
+                            ? theme === 'dark'
+                              ? "bg-yellow-400/20 text-yellow-400 border-yellow-400/30"
+                              : "bg-yellow-100 text-yellow-700 border-yellow-300"
+                            : theme === 'dark'
+                              ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                              : "bg-blue-100 text-blue-700 border-blue-300"
+                        )}
+                        title={isDoMeuCurso ? `Este desafio é do seu curso: ${getCursoNome(cursoId)}` : `Este desafio é do curso: ${getCursoNome(cursoId)}`}
+                      >
+                        <BookOpen className="w-3 h-3" />
+                        {getCursoNome(cursoId)}
+                      </span>
+                    )}
                   </div>
+                  {cursoId && isDoMeuCurso && (
+                    <div className={cn(
+                      "mb-2 text-xs flex items-center gap-1",
+                      theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                    )}>
+                      <Trophy className="w-3 h-3" />
+                      Este desafio é do seu curso!
+                    </div>
+                  )}
                   <p className={cn(
                     "text-sm md:text-base mb-3 md:mb-4",
                     theme === 'dark' ? "text-gray-300" : "text-gray-700"
@@ -414,16 +484,18 @@ export default function DesafiosPage() {
               Você já concluiu {desafiosCompletos.length} desafio{desafiosCompletos.length !== 1 ? 's' : ''}
             </p>
           </div>
-          {desafiosCompletos.map((desafio) => (
-            <div
-              key={desafio.id}
-              className={cn(
-                "backdrop-blur-md border rounded-xl p-4 md:p-6 opacity-75 transition-colors duration-300",
-                theme === 'dark'
-                  ? "bg-black/20 border-green-500/30"
-                  : "bg-green-50 border-green-400/90 shadow-md"
-              )}
-            >
+          {desafiosCompletos.map((desafio) => {
+            const cursoId = getCursoIdFromMock(desafio.id)
+            return (
+              <div
+                key={desafio.id}
+                className={cn(
+                  "backdrop-blur-md border rounded-xl p-4 md:p-6 opacity-75 transition-colors duration-300",
+                  theme === 'dark'
+                    ? "bg-black/20 border-green-500/30"
+                    : "bg-green-50 border-green-400/90 shadow-md"
+                )}
+              >
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2">
@@ -442,6 +514,20 @@ export default function DesafiosPage() {
                     )}>
                       Completo
                     </span>
+                    {cursoId && (
+                      <span
+                        className={cn(
+                          "px-2 py-1 text-xs rounded-full border flex items-center gap-1",
+                          theme === 'dark'
+                            ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                            : "bg-blue-100 text-blue-700 border-blue-300"
+                        )}
+                        title={`Curso: ${getCursoNome(cursoId)}`}
+                      >
+                        <BookOpen className="w-3 h-3" />
+                        {getCursoNome(cursoId)}
+                      </span>
+                    )}
                   </div>
                   <p className={cn(
                     "text-sm md:text-base mb-3 md:mb-4",
@@ -470,7 +556,8 @@ export default function DesafiosPage() {
                 </div>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

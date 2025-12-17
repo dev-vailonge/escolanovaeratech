@@ -25,6 +25,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Salvar tema no localStorage
     localStorage.setItem('aluno-theme', theme)
+    
+    // Aplicar classe no body para estilos de scrollbar
+    if (typeof document !== 'undefined') {
+      if (theme === 'light') {
+        document.body.classList.add('theme-light')
+        document.body.classList.remove('theme-dark')
+      } else {
+        document.body.classList.add('theme-dark')
+        document.body.classList.remove('theme-light')
+      }
+    }
   }, [theme])
 
   const toggleTheme = () => {

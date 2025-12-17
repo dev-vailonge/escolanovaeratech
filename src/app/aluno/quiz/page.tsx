@@ -49,39 +49,44 @@ export default function QuizPage() {
       try {
         setLoading(true)
         
-        // Buscar quizzes disponíveis
-        const dbQuizzes = await getAllQuizzes()
+        // Buscar quizzes e progresso em paralelo para melhor performance
+        const [dbQuizzes, progressResult] = await Promise.allSettled([
+          getAllQuizzes(),
+          // Buscar progresso do usuário se logado
+          authUser?.id
+            ? supabase
+                .from('user_quiz_progress')
+                .select('quiz_id, tentativas, melhor_pontuacao, completo')
+                .eq('user_id', authUser.id)
+                .then(({ data, error }) => {
+                  if (error) {
+                    console.error('❌ Erro ao buscar progresso:', error)
+                    return []
+                  }
+                  return data || []
+                })
+            : Promise.resolve([])
+        ])
         
-        // Buscar progresso do usuário se logado
+        // Processar quizzes
+        if (dbQuizzes.status !== 'fulfilled') {
+          throw new Error('Erro ao carregar quizzes')
+        }
+        
+        // Processar progresso
         let userProgress: Record<string, { tentativas: number; melhor_pontuacao: number | null; completo: boolean }> = {}
-        
-        if (authUser?.id) {
-          console.log('📊 Buscando progresso do usuário:', authUser.id)
-          
-          const { data: progress, error: progressError } = await supabase
-            .from('user_quiz_progress')
-            .select('quiz_id, tentativas, melhor_pontuacao, completo')
-            .eq('user_id', authUser.id)
-          
-          if (progressError) {
-            console.error('❌ Erro ao buscar progresso:', progressError)
-          }
-          
-          console.log('📊 Progresso encontrado:', progress)
-          
-          if (progress) {
-            progress.forEach(p => {
-              userProgress[p.quiz_id] = {
-                tentativas: p.tentativas,
-                melhor_pontuacao: p.melhor_pontuacao,
-                completo: p.completo
-              }
-            })
-          }
+        if (progressResult.status === 'fulfilled' && Array.isArray(progressResult.value)) {
+          progressResult.value.forEach((p: any) => {
+            userProgress[p.quiz_id] = {
+              tentativas: p.tentativas || 0,
+              melhor_pontuacao: p.melhor_pontuacao,
+              completo: p.completo || false
+            }
+          })
         }
         
         // Converter para formato UI
-        const quizzesUI: QuizUI[] = dbQuizzes
+        const quizzesUI: QuizUI[] = dbQuizzes.value
           .filter(q => q.disponivel) // Só mostrar disponíveis
           .map(q => {
             const progress = userProgress[q.id]

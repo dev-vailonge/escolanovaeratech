@@ -10,6 +10,17 @@
 import { supabase } from './supabase'
 import type { DatabaseUser, DatabaseQuiz, DatabaseDesafio, DatabaseNotificacao, DatabaseFormulario, DatabaseFormularioResposta } from '@/types/database'
 
+// Importar Supabase Admin como fallback (apenas server-side)
+let getSupabaseAdmin: (() => any) | null = null
+if (typeof window === 'undefined') {
+  try {
+    const adminModule = require('./server/supabaseAdmin')
+    getSupabaseAdmin = adminModule.getSupabaseAdmin
+  } catch (e) {
+    // Ignorar se não estiver disponível (client-side)
+  }
+}
+
 // Verificar se Supabase está configurado
 const isSupabaseConfigured = () => {
   return !!(
@@ -37,6 +48,11 @@ export async function getUserById(userId: string): Promise<DatabaseUser | null> 
       .single()
 
     if (error) {
+      // Se o erro for "no rows returned" (PGRST116), não logar como erro
+      // pois o usuário será criado automaticamente
+      if (error.code === 'PGRST116') {
+        return null
+      }
       console.error('Error fetching user:', error)
       return null
     }
@@ -107,9 +123,10 @@ export async function updateUserRole(userId: string, role: 'admin' | 'aluno'): P
 
 /**
  * Cria um usuário na tabela users
- * Usado principalmente quando recebemos dados do webhook da Hotmart
+ * Usado principalmente quando recebemos dados do webhook da Hotmart ou após signup
  */
 export async function createUser(userData: {
+  id?: string // ID opcional (geralmente do auth.users.id)
   email: string
   name: string
   role?: 'aluno' | 'admin'
@@ -121,21 +138,44 @@ export async function createUser(userData: {
   }
 
   try {
+    // Se um ID foi fornecido, verificar se já existe usuário com esse ID
+    if (userData.id) {
+      const existingById = await getUserById(userData.id)
+      if (existingById) {
+        console.log(`Usuário já existe com ID: ${userData.id}`)
+        return existingById
+      }
+    }
+
     // Verificar se já existe usuário com este email
-    const existing = await getUserByEmail(userData.email)
-    if (existing) {
+    const existingByEmail = await getUserByEmail(userData.email)
+    if (existingByEmail) {
+      // Se um ID foi fornecido e já existe usuário com aquele email mas ID diferente,
+      // retornar o existente. O vínculo correto será feito via email no futuro.
+      // NOTA: Isso pode causar problemas se o ID não corresponder ao auth.users.id,
+      // mas será resolvido quando implementar vínculo por email.
+      if (userData.id && existingByEmail.id !== userData.id) {
+        console.warn(`⚠️ Usuário ${userData.email} já existe com ID diferente (${existingByEmail.id} vs ${userData.id}). Retornando existente.`)
+      }
       console.log(`Usuário já existe: ${userData.email}`)
-      return existing
+      return existingByEmail
+    }
+
+    const insertData: any = {
+      email: userData.email,
+      name: userData.name,
+      role: userData.role || 'aluno',
+      access_level: userData.access_level || 'limited',
+    }
+
+    // Se um ID foi fornecido, usar esse ID ao invés de gerar um novo
+    if (userData.id) {
+      insertData.id = userData.id
     }
 
     const { data, error } = await supabase
       .from('users')
-      .insert({
-        email: userData.email,
-        name: userData.name,
-        role: userData.role || 'aluno',
-        access_level: userData.access_level || 'limited',
-      })
+      .insert(insertData)
       .select()
       .single()
 
@@ -289,7 +329,6 @@ export async function createQuiz(quiz: Omit<DatabaseQuiz, 'id' | 'created_at' | 
       .insert(quiz)
       .select()
       .single()
-      .abortSignal(controller.signal)
     
     clearTimeout(timeoutId)
 
@@ -594,23 +633,94 @@ export async function addXP(
   sourceId?: string,
   description?: string
 ): Promise<boolean> {
-  const { error } = await supabase
-    .from('user_xp_history')
-    .insert({
-      user_id: userId,
-      amount,
-      source,
-      source_id: sourceId || null,
-      description: description || null,
-    })
-
-  if (error) {
-    console.error('Error adding XP:', error)
+  if (!isSupabaseConfigured()) {
+    console.error('❌ Supabase não configurado - não é possível adicionar XP')
     return false
   }
 
-  // O trigger no banco atualiza automaticamente o XP do usuário
-  return true
+  try {
+    console.log(`📤 Adicionando ${amount} XP ao usuário ${userId} (source: ${source}, sourceId: ${sourceId})`)
+
+    const { data, error } = await supabase
+      .from('user_xp_history')
+      .insert({
+        user_id: userId,
+        amount,
+        source,
+        source_id: sourceId || null,
+        description: description || null,
+      })
+      .select()
+
+    if (error) {
+      console.error('❌ Error adding XP (tentando com Supabase Admin como fallback):')
+      console.error('  Message:', error.message)
+      console.error('  Details:', error.details)
+      console.error('  Hint:', error.hint)
+      console.error('  Code:', error.code)
+      
+      // Tentar com Supabase Admin se disponível (server-side apenas)
+      if (getSupabaseAdmin && typeof window === 'undefined') {
+        try {
+          console.log('🔄 Tentando inserir XP usando Supabase Admin...')
+          const supabaseAdmin = getSupabaseAdmin()
+          const { error: adminError } = await supabaseAdmin
+            .from('user_xp_history')
+            .insert({
+              user_id: userId,
+              amount,
+              source,
+              source_id: sourceId || null,
+              description: description || null,
+            })
+          
+          if (adminError) {
+            console.error('❌ Erro mesmo com Admin:', adminError)
+            return false
+          }
+          
+          console.log('✅ XP inserido usando Supabase Admin')
+        } catch (adminErr: any) {
+          console.error('❌ Erro ao usar Supabase Admin:', adminErr)
+          return false
+        }
+      } else {
+        return false
+      }
+    }
+
+    if (!data || data.length === 0) {
+      console.error('❌ Nenhum dado retornado ao inserir XP')
+      return false
+    }
+
+    console.log('✅ XP adicionado ao histórico:', data[0]?.id)
+
+    // Aguardar um pouco para o trigger processar
+    await new Promise(resolve => setTimeout(resolve, 500))
+
+    // Verificar se o trigger atualizou o XP do usuário
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('xp, xp_mensal, level')
+      .eq('id', userId)
+      .single()
+
+    if (userError) {
+      console.error('❌ Erro ao verificar XP do usuário:', userError.message)
+    } else if (userData) {
+      console.log(`✅ XP do usuário atualizado: ${userData.xp} XP, Nível ${userData.level}`)
+    } else {
+      console.warn('⚠️ Não foi possível verificar se o XP foi atualizado')
+    }
+
+    // O trigger no banco atualiza automaticamente o XP do usuário
+    return true
+  } catch (error: any) {
+    console.error('❌ Exceção ao adicionar XP:', error)
+    console.error('  Stack:', error.stack)
+    return false
+  }
 }
 
 export async function getXPHistory(userId: string, limit: number = 50): Promise<any[]> {
@@ -664,19 +774,25 @@ export async function getAllFormularios(): Promise<DatabaseFormulario[]> {
   }
 
   try {
+    console.log('📥 Buscando todos os formulários...')
     const { data, error } = await supabase
       .from('formularios')
       .select('*')
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching all formularios:', error)
+      console.error('❌ Error fetching all formularios:', error.message, error.details, error.hint)
       return []
+    }
+
+    console.log(`✅ Formulários encontrados: ${data?.length || 0}`)
+    if (data && data.length > 0) {
+      console.log('📋 IDs dos formulários:', data.map(f => f.id))
     }
 
     return data || []
   } catch (error) {
-    console.error('Error in getAllFormularios:', error)
+    console.error('❌ Error in getAllFormularios:', error)
     return []
   }
 }
@@ -841,23 +957,44 @@ export async function createFormulario(formulario: Omit<DatabaseFormulario, 'id'
   }
 
   try {
+    // Preparar dados para inserção, removendo campos undefined
+    const dadosInsert: any = {
+      nome: formulario.nome,
+      tipo: formulario.tipo,
+      ativo: formulario.ativo !== undefined ? formulario.ativo : true,
+      created_by: createdBy || null
+    }
+
+    // Adicionar perguntas apenas se existirem
+    // Se não houver perguntas, não incluir o campo (deixa o banco usar o default NULL)
+    if (formulario.perguntas && Array.isArray(formulario.perguntas) && formulario.perguntas.length > 0) {
+      dadosInsert.perguntas = formulario.perguntas
+    }
+    // Se não houver perguntas, simplesmente não incluir o campo
+
+    console.log('📤 createFormulario: Enviando para Supabase...')
+    console.log('📊 Dados:', JSON.stringify(dadosInsert, null, 2))
+    console.log('👤 Created by:', createdBy)
+
     const { data, error } = await supabase
       .from('formularios')
-      .insert({
-        ...formulario,
-        created_by: createdBy || null
-      })
+      .insert(dadosInsert)
       .select()
       .single()
 
     if (error) {
-      console.error('Error creating formulario:', error)
+      console.error('❌ Error creating formulario:')
+      console.error('  Message:', error.message)
+      console.error('  Details:', error.details)
+      console.error('  Hint:', error.hint)
+      console.error('  Code:', error.code)
       return null
     }
 
+    console.log('✅ Formulário criado no Supabase:', data?.id)
     return data
-  } catch (error) {
-    console.error('Error in createFormulario:', error)
+  } catch (error: any) {
+    console.error('❌ Error in createFormulario:', error)
     return null
   }
 }

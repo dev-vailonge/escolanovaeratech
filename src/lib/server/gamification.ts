@@ -18,7 +18,7 @@ export type RankingRow = {
   respostasComunidade: number
 }
 
-async function insertXpEntry(params: {
+export async function insertXpEntry(params: {
   userId: string
   source: XPSource
   sourceId: string
@@ -123,16 +123,22 @@ export async function completarQuiz(params: { userId: string; quizId: string; po
 
   if (upsertError) throw upsertError
 
+  // Calcular XP proporcional à pontuação (0-100)
+  // Se pontuacao = 100%, ganha 100% do XP
+  // Se pontuacao = 50%, ganha 50% do XP
+  const xpGanho = Math.round((params.pontuacao / 100) * quiz.xp)
+  
   // Regra do produto: pode refazer ilimitado e ganhar XP a cada tentativa completa
+  // XP é proporcional à pontuação obtida
   await insertXpEntry({
     userId: params.userId,
     source: 'quiz',
     sourceId: params.quizId,
-    amount: quiz.xp,
-    description: `Quiz concluído: ${quiz.titulo} (tentativa ${newTentativas})`,
+    amount: xpGanho,
+    description: `Quiz concluído: ${quiz.titulo} (${params.pontuacao}% - tentativa ${newTentativas})`,
   })
 
-  return { awarded: true as const, xp: quiz.xp, tentativas: newTentativas, melhorPontuacao: bestScore }
+  return { awarded: true as const, xp: xpGanho, tentativas: newTentativas, melhorPontuacao: bestScore }
 }
 
 export async function responderComunidade(params: { userId: string; perguntaId: string; conteudo: string }) {
@@ -150,17 +156,9 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
 
   if (respostaError) throw respostaError
 
-  const xp = XP_CONSTANTS.comunidade.resposta
-
-  await insertXpEntry({
-    userId: params.userId,
-    source: 'comunidade',
-    sourceId: params.perguntaId,
-    amount: xp,
-    description: 'Resposta na comunidade',
-  })
-
-  return { awarded: true as const, xp, respostaId: resposta.id }
+  // XP não é dado imediatamente - apenas quando o proprietário da pergunta
+  // marcar a resposta como válida (thumbs up)
+  return { awarded: false as const, respostaId: resposta.id }
 }
 
 export async function getRanking(params: { type: RankingType; limit?: number }) {

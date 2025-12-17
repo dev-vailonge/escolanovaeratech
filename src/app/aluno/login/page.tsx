@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/AuthContext'
 import { useTheme, ThemeProvider } from '@/lib/ThemeContext'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { cn } from '@/lib/utils'
 
 function AlunoLoginContent() {
@@ -64,20 +65,25 @@ function AlunoLoginContent() {
 
       if (data?.user) {
         // Forçar refresh da sessão no AuthContext
+        // Isso vai criar o usuário automaticamente se não existir
         await initializeAuth()
         
-        // Aguardar um pouco para o AuthContext atualizar
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // Aguardar um pouco para o AuthContext atualizar e criar o usuário se necessário
+        await new Promise(resolve => setTimeout(resolve, 1500))
+        
+        // Verificar novamente se o usuário foi criado
+        await initializeAuth()
         
         // Successful login - redirect to aluno dashboard
-        // Redirecionar mesmo se user não estiver na tabela (para desenvolvimento)
         router.push('/aluno')
         return // Sair da função para não resetar isLoading
       }
     } catch (err: any) {
       console.error('Login error:', err)
-      if (err?.message?.includes('Invalid login credentials')) {
+      if (err?.message?.includes('Invalid login credentials') || err?.message?.includes('Invalid login')) {
         setError('Email ou senha inválidos.')
+      } else if (err?.message?.includes('Email not confirmed') || err?.code === 'email_not_confirmed') {
+        setError('Por favor, confirme seu email antes de fazer login. Verifique sua caixa de entrada.')
       } else {
         setError('Ocorreu um erro ao tentar fazer login. Por favor, tente novamente.')
       }
@@ -173,28 +179,13 @@ function AlunoLoginContent() {
           </div>
 
           <div>
-            <label 
-              htmlFor="password" 
-              className={cn(
-                "block text-sm font-medium mb-2",
-                theme === 'dark' ? "text-gray-300" : "text-gray-700"
-              )}
-            >
-              Senha
-            </label>
-            <input
+            <PasswordInput
               id="password"
-              type="password"
+              label="Senha"
               value={formData.password}
               onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-              className={cn(
-                "w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all",
-                theme === 'dark'
-                  ? "bg-black/50 border border-white/10"
-                  : "bg-white/90 border border-yellow-500/30 text-gray-900 placeholder-gray-400"
-              )}
-              placeholder="••••••••"
               required
+              theme={theme}
             />
             <div className="mt-2 text-right">
               <Link

@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, memo, useMemo } from 'react'
+import Image from 'next/image'
 import ProgressCard from '@/components/aluno/ProgressCard'
 import { BookOpen, Trophy, HelpCircle, Target, Clock, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
@@ -51,9 +52,19 @@ function convertNotificacaoToAnnouncement(notificacao: DatabaseNotificacao): Ann
   }
 }
 
-// Componente para exibir um card de aviso
-function AnnouncementCard({ title, message, type, date }: Announcement) {
+// Componente para exibir um card de aviso - memoizado para performance
+const AnnouncementCard = memo(function AnnouncementCard({ title, message, type, date }: Announcement) {
   const { theme } = useTheme()
+
+  // Memoizar formatação de data
+  const formattedDate = useMemo(() => {
+    if (!date) return null
+    return new Date(date).toLocaleDateString("pt-PT", {
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    })
+  }, [date])
 
   return (
     <div className={cn(
@@ -100,21 +111,17 @@ function AnnouncementCard({ title, message, type, date }: Announcement) {
         {message}
       </p>
 
-      {date && (
+      {formattedDate && (
         <p className={cn(
           "text-xs md:text-sm mt-1",
           theme === 'dark' ? "text-white/40" : "text-gray-500"
         )}>
-          {new Date(date).toLocaleDateString("pt-PT", {
-            day: "numeric",
-            month: "long",
-            year: "numeric"
-          })}
+          {formattedDate}
         </p>
       )}
     </div>
   )
-}
+})
 
 export default function AlunoDashboard() {
   const { user: authUser } = useAuth()
@@ -136,29 +143,106 @@ export default function AlunoDashboard() {
   const [topRanking, setTopRanking] = useState<RankingUser[]>([])
   const [loadingData, setLoadingData] = useState(true)
 
+  // Helper para obter token com timeout e fallback - memoizado
+  const getTokenWithTimeout = useCallback(async (): Promise<string | null> => {
+    try {
+      const sessionResult = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<{ data: { session: null } }>((resolve) => 
+          setTimeout(() => resolve({ data: { session: null } }), 2000) // Reduzido para 2s
+        )
+      ])
+      
+      if (sessionResult?.data?.session?.access_token) {
+        return sessionResult.data.session.access_token
+      }
+    } catch (err) {
+      // Silenciar erro em produção para melhor performance
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Erro ao obter sessão:', err)
+      }
+    }
+    
+    return null
+  }, [])
+
   // Buscar todos os dados em paralelo para melhor performance
   const fetchAllData = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
+      setLoadingData(true)
+      
+      // Começar a carregar notificações imediatamente (não depende de auth)
+      const notificacoesPromise = getNotificacoesAtivas()
+      
+      // Obter token com timeout (não bloquear outras operações)
+      const tokenPromise = getTokenWithTimeout()
+
+      // Aguardar token enquanto outras operações já começam
+      const token = await tokenPromise
 
       // Executar todas as requisições em paralelo
       const [statsResult, notificacoesResult, rankingResult] = await Promise.allSettled([
         // Stats do usuário
         token && authUser?.id
-          ? fetch('/api/users/me/stats', { headers: { Authorization: `Bearer ${token}` } })
-              .then(r => r.ok ? r.json() : null)
-          : Promise.resolve(null),
-        // Notificações
-        getNotificacoesAtivas(),
+          ? fetch('/api/users/me/stats', { 
+              headers: { 
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              } 
+            })
+              .then(async (r) => {
+                if (!r.ok) {
+                  // Retornar stats vazios ao invés de null para não quebrar a UI
+                  return {
+                    aulasCompletas: 0,
+                    quizCompletos: 0,
+                    desafiosConcluidos: 0,
+                    tempoEstudo: 0,
+                    participacaoComunidade: 0
+                  }
+                }
+                return r.json()
+              })
+              .catch(() => {
+                // Retornar stats vazios ao invés de null
+                return {
+                  aulasCompletas: 0,
+                  quizCompletos: 0,
+                  desafiosConcluidos: 0,
+                  tempoEstudo: 0,
+                  participacaoComunidade: 0
+                }
+              })
+          : Promise.resolve({
+              aulasCompletas: 0,
+              quizCompletos: 0,
+              desafiosConcluidos: 0,
+              tempoEstudo: 0,
+              participacaoComunidade: 0
+            }),
+        // Notificações (já iniciado acima)
+        notificacoesPromise,
         // Ranking (top 3)
         token
-          ? fetch('/api/ranking?type=geral', { headers: { Authorization: `Bearer ${token}` } })
-              .then(r => r.ok ? r.json() : null)
-          : Promise.resolve(null),
+          ? fetch('/api/ranking?type=geral', { 
+              headers: { 
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              } 
+            })
+              .then(async (r) => {
+                if (!r.ok) {
+                  return { ranking: [] }
+                }
+                return r.json()
+              })
+              .catch(() => {
+                return { ranking: [] }
+              })
+          : Promise.resolve({ ranking: [] }),
       ])
 
-      // Processar stats
+      // Processar stats - sempre definir, mesmo que seja valores padrão
       if (statsResult.status === 'fulfilled' && statsResult.value) {
         setStats(statsResult.value)
       }
@@ -168,23 +252,39 @@ export default function AlunoDashboard() {
         setAnnouncements(notificacoesResult.value.map(convertNotificacaoToAnnouncement))
       }
 
-      // Processar ranking
+      // Processar ranking - sempre definir, mesmo que seja array vazio
       if (rankingResult.status === 'fulfilled' && rankingResult.value?.ranking) {
         setTopRanking(rankingResult.value.ranking.slice(0, 3))
+      } else {
+        setTopRanking([])
       }
     } catch (error) {
-      console.error('Erro ao buscar dados do dashboard:', error)
+      // Silenciar erro em produção
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Erro ao buscar dados do dashboard:', error)
+      }
     } finally {
       setLoadingData(false)
     }
-  }, [authUser?.id])
+  }, [authUser?.id, getTokenWithTimeout])
 
   useEffect(() => {
+    // Iniciar carregamento imediatamente, não esperar authUser
     fetchAllData()
   }, [fetchAllData])
 
-  // Nome do usuário (real ou fallback)
-  const userName = authUser?.name || 'Aluno'
+  // Nome do usuário (real ou fallback) - memoizado
+  const userName = useMemo(() => authUser?.name || 'Aluno', [authUser?.name])
+
+  // Memoizar top ranking para evitar re-renders
+  const topRankingMemo = useMemo(() => topRanking, [topRanking])
+
+  // Memoizar tempo formatado
+  const tempoFormatado = useMemo(() => {
+    const horas = Math.floor(stats.tempoEstudo / 60)
+    const minutos = stats.tempoEstudo % 60
+    return `${horas}h ${minutos}m`
+  }, [stats.tempoEstudo])
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -267,6 +367,7 @@ export default function AlunoDashboard() {
           <div className="space-y-2 md:space-y-3">
             <Link
               href="/aluno/comunidade"
+              prefetch={true}
               className={cn(
                 "flex items-center gap-2 md:gap-3 p-3 md:p-4 backdrop-blur-sm border rounded-lg hover:border-yellow-400/50 transition-all active:scale-[0.98] min-h-[72px]",
                 theme === 'dark'
@@ -295,6 +396,7 @@ export default function AlunoDashboard() {
             </Link>
             <Link
               href="/aluno/quiz"
+              prefetch={true}
               className={cn(
                 "flex items-center gap-2 md:gap-3 p-3 md:p-4 backdrop-blur-sm border rounded-lg hover:border-yellow-400/50 transition-all active:scale-[0.98] min-h-[72px]",
                 theme === 'dark'
@@ -320,6 +422,7 @@ export default function AlunoDashboard() {
             </Link>
             <Link
               href="/aluno/desafios"
+              prefetch={true}
               className={cn(
                 "flex items-center gap-2 md:gap-3 p-3 md:p-4 backdrop-blur-sm border rounded-lg hover:border-yellow-400/50 transition-all active:scale-[0.98] min-h-[72px]",
                 theme === 'dark'
@@ -362,6 +465,7 @@ export default function AlunoDashboard() {
             </h2>
             <Link
               href="/aluno/ranking"
+              prefetch={true}
               className={cn(
                 "text-xs md:text-sm hover:opacity-80 transition-opacity",
                 theme === 'dark' ? "text-yellow-400" : "text-yellow-700"
@@ -386,7 +490,7 @@ export default function AlunoDashboard() {
                 Nenhum usuário no ranking ainda
               </div>
             ) : (
-              topRanking.map((user, index) => (
+              topRankingMemo.map((user, index) => (
                 <div
                   key={user.id}
                   className={cn(
@@ -403,10 +507,14 @@ export default function AlunoDashboard() {
                     #{user.position}
                   </div>
                   {user.avatar_url ? (
-                    <img
+                    <Image
                       src={user.avatar_url}
                       alt={user.name}
+                      width={40}
+                      height={40}
                       className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover flex-shrink-0 border border-yellow-400/50"
+                      loading="lazy"
+                      unoptimized
                     />
                   ) : (
                     <div className={cn(
@@ -466,7 +574,7 @@ export default function AlunoDashboard() {
             "text-2xl md:text-3xl font-bold mb-1",
             theme === 'dark' ? "text-white" : "text-gray-900"
           )}>
-            {Math.floor(stats.tempoEstudo / 60)}h {stats.tempoEstudo % 60}m
+            {tempoFormatado}
           </p>
           <p className={cn(
             "text-xs md:text-sm",
