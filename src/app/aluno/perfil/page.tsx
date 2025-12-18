@@ -3,7 +3,7 @@
 import { mockUser } from '@/data/aluno/mockUser'
 import { mockStats } from '@/data/aluno/mockStats'
 import { mockCourseProgress } from '@/data/aluno/studyPlan'
-import { Edit2, BookOpen, GraduationCap } from 'lucide-react'
+import { Edit2, BookOpen, GraduationCap, Trophy, Lock, HelpCircle } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { isFeatureEnabled } from '@/lib/features'
@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/AuthContext'
 import { supabase } from '@/lib/supabase'
 import Modal from '@/components/ui/Modal'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { getLevelBorderColor, getLevelRequirements, getXPForNextLevel, getLevelCategory, calculateLevel } from '@/lib/gamification'
 
 export default function PerfilPage() {
   const { user: authUser, refreshSession } = useAuth()
@@ -41,7 +42,12 @@ export default function PerfilPage() {
 
   const avatarUrl = getAvatarUrl()
 
+  // Calcular nível baseado no XP atual (pode ser diferente do user.level se estiver desatualizado)
+  const currentLevel = calculateLevel(user.xp || 0)
+  const currentLevelCategory = getLevelCategory(currentLevel)
+
   const [editOpen, setEditOpen] = useState(false)
+  const [niveisModalOpen, setNiveisModalOpen] = useState(false)
   const [name, setName] = useState(user.name)
   const [bio, setBio] = useState(user.bio || '') // Estado do formulário - pode estar vazio
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
@@ -566,16 +572,17 @@ export default function PerfilPage() {
                     src={avatarUrl}
                     alt="Avatar"
                     className={cn(
-                      "w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border flex-shrink-0",
-                      theme === 'dark' ? "border-white/10" : "border-yellow-500/30"
+                      "w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border-[3px] flex-shrink-0",
+                      getLevelBorderColor(currentLevel, theme === 'dark')
                     )}
                   />
                 ) : (
                   <div className={cn(
-                    "w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center font-bold text-2xl md:text-3xl flex-shrink-0",
+                    "w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center font-bold text-2xl md:text-3xl flex-shrink-0 border-[3px]",
                     theme === 'dark'
                       ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
-                      : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
+                      : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white",
+                    getLevelBorderColor(currentLevel, theme === 'dark')
                   )}>
                     {user.name.charAt(0)}
                   </div>
@@ -643,19 +650,42 @@ export default function PerfilPage() {
                 ? "grid-cols-2 md:grid-cols-4"
                 : "grid-cols-2"
             )}>
-              <div>
-                <p className={cn(
-                  "text-xs md:text-sm",
-                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                )}>
-                  Nível Atual
-                </p>
+              <div 
+                className="cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => setNiveisModalOpen(true)}
+              >
+                <div className="flex items-center gap-2">
+                  <p className={cn(
+                    "text-xs md:text-sm",
+                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                  )}>
+                    Nível Atual
+                  </p>
+                  <HelpCircle className={cn(
+                    "w-3 h-3",
+                    theme === 'dark' ? "text-gray-500" : "text-gray-400"
+                  )} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Trophy className={cn(
+                    "w-5 h-5 md:w-6 md:h-6",
+                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                  )} />
                 <p className={cn(
                   "text-xl md:text-2xl font-bold",
                   theme === 'dark' ? "text-white" : "text-gray-900"
                 )}>
-                  {user.level}
+                  {currentLevel}
                 </p>
+              </div>
+                {getXPForNextLevel(user.xp || 0, currentLevel) !== null && (
+                  <p className={cn(
+                    "text-xs mt-1",
+                    theme === 'dark' ? "text-gray-500" : "text-gray-500"
+                  )}>
+                    {getXPForNextLevel(user.xp || 0, currentLevel)} pontos para subir de nível
+                  </p>
+                )}
               </div>
               <div>
                 <p className={cn(
@@ -878,6 +908,162 @@ export default function PerfilPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Níveis */}
+      <Modal
+        isOpen={niveisModalOpen}
+        onClose={() => setNiveisModalOpen(false)}
+        title=""
+        size="lg"
+      >
+        <div className="space-y-6">
+          {/* Informações do Usuário - Simplificado */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Avatar"
+                    className={cn(
+                      "w-14 h-14 rounded-full object-cover border-[3px]",
+                      getLevelBorderColor(currentLevel, theme === 'dark')
+                    )}
+                  />
+                ) : (
+                  <div className={cn(
+                    "w-14 h-14 rounded-full flex items-center justify-center font-bold text-xl border-[3px]",
+                    theme === 'dark'
+                      ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
+                      : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white",
+                    getLevelBorderColor(currentLevel, theme === 'dark')
+                  )}>
+                    {user.name.charAt(0)}
+                  </div>
+                )}
+                {/* Badge do Nível */}
+                <div className={cn(
+                  "absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                  currentLevelCategory === 'iniciante'
+                    ? "bg-yellow-500 text-white"
+                    : currentLevelCategory === 'intermediario'
+                    ? "bg-blue-500 text-white"
+                    : "bg-purple-600 text-white"
+                )}>
+                  {currentLevel}
+                </div>
+              </div>
+              <div>
+                <h3 className={cn(
+                  "text-base font-semibold",
+                  theme === 'dark' ? "text-white" : "text-gray-900"
+                )}>
+                  {user.name}
+                </h3>
+                <p className={cn(
+                  "text-sm",
+                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                )}>
+                  {user.xp} pontos
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="flex items-center gap-1.5">
+                <Trophy className={cn(
+                  "w-4 h-4",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )} />
+                <span className={cn(
+                  "text-sm font-semibold",
+                  theme === 'dark' ? "text-white" : "text-gray-900"
+                )}>
+                  {currentLevel}
+                </span>
+                <span className={cn(
+                  "text-sm",
+                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                )}>
+                  | Level {currentLevel}
+                </span>
+              </div>
+              {getXPForNextLevel(user.xp || 0, currentLevel) !== null && (
+                <p className={cn(
+                  "text-xs mt-1 flex items-center gap-1 justify-end",
+                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                )}>
+                  <HelpCircle className="w-3 h-3" />
+                  {getXPForNextLevel(user.xp || 0, currentLevel)} pontos para subir de nível
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Grid de Níveis - Simplificado */}
+          <div className="grid grid-cols-3 gap-3">
+            {getLevelRequirements().map((xpRequired, index) => {
+              const level = index + 1
+              const isUnlocked = (user.xp || 0) >= xpRequired
+              const isCurrent = level === currentLevel
+              const category = getLevelCategory(level)
+              
+              // Cores oficiais (consistentes em ambos os temas)
+              let circleBg = ''
+              let circleText = ''
+              
+              if (category === 'iniciante') {
+                circleBg = 'bg-yellow-500'
+                circleText = 'text-white'
+              } else if (category === 'intermediario') {
+                circleBg = 'bg-blue-500'
+                circleText = 'text-white'
+              } else {
+                circleBg = 'bg-purple-600'
+                circleText = 'text-white'
+              }
+
+              return (
+                <div
+                  key={level}
+                  className="text-center"
+                >
+                  {isUnlocked ? (
+                    <div className={cn(
+                      "w-14 h-14 rounded-full flex items-center justify-center font-bold text-base mx-auto mb-2",
+                      circleBg,
+                      circleText
+                    )}>
+                      {level}
+                    </div>
+                  ) : (
+                    <div className={cn(
+                      "w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-2",
+                      theme === 'dark' ? "bg-gray-700" : "bg-gray-300"
+                    )}>
+                      <Lock className={cn(
+                        "w-6 h-6",
+                        theme === 'dark' ? "text-gray-500" : "text-gray-400"
+                      )} />
+                    </div>
+                  )}
+                  <p className={cn(
+                    "text-sm font-medium mb-0.5",
+                    theme === 'dark' ? "text-white" : "text-gray-900"
+                  )}>
+                    Level {level}
+                  </p>
+                  <p className={cn(
+                    "text-xs",
+                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                  )}>
+                    {xpRequired} pontos
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

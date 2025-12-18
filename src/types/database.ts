@@ -137,6 +137,7 @@ export interface DatabasePergunta {
   visualizacoes: number
   resolvida: boolean
   melhor_resposta_id: string | null
+  imagem_url: string | null
   created_at: string
   updated_at: string
 }
@@ -148,6 +149,8 @@ export interface DatabaseResposta {
   conteudo: string
   votos: number
   melhor_resposta: boolean
+  resposta_pai_id: string | null
+  mencoes: string[]
   created_at: string
   updated_at: string
 }

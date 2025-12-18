@@ -178,20 +178,11 @@ export default function FormularioPage() {
         throw new Error('Sessão não encontrada')
       }
 
-      // Calcular pontos ganhos baseado nas perguntas respondidas
-      let pontosGanhos = 0
-      if (formulario?.perguntas && formData.respostasPerguntas) {
-        for (const pergunta of formulario.perguntas) {
-          const resposta = formData.respostasPerguntas[pergunta.id]
-          // Se a pergunta tem pontos configurados e foi respondida, adiciona os pontos
-          if (pergunta.pontos && pergunta.pontos > 0 && resposta && 
-              (typeof resposta === 'string' ? resposta.trim() : Array.isArray(resposta) ? resposta.length > 0 : true)) {
-            pontosGanhos += pergunta.pontos
-            console.log(`  ✓ Pergunta "${pergunta.texto}": +${pergunta.pontos} pontos`)
-          }
-        }
-        console.log(`💰 Total de pontos a ganhar: ${pontosGanhos}`)
-      }
+      // Usar valor oficial de XP para formulários (1 XP)
+      // Independente do número de perguntas, sempre 1 XP
+      const XP_FORMULARIO = 1
+      const pontosGanhos = XP_FORMULARIO
+      console.log(`💰 XP a ganhar por preencher formulário: ${pontosGanhos} XP (valor oficial)`)
 
       // Verificar se já existe resposta
       const { data: respostaExistente } = await supabase

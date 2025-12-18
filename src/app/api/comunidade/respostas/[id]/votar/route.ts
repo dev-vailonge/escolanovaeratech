@@ -126,17 +126,30 @@ export async function POST(request: Request, { params }: { params: { id: string 
         xpData: existingXp?.created_at
       })
 
-      // Só dar XP se não existir nenhum registro
-      if (xpCount === 0 && !existingXp) {
-        const xp = XP_CONSTANTS.comunidade.resposta
-        console.log(`✅ [API] Dando ${xp} XP ao autor da resposta (primeira vez que é marcada como válida)`)
+      // Buscar TODOS os registros de XP para esta resposta (pode ter múltiplos)
+      const { data: todosXp } = await supabase
+        .from('user_xp_history')
+        .select('amount')
+        .eq('user_id', resposta.autor_id)
+        .eq('source', 'comunidade')
+        .eq('source_id', respostaId)
+      
+      // Calcular XP total já dado para esta resposta
+      const xpTotalJaDado = (todosXp || []).reduce((sum, entry) => sum + (entry.amount || 0), 0)
+      
+      // Quando marcada como certa, o total deve ser 100 XP
+      // Se já tem menos que 100, dar a diferença
+      const xpNecessario = XP_CONSTANTS.comunidade.respostaCerta - xpTotalJaDado
+      
+      if (xpNecessario > 0) {
+        console.log(`✅ [API] Dando ${xpNecessario} XP ao autor da resposta (marcada como válida). Total: ${xpTotalJaDado + xpNecessario} XP`)
         
         try {
           await insertXpEntry({
             userId: resposta.autor_id,
             source: 'comunidade',
             sourceId: respostaId,
-            amount: xp,
+            amount: xpNecessario,
             description: 'Resposta marcada como válida na comunidade',
           })
 
@@ -157,17 +170,25 @@ export async function POST(request: Request, { params }: { params: { id: string 
         }
       }
 
-      // Retornar se o XP foi dado ou não
-      const xpFoiDado = !existingXp
+      // Buscar XP final após inserção
+      const { data: xpFinal } = await supabase
+        .from('user_xp_history')
+        .select('amount')
+        .eq('user_id', resposta.autor_id)
+        .eq('source', 'comunidade')
+        .eq('source_id', respostaId)
+      
+      const xpTotalDado = (xpFinal || []).reduce((sum, entry) => sum + (entry.amount || 0), 0)
+      const xpFoiDado = xpNecessario > 0
       
       return NextResponse.json({
         success: true,
         marcada: true,
-        xp: xpFoiDado ? XP_CONSTANTS.comunidade.resposta : 0,
+        xp: xpTotalDado,
         xpFoiDado,
         mensagem: xpFoiDado 
-          ? `Resposta marcada como válida! O autor ganhou ${XP_CONSTANTS.comunidade.resposta} XP.`
-          : 'Resposta marcada como válida (XP já foi dado anteriormente).'
+          ? `Resposta marcada como válida! O autor ganhou ${xpNecessario} XP adicional (total: ${xpTotalDado} XP).`
+          : `Resposta marcada como válida! O autor já tinha ${xpTotalDado} XP.`
       })
     }
   } catch (error: any) {

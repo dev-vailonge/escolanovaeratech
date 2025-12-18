@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
 import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { insertXpEntry } from '@/lib/server/gamification'
+import { XP_CONSTANTS } from '@/lib/gamification/constants'
 
 export async function GET(request: Request) {
   try {
@@ -35,6 +37,7 @@ export async function GET(request: Request) {
         visualizacoes,
         resolvida,
         melhor_resposta_id,
+        imagem_url,
         created_at,
         updated_at
       `)
@@ -168,8 +171,9 @@ export async function POST(request: Request) {
     const descricao = String(body?.descricao || '').trim()
     const tags = Array.isArray(body?.tags) ? body.tags.map((t: any) => String(t).trim()).filter(Boolean) : []
     const categoria = String(body?.categoria || '').trim() || null
+    const imagemUrl = String(body?.imagem_url || '').trim() || null
 
-    console.log('📋 [API] Dados recebidos:', { titulo, descricao, tags, categoria })
+    console.log('📋 [API] Dados recebidos:', { titulo, descricao, tags, categoria, imagemUrl })
 
     if (titulo.length < 3) {
       console.warn('⚠️ [API] Título muito curto')
@@ -193,11 +197,12 @@ export async function POST(request: Request) {
         autor_id: userId,
         tags: tagsArray,
         categoria: categoria || null,
+        imagem_url: imagemUrl || null,
         votos: 0,
         visualizacoes: 0,
         resolvida: false,
       })
-      .select('id, titulo, descricao, autor_id, tags, categoria, votos, visualizacoes, resolvida, created_at')
+      .select('id, titulo, descricao, autor_id, tags, categoria, imagem_url, votos, visualizacoes, resolvida, created_at')
       .single()
 
     if (perguntaError) {
@@ -218,6 +223,22 @@ export async function POST(request: Request) {
     }
 
     console.log('✅ [API] Pergunta criada com sucesso:', pergunta?.id)
+    
+    // Dar 10 XP ao criar pergunta (valor oficial)
+    try {
+      await insertXpEntry({
+        userId,
+        source: 'comunidade',
+        sourceId: pergunta.id,
+        amount: XP_CONSTANTS.comunidade.pergunta,
+        description: `Pergunta criada: ${titulo}`,
+      })
+      console.log(`✅ [API] ${XP_CONSTANTS.comunidade.pergunta} XP dado ao criar pergunta`)
+    } catch (xpError: any) {
+      console.error('❌ [API] Erro ao dar XP por pergunta:', xpError)
+      // Não falhar a criação da pergunta se der erro ao dar XP
+    }
+    
     return NextResponse.json({ success: true, pergunta })
   } catch (error: any) {
     console.error('❌ [API] Exceção ao criar pergunta:', error)

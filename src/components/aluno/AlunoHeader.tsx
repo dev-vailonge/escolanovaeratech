@@ -8,6 +8,7 @@ import { isFeatureEnabled } from '@/lib/features'
 import { useAuth } from '@/lib/AuthContext'
 import { useNotifications } from '@/lib/NotificationsContext'
 import { motion, AnimatePresence } from 'framer-motion'
+import { getLevelBorderColor, calculateLevel } from '@/lib/gamification'
 
 export default function AlunoHeader() {
   const { user: authUser } = useAuth()
@@ -27,6 +28,9 @@ export default function AlunoHeader() {
   const { theme, toggleTheme } = useTheme()
   const { unreadCount, openModal, hasNewNotification } = useNotifications()
 
+  // Calcular nível baseado no XP atual (pode ser diferente do user.level se estiver desatualizado)
+  const currentLevel = calculateLevel(user.xp || 0)
+
   return (
     <header className={cn(
       "backdrop-blur-xl rounded-xl p-4 mb-6 shadow-lg transition-colors duration-300 max-w-full overflow-visible",
@@ -42,17 +46,18 @@ export default function AlunoHeader() {
               src={user.avatarUrl}
               alt="Avatar"
               className={cn(
-                "w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border flex-shrink-0",
-                theme === 'dark' ? "border-white/10" : "border-yellow-500/30"
+                "w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border-2 flex-shrink-0",
+                getLevelBorderColor(currentLevel, theme === 'dark')
               )}
             />
           ) : (
             <div
               className={cn(
-                "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-base sm:text-lg flex-shrink-0",
+                "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-base sm:text-lg flex-shrink-0 border-2",
                 theme === 'dark'
                   ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
-                  : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
+                  : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white",
+                getLevelBorderColor(currentLevel, theme === 'dark')
               )}
             >
               {user.name.charAt(0).toUpperCase()}
@@ -69,7 +74,7 @@ export default function AlunoHeader() {
               "text-xs sm:text-sm",
               theme === 'dark' ? "text-gray-400" : "text-gray-600"
             )}>
-              Nível {user.level}
+              Nível {currentLevel}
             </p>
           </div>
           

@@ -71,15 +71,18 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
 
   if (upsertError) throw upsertError
 
+  // Usar valor oficial de XP para desafios (40 XP)
+  const xpDesafio = XP_CONSTANTS.desafio.completo
+  
   await insertXpEntry({
     userId: params.userId,
     source: 'desafio',
     sourceId: params.desafioId,
-    amount: desafio.xp,
+    amount: xpDesafio,
     description: `Desafio concluído: ${desafio.titulo}`,
   })
 
-  return { awarded: true as const, xp: desafio.xp }
+  return { awarded: true as const, xp: xpDesafio }
 }
 
 export async function completarQuiz(params: { userId: string; quizId: string; pontuacao: number }) {
@@ -92,6 +95,9 @@ export async function completarQuiz(params: { userId: string; quizId: string; po
     .single()
 
   if (quizError) throw quizError
+
+  // Usar valor oficial de XP para quizzes (20 XP máximo)
+  const xpMaximoQuiz = XP_CONSTANTS.quiz.maximo
 
   const { data: existing, error: existingError } = await supabase
     .from('user_quiz_progress')
@@ -136,8 +142,8 @@ export async function completarQuiz(params: { userId: string; quizId: string; po
   // Calcular XP total já ganho
   const xpTotalGanho = (xpHistory || []).reduce((sum, entry) => sum + (entry.amount || 0), 0)
   
-  // Calcular XP remanescente (limite máximo do quiz menos o que já foi ganho)
-  const xpRemanescente = Math.max(0, quiz.xp - xpTotalGanho)
+  // Calcular XP remanescente (limite máximo oficial de 20 XP menos o que já foi ganho)
+  const xpRemanescente = Math.max(0, xpMaximoQuiz - xpTotalGanho)
   
   // Se não há XP remanescente, não conceder XP
   if (xpRemanescente <= 0) {
@@ -188,9 +194,18 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
 
   if (respostaError) throw respostaError
 
-  // XP não é dado imediatamente - apenas quando o proprietário da pergunta
-  // marcar a resposta como válida (thumbs up)
-  return { awarded: false as const, respostaId: resposta.id }
+  // Dar 1 XP ao responder (valor oficial)
+  const xpResposta = XP_CONSTANTS.comunidade.resposta
+  
+  await insertXpEntry({
+    userId: params.userId,
+    source: 'comunidade',
+    sourceId: resposta.id,
+    amount: xpResposta,
+    description: 'Resposta criada na comunidade',
+  })
+
+  return { awarded: true as const, respostaId: resposta.id, xp: xpResposta }
 }
 
 export async function getRanking(params: { type: RankingType; limit?: number }) {

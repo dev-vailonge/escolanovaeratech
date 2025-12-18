@@ -1,7 +1,8 @@
 'use client'
 
-import { MessageSquare, ThumbsUp, Eye, CheckCircle2, Tag, Search, Plus, Filter, Edit, Trash2, RefreshCw } from 'lucide-react'
+import { MessageSquare, ThumbsUp, Eye, CheckCircle2, Tag, Search, Plus, Filter, Edit, Trash2, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react'
 import { useState, useMemo, useRef, useLayoutEffect, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
@@ -9,6 +10,9 @@ import Modal from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
 import { hasFullAccess } from '@/lib/types/auth'
 import { getAuthToken } from '@/lib/getAuthToken'
+import QuestionImageUpload from '@/components/comunidade/QuestionImageUpload'
+import BadgeDisplay from '@/components/comunidade/BadgeDisplay'
+import { getUserBadges } from '@/lib/badges'
 
 type FilterOwner = 'all' | 'mine'
 type FilterStatus = 'all' | 'answered' | 'unanswered'
@@ -31,6 +35,7 @@ interface Pergunta {
   resolvida: boolean
   melhorRespostaId?: string | null
   categoria: string | null
+  imagem_url?: string | null
   created_at: string
   curtida?: boolean // Se o usuário atual curtiu esta pergunta
 }
@@ -82,12 +87,20 @@ export default function ComunidadePage() {
   const [perguntaDescricao, setPerguntaDescricao] = useState<string>('')
   const [perguntaTags, setPerguntaTags] = useState<string>('')
   const [perguntaCategoria, setPerguntaCategoria] = useState<string>('')
+  const [categoriaCustomizada, setCategoriaCustomizada] = useState<string>('')
+  const [showCategoriaCustom, setShowCategoriaCustom] = useState(false)
+  const [perguntaImagem, setPerguntaImagem] = useState<File | null>(null)
+  const [perguntaImagemEdit, setPerguntaImagemEdit] = useState<File | null | undefined>(undefined)
+  const [perguntaImagemUrlAtual, setPerguntaImagemUrlAtual] = useState<string | null>(null)
+  const [showExemplos, setShowExemplos] = useState(false)
+  const [badgesMap, setBadgesMap] = useState<Map<string, string[]>>(new Map())
+  
+  const router = useRouter()
   
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string>('')
   const [success, setSuccess] = useState<string>('')
   const [respostaMensagem, setRespostaMensagem] = useState<Map<string, string>>(new Map())
-  const [visualizacoesRegistradas, setVisualizacoesRegistradas] = useState<Set<string>>(new Set())
 
   // Buscar perguntas do banco
   const fetchPerguntas = async () => {
@@ -180,10 +193,8 @@ export default function ComunidadePage() {
       setError('Apenas alunos com acesso completo podem responder perguntas.')
       return
     }
-    setError('')
-    setSuccess('')
-    setRespostaConteudo('')
-    setSelectedPerguntaId(perguntaId)
+    // Navegar para página individual
+    router.push(`/aluno/comunidade/pergunta/${perguntaId}`)
   }
 
   const submitResposta = async () => {
@@ -284,7 +295,9 @@ export default function ComunidadePage() {
     const titulo = perguntaTitulo.trim()
     const descricao = perguntaDescricao.trim()
     const tags = perguntaTags.split(',').map((t) => t.trim()).filter(Boolean)
-    const categoria = perguntaCategoria.trim() || null
+    const categoria = showCategoriaCustom && categoriaCustomizada.trim()
+      ? categoriaCustomizada.trim()
+      : perguntaCategoria.trim() || null
 
     if (titulo.length < 3) {
       setError('Título muito curto (mínimo 3 caracteres).')
@@ -293,6 +306,11 @@ export default function ComunidadePage() {
 
     if (descricao.length < 10) {
       setError('Descrição muito curta (mínimo 10 caracteres).')
+      return
+    }
+
+    if (showCategoriaCustom && categoriaCustomizada.trim().length < 2) {
+      setError('Categoria customizada deve ter no mínimo 2 caracteres.')
       return
     }
 
@@ -384,14 +402,57 @@ export default function ComunidadePage() {
       }
 
       console.log('✅ Pergunta criada com sucesso!', json.pergunta)
+      
+      // Upload de imagem se houver
+      if (perguntaImagem && json.pergunta?.id) {
+        try {
+          const formData = new FormData()
+          formData.append('imagem', perguntaImagem)
+          
+          const resImagem = await fetch(`/api/comunidade/perguntas/${json.pergunta.id}/imagem`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          })
+          
+          const jsonImagem = await resImagem.json()
+          
+          if (!resImagem.ok) {
+            console.error('Erro ao fazer upload de imagem:', jsonImagem)
+            const errorMsg = jsonImagem.error || jsonImagem.details || 'Erro desconhecido'
+            setError(`Pergunta criada, mas houve erro ao fazer upload da imagem: ${errorMsg}`)
+            // Não limpar o estado de sucesso, mas mostrar o erro também
+            setSuccess(`✅ Pergunta criada com sucesso! (Imagem: ${errorMsg})`)
+          } else if (jsonImagem.success && jsonImagem.imagem_url) {
+            console.log('✅ Imagem enviada com sucesso:', jsonImagem.imagem_url)
+            setSuccess('✅ Pergunta criada com imagem enviada com sucesso!')
+          } else {
+            console.warn('Upload de imagem retornou sucesso mas sem URL:', jsonImagem)
+            setSuccess('✅ Pergunta criada! (A imagem pode não ter sido enviada)')
+          }
+        } catch (imgError: any) {
+          console.error('Erro ao fazer upload de imagem:', imgError)
+          setError(`Pergunta criada, mas houve erro ao fazer upload da imagem: ${imgError.message || 'Erro desconhecido'}`)
+        }
+      }
+      
       setSuccess('✅ Pergunta criada com sucesso!')
       setPerguntaTitulo('')
       setPerguntaDescricao('')
       setPerguntaTags('')
       setPerguntaCategoria('')
+      setCategoriaCustomizada('')
+      setShowCategoriaCustom(false)
+      setPerguntaImagem(null)
       setShowCriarPergunta(false)
       setIsSubmitting(false) // Desativar loading antes de recarregar
-      await fetchPerguntas()
+      
+      // Navegar para página individual da pergunta
+      if (json.pergunta?.id) {
+        router.push(`/aluno/comunidade/pergunta/${json.pergunta.id}`)
+      } else {
+        await fetchPerguntas()
+      }
     } catch (e: any) {
       console.error('❌ Exceção ao criar pergunta:', e)
       console.error('Stack:', e.stack)
@@ -531,44 +592,12 @@ export default function ComunidadePage() {
     }
   }
 
-  // Registrar visualização de uma pergunta
-  const registrarVisualizacao = async (perguntaId: string) => {
-    // Evitar registrar múltiplas vezes na mesma sessão
-    if (visualizacoesRegistradas.has(perguntaId)) {
-      return
-    }
-
-    try {
-      const res = await fetch(`/api/comunidade/perguntas/${perguntaId}/visualizar`, {
-        method: 'POST',
-      })
-
-      if (res.ok) {
-        const json = await res.json()
-        // Atualizar o estado local
-        setPerguntas((prev) =>
-          prev.map((p) =>
-            p.id === perguntaId
-              ? { ...p, visualizacoes: json.visualizacoes }
-              : p
-          )
-        )
-        // Marcar como registrada
-        setVisualizacoesRegistradas((prev) => new Set(prev).add(perguntaId))
-      }
-    } catch (e) {
-      // Silenciosamente falhar - não é crítico
-      console.warn('Erro ao registrar visualização:', e)
-    }
-  }
 
   const toggleRespostas = async (perguntaId: string) => {
     if (showRespostas === perguntaId) {
       setShowRespostas(null)
     } else {
       setShowRespostas(perguntaId)
-      // Registrar visualização quando abre as respostas
-      await registrarVisualizacao(perguntaId)
       if (!respostas.has(perguntaId)) {
         await fetchRespostas(perguntaId)
       }
@@ -581,6 +610,10 @@ export default function ComunidadePage() {
     setPerguntaDescricao(pergunta.descricao)
     setPerguntaTags(pergunta.tags.join(', '))
     setPerguntaCategoria(pergunta.categoria || '')
+    setPerguntaImagemUrlAtual(pergunta.imagem_url || null)
+    setPerguntaImagemEdit(undefined)
+    setCategoriaCustomizada('')
+    setShowCategoriaCustom(false)
     setError('')
     setSuccess('')
   }
@@ -591,6 +624,10 @@ export default function ComunidadePage() {
     setPerguntaDescricao('')
     setPerguntaTags('')
     setPerguntaCategoria('')
+    setPerguntaImagemUrlAtual(null)
+    setPerguntaImagemEdit(undefined)
+    setCategoriaCustomizada('')
+    setShowCategoriaCustom(false)
     setError('')
     setSuccess('')
   }
@@ -614,6 +651,48 @@ export default function ComunidadePage() {
         .map(t => t.trim())
         .filter(Boolean)
 
+      const categoria = showCategoriaCustom && categoriaCustomizada.trim()
+        ? categoriaCustomizada.trim()
+        : perguntaCategoria.trim() || null
+
+      // Upload de nova imagem se houver
+      let imagemUrlFinal = perguntaImagemUrlAtual
+      
+      // Se perguntaImagemEdit é undefined, não mudou nada (manter atual)
+      // Se perguntaImagemEdit é null, removeu a imagem
+      // Se perguntaImagemEdit é File, nova imagem foi selecionada
+      if (perguntaImagemEdit !== undefined) {
+        if (perguntaImagemEdit === null) {
+          // Imagem foi removida - limpar URL
+          imagemUrlFinal = null
+        } else if (perguntaImagemEdit instanceof File) {
+          // Nova imagem foi selecionada, fazer upload
+          try {
+            const formData = new FormData()
+            formData.append('imagem', perguntaImagemEdit)
+            
+            const resImagem = await fetch(`/api/comunidade/perguntas/${editingPerguntaId}/imagem`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` },
+              body: formData,
+            })
+            
+            const jsonImagem = await resImagem.json()
+            
+            if (resImagem.ok && jsonImagem.success && jsonImagem.imagem_url) {
+              imagemUrlFinal = jsonImagem.imagem_url
+              console.log('✅ Nova imagem enviada:', imagemUrlFinal)
+            } else {
+              console.warn('Erro ao fazer upload de nova imagem:', jsonImagem)
+              // Continuar mesmo se der erro no upload, manter URL atual
+            }
+          } catch (imgError: any) {
+            console.error('Erro ao fazer upload de nova imagem:', imgError)
+            // Continuar mesmo se der erro no upload, manter URL atual
+          }
+        }
+      }
+
       const res = await fetch(`/api/comunidade/perguntas/${editingPerguntaId}`, {
         method: 'PUT',
         headers: {
@@ -624,7 +703,8 @@ export default function ComunidadePage() {
           titulo: perguntaTitulo,
           descricao: perguntaDescricao,
           tags: tagsArray,
-          categoria: perguntaCategoria || null,
+          categoria: categoria || null,
+          imagem_url: imagemUrlFinal,
         }),
       })
 
@@ -819,15 +899,77 @@ export default function ComunidadePage() {
             />
           </div>
 
+          {/* Exemplos de Perguntas */}
+          <div className={cn(
+            'border rounded-lg overflow-hidden',
+            theme === 'dark' ? 'border-white/10' : 'border-gray-200'
+          )}>
+            <button
+              type="button"
+              onClick={() => setShowExemplos(!showExemplos)}
+              className={cn(
+                'w-full flex items-center justify-between p-3 text-sm font-medium transition-colors',
+                theme === 'dark'
+                  ? 'bg-black/30 hover:bg-black/50 text-gray-300'
+                  : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+              )}
+            >
+              <span>💡 Ver exemplos de perguntas</span>
+              {showExemplos ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </button>
+            {showExemplos && (
+              <div className={cn(
+                'p-3 space-y-2 border-t',
+                theme === 'dark' ? 'border-white/10 bg-black/20' : 'border-gray-200 bg-white'
+              )}>
+                <p className={cn('text-xs mb-2', theme === 'dark' ? 'text-gray-400' : 'text-gray-600')}>
+                  Clique em um exemplo para usar:
+                </p>
+                {[
+                  'Como centralizar um div com CSS?',
+                  'Qual a diferença entre let, const e var em JavaScript?',
+                  'Como fazer requisições HTTP em React?',
+                ].map((exemplo, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setPerguntaTitulo(exemplo)
+                      setShowExemplos(false)
+                    }}
+                    className={cn(
+                      'w-full text-left p-2 rounded text-xs transition-colors',
+                      theme === 'dark'
+                        ? 'hover:bg-white/5 text-gray-300'
+                        : 'hover:bg-gray-100 text-gray-700'
+                    )}
+                  >
+                    {exemplo}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div>
             <label className={cn('text-sm font-medium mb-1 block', theme === 'dark' ? 'text-gray-300' : 'text-gray-700')}>
               Categoria
             </label>
             <select
               value={perguntaCategoria}
-              onChange={(e) => setPerguntaCategoria(e.target.value)}
+              onChange={(e) => {
+                setPerguntaCategoria(e.target.value)
+                setShowCategoriaCustom(e.target.value === 'custom')
+                if (e.target.value !== 'custom') {
+                  setCategoriaCustomizada('')
+                }
+              }}
               className={cn(
-                'w-full px-3 py-2 rounded-lg border text-sm',
+                'w-full px-3 py-2 rounded-lg border text-sm mb-2',
                 theme === 'dark'
                   ? 'bg-black/30 border-white/10 text-white'
                   : 'bg-white border-gray-200 text-gray-900'
@@ -840,8 +982,29 @@ export default function ComunidadePage() {
               <option value="React">React</option>
               <option value="Android">Android</option>
               <option value="Web Development">Web Development</option>
+              <option value="custom">Outra categoria</option>
             </select>
+            {showCategoriaCustom && (
+              <input
+                type="text"
+                value={categoriaCustomizada}
+                onChange={(e) => setCategoriaCustomizada(e.target.value)}
+                placeholder="Digite a categoria"
+                className={cn(
+                  'w-full px-3 py-2 rounded-lg border text-sm',
+                  theme === 'dark'
+                    ? 'bg-black/30 border-white/10 text-white placeholder-gray-500'
+                    : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+                )}
+              />
+            )}
           </div>
+
+          {/* Upload de Imagem */}
+          <QuestionImageUpload
+            onImageChange={setPerguntaImagem}
+            currentImageUrl={null}
+          />
 
           <div className="flex items-center justify-between gap-3">
             <button
@@ -948,9 +1111,15 @@ export default function ComunidadePage() {
             </label>
             <select
               value={perguntaCategoria}
-              onChange={(e) => setPerguntaCategoria(e.target.value)}
+              onChange={(e) => {
+                setPerguntaCategoria(e.target.value)
+                setShowCategoriaCustom(e.target.value === 'custom')
+                if (e.target.value !== 'custom') {
+                  setCategoriaCustomizada('')
+                }
+              }}
               className={cn(
-                'w-full px-3 py-2 rounded-lg border text-sm',
+                'w-full px-3 py-2 rounded-lg border text-sm mb-2',
                 theme === 'dark'
                   ? 'bg-black/30 border-white/10 text-white'
                   : 'bg-white border-gray-200 text-gray-900'
@@ -963,8 +1132,31 @@ export default function ComunidadePage() {
               <option value="React">React</option>
               <option value="Android">Android</option>
               <option value="Web Development">Web Development</option>
+              <option value="custom">Outra categoria</option>
             </select>
+            {showCategoriaCustom && (
+              <input
+                type="text"
+                value={categoriaCustomizada}
+                onChange={(e) => setCategoriaCustomizada(e.target.value)}
+                placeholder="Digite a categoria"
+                className={cn(
+                  'w-full px-3 py-2 rounded-lg border text-sm',
+                  theme === 'dark'
+                    ? 'bg-black/30 border-white/10 text-white placeholder-gray-500'
+                    : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+                )}
+              />
+            )}
           </div>
+
+          {/* Upload de Imagem */}
+          <QuestionImageUpload
+            onImageChange={(file) => {
+              setPerguntaImagemEdit(file)
+            }}
+            currentImageUrl={perguntaImagemUrlAtual}
+          />
 
           <div className="flex gap-2 pt-2">
             <button
@@ -1310,10 +1502,6 @@ export default function ComunidadePage() {
                     ? "bg-black/20 border-white/10 hover:border-yellow-400/50"
                     : "bg-white border-yellow-400/90 shadow-md hover:border-yellow-500 hover:shadow-lg"
               )}
-              onMouseEnter={() => {
-                // Registrar visualização quando o mouse entra no card (hover)
-                registrarVisualizacao(pergunta.id)
-              }}
             >
               <div className="flex gap-3 md:gap-4">
                 {/* Votes */}
@@ -1414,7 +1602,7 @@ export default function ComunidadePage() {
                       <MessageSquare className="w-3 h-3 md:w-4 md:h-4" />
                       <span className="whitespace-nowrap">{pergunta.respostas} respostas</span>
                     </div>
-                    <span className="flex items-center gap-1 truncate">
+                    <span className="flex items-center gap-1 truncate flex-wrap">
                       {pergunta.autor.avatar && !avatarErrors.has(`pergunta-${pergunta.autor.id}`) ? (
                         <img
                           src={pergunta.autor.avatar}
@@ -1434,7 +1622,11 @@ export default function ComunidadePage() {
                           {pergunta.autor.nome.charAt(0)}
                         </div>
                       )}
-                      <span className="truncate">{pergunta.autor.nome} • Nível {pergunta.autor.nivel}</span>
+                      <span className="truncate">{pergunta.autor.nome}</span>
+                      {badgesMap.get(pergunta.autor.id)?.includes('top_member') && (
+                        <BadgeDisplay badgeType="top_member" />
+                      )}
+                      <span className="truncate">• Nível {pergunta.autor.nivel}</span>
                     </span>
                   </div>
 
@@ -1456,22 +1648,13 @@ export default function ComunidadePage() {
                   </div>
 
                     <div className="flex items-center gap-2">
-                      {canCreate && (
-                    <button className="btn-primary" onClick={() => openResponder(pergunta.id)}>
-                      Responder
-                    </button>
-                      )}
                       <button
-                        className={cn(
-                          "px-3 py-1.5 rounded-lg text-sm border",
-                          theme === 'dark'
-                            ? "border-white/10 text-gray-300 hover:bg-white/5"
-                            : "border-gray-200 text-gray-700 hover:bg-gray-50"
-                        )}
-                        onClick={() => toggleRespostas(pergunta.id)}
+                        className="btn-primary flex items-center justify-center gap-2"
+                        onClick={() => router.push(`/aluno/comunidade/pergunta/${pergunta.id}`)}
                       >
-                        {showRespostas === pergunta.id ? 'Ocultar' : 'Ver'} Respostas ({pergunta.respostas})
-                    </button>
+                        <MessageSquare className="w-4 h-4" />
+                        <span>Contribuir</span>
+                      </button>
                   </div>
 
                     {/* Lista de Respostas */}

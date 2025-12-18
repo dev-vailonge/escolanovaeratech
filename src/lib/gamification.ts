@@ -13,22 +13,44 @@
  *   - Como o plano de estudos automático usa esses dados.
  * 
  * ============================================================
- * AÇÕES QUE DÃO XP NO MVP
+ * AÇÕES QUE DÃO XP NO MVP (PONTUAÇÕES OFICIAIS)
  * ============================================================
  * 
- * 1. Completar aula
- *    - XP ganho: varia por aula (definido em mockAulas.ts)
- *    - Exemplo: 50-150 XP por aula
+ * Os XP que os alunos podem ganhar vão de 0 a 100
  * 
- * 2. Fazer quiz
- *    - XP ganho: varia por quiz (definido em mockQuiz.ts)
- *    - Exemplo: 50-120 XP por quiz
- *    - Pode ter bônus por acerto (futuro)
+ * 1. Comunidade
+ *    - Pergunta: 10 XP
+ *    - Resposta: 1 XP
+ *    - Resposta marcada como certa pelo autor: 100 XP
  * 
- * 3. Completar desafio
- *    - XP ganho: varia por desafio (definido em mockDesafios.ts)
- *    - Exemplo: 80-500 XP por desafio
- *    - Desafios especiais podem dar mais XP
+ * 2. Quiz
+ *    - Quiz completo: 20 XP (se acertar tudo, ou percentual de quantas acertar)
+ * 
+ * 3. Desafios
+ *    - Desafio concluído: 40 XP
+ * 
+ * 4. Formulários
+ *    - Formulário preenchido: 1 XP
+ * 
+ * ============================================================
+ * NÍVEIS OFICIAIS (PROGRESSÃO EXPONENCIAL)
+ * ============================================================
+ * 
+ * Os níveis vão de 1 a 9, sendo:
+ * - Iniciante = Níveis 1 a 3
+ * - Intermediário = Níveis 4 a 6
+ * - Avançado = Níveis 7 a 9
+ * 
+ * Progressão de XP por nível:
+ * - Level 1: 0 pontos
+ * - Level 2: 10 pontos
+ * - Level 3: 20 pontos
+ * - Level 4: 40 pontos
+ * - Level 5: 80 pontos
+ * - Level 6: 160 pontos
+ * - Level 7: 320 pontos
+ * - Level 8: 640 pontos
+ * - Level 9: 1280 pontos
  * 
  * ============================================================
  * RANKING
@@ -90,18 +112,125 @@ export function addXP(currentXP: number, xpGained: number): number {
 }
 
 /**
- * Função para calcular nível baseado em XP
+ * Requisitos de XP para cada nível (progressão exponencial)
+ */
+const LEVEL_THRESHOLDS = [0, 10, 20, 40, 80, 160, 320, 640, 1280] as const
+
+/**
+ * Função para calcular nível baseado em XP (progressão exponencial)
  * 
  * @param totalXP - XP total do usuário
- * @returns Nível calculado
+ * @returns Nível calculado (1 a 9)
  * 
- * Fórmula MVP: nível = floor(totalXP / 200) + 1
- * (Ajustar conforme necessário)
+ * NÍVEIS OFICIAIS:
+ * - Iniciante: Níveis 1 a 3
+ * - Intermediário: Níveis 4 a 6
+ * - Avançado: Níveis 7 a 9
+ * 
+ * Progressão exponencial: 0, 10, 20, 40, 80, 160, 320, 640, 1280 XP
  */
 export function calculateLevel(totalXP: number): number {
-  // Fórmula simples para MVP
-  // Futuro: pode ter curva de XP mais complexa
-  return Math.floor(totalXP / 200) + 1
+  // Percorrer thresholds de trás para frente para encontrar o nível correto
+  for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
+    if (totalXP >= LEVEL_THRESHOLDS[i]) {
+      return i + 1
+    }
+  }
+  return 1
+}
+
+/**
+ * Função para obter requisitos de XP para cada nível
+ * 
+ * @returns Array com requisitos de XP por nível (índice = nível - 1)
+ */
+export function getLevelRequirements(): readonly number[] {
+  return LEVEL_THRESHOLDS
+}
+
+/**
+ * Função para obter XP necessário para alcançar um nível específico
+ * 
+ * @param level - Nível desejado (1 a 9)
+ * @returns XP necessário para alcançar o nível, ou null se nível inválido
+ */
+export function getXPForLevel(level: number): number | null {
+  if (level < 1 || level > 9) return null
+  return LEVEL_THRESHOLDS[level - 1]
+}
+
+/**
+ * Função para calcular XP necessário para próximo nível
+ * 
+ * @param currentXP - XP atual do usuário
+ * @param currentLevel - Nível atual do usuário
+ * @returns XP necessário para próximo nível, ou null se já está no nível máximo
+ */
+export function getXPForNextLevel(currentXP: number, currentLevel: number): number | null {
+  if (currentLevel >= 9) return null
+  const nextLevelXP = LEVEL_THRESHOLDS[currentLevel]
+  return Math.max(0, nextLevelXP - currentXP)
+}
+
+/**
+ * Função para calcular progresso atual em direção ao próximo nível
+ * 
+ * @param currentXP - XP atual do usuário
+ * @param currentLevel - Nível atual do usuário
+ * @returns Progresso em porcentagem (0-100), ou 100 se já está no nível máximo
+ */
+export function getLevelProgress(currentXP: number, currentLevel: number): number {
+  if (currentLevel >= 9) return 100
+  
+  const currentLevelXP = LEVEL_THRESHOLDS[currentLevel - 1]
+  const nextLevelXP = LEVEL_THRESHOLDS[currentLevel]
+  const xpNeeded = nextLevelXP - currentLevelXP
+  const xpProgress = currentXP - currentLevelXP
+  
+  return Math.min(100, Math.max(0, Math.round((xpProgress / xpNeeded) * 100)))
+}
+
+/**
+ * Função para obter categoria do nível
+ * 
+ * @param level - Nível do usuário (1 a 9)
+ * @returns Categoria do nível
+ */
+export function getLevelCategory(level: number): 'iniciante' | 'intermediario' | 'avancado' {
+  if (level >= 1 && level <= 3) {
+    return 'iniciante'
+  } else if (level >= 4 && level <= 6) {
+    return 'intermediario'
+  } else {
+    return 'avancado'
+  }
+}
+
+/**
+ * Função para obter classes CSS da borda baseada no nível
+ * 
+ * @param level - Nível do usuário (1 a 9)
+ * @param isDark - Se o tema é escuro (opcional, não usado mais - mantido para compatibilidade)
+ * @returns Classes CSS para a borda do avatar
+ * 
+ * Cores oficiais (consistentes em dark e light):
+ * - Iniciante (1-3): Amarelo
+ * - Intermediário (4-6): Azul
+ * - Avançado (7-9): Roxo
+ */
+export function getLevelBorderColor(level: number, isDark: boolean = false): string {
+  const category = getLevelCategory(level)
+  
+  if (category === 'iniciante') {
+    // Níveis 1-3: Amarelo (mesma cor em ambos os temas)
+    return 'border-yellow-500'
+  } else if (category === 'intermediario') {
+    // Níveis 4-6: Azul (mesma cor em ambos os temas)
+    return 'border-blue-500'
+  } else {
+    // Níveis 7-9: Roxo (mesma cor em ambos os temas)
+    return 'border-purple-600'
+  }
 }
 
 /**
