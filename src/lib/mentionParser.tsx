@@ -1,3 +1,5 @@
+import React from 'react'
+
 /**
  * Parser de menções @username em textos
  */

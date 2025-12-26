@@ -30,4 +30,31 @@ export function getApiBaseSandbox(): string {
   return process.env.HOTMART_API_BASE_SANDBOX || 'https://sandbox.hotmart.com'
 }
 
+/**
+ * Obtém o subdomínio da Área de Membros da Hotmart
+ * 
+ * @returns Subdomínio configurado ou null se não estiver configurado
+ */
+export function getHotmartSubdomain(): string | null {
+  const subdomain = process.env.HOTMART_SUBDOMAIN?.trim()
+  return subdomain && subdomain !== '' ? subdomain : null
+}
+
+/**
+ * Host base para Club API (Área de Membros)
+ * Por padrão usa developers.hotmart.com conforme documentação
+ * Pode ser sobrescrito via HOTMART_CLUB_API_BASE
+ */
+export function getClubApiBase(): string {
+  return process.env.HOTMART_CLUB_API_BASE || 'https://developers.hotmart.com'
+}
+
+/**
+ * Host base para Club API (Sandbox)
+ * Por padrão usa sandbox.hotmart.com
+ * Pode ser sobrescrito via HOTMART_CLUB_API_BASE_SANDBOX
+ */
+export function getClubApiBaseSandbox(): string {
+  return process.env.HOTMART_CLUB_API_BASE_SANDBOX || 'https://sandbox.hotmart.com'
+}
 

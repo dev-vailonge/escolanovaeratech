@@ -280,7 +280,10 @@ export default function AlunoSidebar() {
           {/* Primeiros dois itens: Início e Ranking */}
           {mainMenuItems.slice(0, 2).map((item) => {
             const Icon = item.icon
-            const isActive = pathname === item.href
+            // Início só é ativo na rota exata, outros itens podem ter rotas filhas
+            const isActive = item.href === '/aluno' 
+              ? pathname === '/aluno' || pathname === '/aluno/'
+              : pathname === item.href || pathname.startsWith(item.href + '/')
 
             return (
               <Link
@@ -382,7 +385,7 @@ export default function AlunoSidebar() {
           {/* Últimos dois itens: Comunidade e Perfil */}
           {mainMenuItems.slice(2).map((item) => {
             const Icon = item.icon
-            const isActive = pathname === item.href
+            const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
 
             return (
               <Link
@@ -508,7 +511,10 @@ export default function AlunoSidebar() {
           {/* Menu items principais */}
           {mainMenuItems.map((item) => {
             const Icon = item.icon
-            const isActive = pathname === item.href
+            // Início só é ativo na rota exata, outros itens podem ter rotas filhas
+            const isActive = item.href === '/aluno' 
+              ? pathname === '/aluno' || pathname === '/aluno/'
+              : pathname === item.href || pathname.startsWith(item.href + '/')
 
             return (
               <Link

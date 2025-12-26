@@ -9,7 +9,6 @@ const IMAGEM_BUCKET = 'comunidade-imagens'
  */
 async function ensureBucketExists(supabase: any): Promise<boolean> {
   try {
-    // Verificar se o bucket existe
     const { data: buckets } = await supabase.storage.listBuckets()
     const bucketExists = buckets?.some((b: { id: string }) => b.id === IMAGEM_BUCKET)
 
@@ -17,7 +16,6 @@ async function ensureBucketExists(supabase: any): Promise<boolean> {
       return true
     }
 
-    // Tentar criar o bucket
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -71,25 +69,25 @@ export async function POST(
   try {
     const userId = await requireUserIdFromBearer(request)
     const supabase = getSupabaseAdmin()
-    const perguntaId = params.id
+    const respostaId = params.id
 
-    if (!perguntaId) {
-      return NextResponse.json({ error: 'ID da pergunta inválido' }, { status: 400 })
+    if (!respostaId) {
+      return NextResponse.json({ error: 'ID da resposta inválido' }, { status: 400 })
     }
 
-    // Verificar se a pergunta pertence ao usuário
-    const { data: pergunta, error: perguntaError } = await supabase
-      .from('perguntas')
+    // Verificar se a resposta pertence ao usuário
+    const { data: resposta, error: respostaError } = await supabase
+      .from('respostas')
       .select('id, autor_id')
-      .eq('id', perguntaId)
+      .eq('id', respostaId)
       .single()
 
-    if (perguntaError || !pergunta) {
-      return NextResponse.json({ error: 'Pergunta não encontrada' }, { status: 404 })
+    if (respostaError || !resposta) {
+      return NextResponse.json({ error: 'Resposta não encontrada' }, { status: 404 })
     }
 
-    if (pergunta.autor_id !== userId) {
-      return NextResponse.json({ error: 'Você não tem permissão para fazer upload nesta pergunta' }, { status: 403 })
+    if (resposta.autor_id !== userId) {
+      return NextResponse.json({ error: 'Você não tem permissão para fazer upload nesta resposta' }, { status: 403 })
     }
 
     const contentType = request.headers.get('content-type') || ''
@@ -102,7 +100,6 @@ export async function POST(
         imagemFile = file as File
       }
     } else {
-      // Tentar receber como blob
       const blob = await request.blob()
       if (blob && blob.size > 0) {
         const ext = safeFileExt('imagem.webp')
@@ -125,17 +122,17 @@ export async function POST(
 
     const ext = safeFileExt(imagemFile.name)
     const rand = Math.random().toString(16).slice(2)
-    const objectPath = `${perguntaId}/${Date.now()}-${rand}.${ext}`
+    const objectPath = `respostas/${respostaId}/${Date.now()}-${rand}.${ext}`
 
     const arrayBuffer = await imagemFile.arrayBuffer()
     const fileBuffer = Buffer.from(arrayBuffer)
 
-    // Garantir que o bucket existe antes de fazer upload
+    // Garantir que o bucket existe
     const bucketExists = await ensureBucketExists(supabase)
     if (!bucketExists) {
       return NextResponse.json(
         {
-          error: `Bucket '${IMAGEM_BUCKET}' não existe e não foi possível criá-lo automaticamente. Por favor, crie o bucket manualmente no Supabase ou chame /api/comunidade/setup-bucket`,
+          error: `Bucket '${IMAGEM_BUCKET}' não existe e não foi possível criá-lo automaticamente.`,
         },
         { status: 500 }
       )
@@ -154,7 +151,6 @@ export async function POST(
       return NextResponse.json(
         {
           error: `Falha ao enviar imagem: ${uploadError.message || 'Erro desconhecido'}`,
-          details: uploadError.message,
         },
         { status: 500 }
       )
@@ -163,15 +159,33 @@ export async function POST(
     const { data: publicData } = supabase.storage.from(IMAGEM_BUCKET).getPublicUrl(objectPath)
     const imagemUrl = publicData.publicUrl
 
-    // Atualizar pergunta com a URL da imagem
+    // Atualizar resposta com a URL da imagem
     const { error: updateError } = await supabase
-      .from('perguntas')
+      .from('respostas')
       .update({ imagem_url: imagemUrl })
-      .eq('id', perguntaId)
+      .eq('id', respostaId)
 
     if (updateError) {
-      console.error('Erro ao atualizar pergunta com imagem:', updateError)
-      return NextResponse.json({ error: 'Erro ao atualizar pergunta' }, { status: 500 })
+      console.error('Erro ao atualizar resposta com imagem:', updateError)
+      console.error('Detalhes do erro:', {
+        message: updateError.message,
+        details: updateError.details,
+        hint: updateError.hint,
+        code: updateError.code,
+      })
+      
+      // Verificar se o erro é porque a coluna não existe
+      if (updateError.message?.includes('column') && updateError.message?.includes('imagem_url')) {
+        return NextResponse.json({ 
+          error: 'Coluna imagem_url não existe na tabela respostas. Execute o script SQL: docs/ADICIONAR_IMAGEM_URL_RESPOSTAS.sql',
+          details: updateError.message 
+        }, { status: 500 })
+      }
+      
+      return NextResponse.json({ 
+        error: 'Erro ao atualizar resposta',
+        details: updateError.message 
+      }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, imagem_url: imagemUrl })

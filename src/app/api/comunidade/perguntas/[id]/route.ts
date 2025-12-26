@@ -57,6 +57,7 @@ export async function GET(
         melhor_resposta,
         resposta_pai_id,
         mencoes,
+        imagem_url,
         created_at,
         updated_at,
         autor:users!respostas_autor_id_fkey(id, name, level, avatar_url)
@@ -83,6 +84,7 @@ export async function GET(
         melhor_resposta,
         resposta_pai_id,
         mencoes,
+        imagem_url,
         created_at,
         updated_at,
         autor:users!respostas_autor_id_fkey(id, name, level, avatar_url)
@@ -111,6 +113,7 @@ export async function GET(
         votos: r.votos || 0,
         melhorResposta: r.melhor_resposta || false,
         dataCriacao: r.created_at,
+        imagemUrl: r.imagem_url || null,
         comentarios: (comentariosMap.get(r.id) || []).map((c) => {
           const autorComentario = Array.isArray(c.autor) ? c.autor[0] : c.autor
           return {
@@ -118,6 +121,7 @@ export async function GET(
             conteudo: c.conteudo,
             mencoes: c.mencoes || [],
             dataCriacao: c.created_at,
+            imagemUrl: c.imagem_url || null,
             autor: autorComentario
               ? {
                   id: autorComentario.id,

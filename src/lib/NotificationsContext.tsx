@@ -62,40 +62,59 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   // Função para buscar notificações ativas
   const fetchNotifications = useCallback(async () => {
-    if (!isSupabaseConfigured()) {
+    if (!isSupabaseConfigured() || !user?.id) {
       return
     }
 
     try {
       const now = new Date().toISOString()
       
-      let query = supabase
+      // Buscar notificações:
+      // 1. Notificações individuais para este usuário (target_user_id = user.id)
+      // 2. Notificações broadcast (target_user_id IS NULL) com público-alvo apropriado
+      
+      // Query para notificações individuais do usuário
+      const { data: individualNotifs, error: error1 } = await supabase
         .from('notificacoes')
         .select('*')
+        .eq('target_user_id', user.id)
+        .lte('data_inicio', now)
+        .gte('data_fim', now)
+        .order('created_at', { ascending: false })
+      
+      // Query para notificações broadcast (sem target_user_id)
+      const { data: broadcastNotifs, error: error2 } = await supabase
+        .from('notificacoes')
+        .select('*')
+        .is('target_user_id', null)
         .lte('data_inicio', now)
         .gte('data_fim', now)
         .order('created_at', { ascending: false })
 
-      // Filtrar por público-alvo baseado no nível de acesso do usuário
-      if (user?.accessLevel) {
-        const publicoAlvo = user.accessLevel === 'full' ? 'alunos-full' : 'alunos-limited'
-        query = query.or(`publico_alvo.eq.${publicoAlvo},publico_alvo.eq.todos`)
-      } else {
-        query = query.eq('publico_alvo', 'todos')
+      if (error1) {
+        console.error('Erro ao buscar notificações individuais:', error1)
+      }
+      if (error2) {
+        console.error('Erro ao buscar notificações broadcast:', error2)
       }
 
-      const { data, error } = await query
+      // Filtrar notificações broadcast por público-alvo
+      const filteredBroadcast = (broadcastNotifs || []).filter(notif => {
+        if (notif.publico_alvo === 'todos') return true
+        if (notif.publico_alvo === 'alunos-full') return user?.accessLevel === 'full'
+        if (notif.publico_alvo === 'alunos-limited') return user?.accessLevel === 'limited'
+        return false
+      })
 
-      if (error) {
-        console.error('Erro ao buscar notificações:', error)
-        return
-      }
+      // Combinar e ordenar por data de criação
+      const allNotifications = [...(individualNotifs || []), ...filteredBroadcast]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-      setNotifications(data || [])
+      setNotifications(allNotifications)
     } catch (error) {
       console.error('Erro ao buscar notificações:', error)
     }
-  }, [user?.accessLevel])
+  }, [user?.accessLevel, user?.id])
 
   // Buscar notificações na montagem e quando o usuário mudar
   useEffect(() => {
@@ -104,7 +123,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   // Configurar Supabase Realtime para notificações
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
+    if (!isSupabaseConfigured() || !user?.id) {
       return
     }
 
@@ -127,7 +146,17 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           const dataFim = new Date(newNotification.data_fim)
           
           if (now >= dataInicio && now <= dataFim) {
-            // Verificar público-alvo
+            // Se é notificação individual, verificar se é para este usuário
+            if (newNotification.target_user_id) {
+              if (newNotification.target_user_id === user?.id) {
+                setNotifications(prev => [newNotification, ...prev])
+                setHasNewNotification(true)
+              }
+              // IMPORTANTE: Se tem target_user_id mas não é para este usuário, ignorar
+              return
+            }
+
+            // Notificação broadcast (sem target_user_id) - verificar público-alvo
             const isForUser = 
               newNotification.publico_alvo === 'todos' ||
               (user?.accessLevel === 'full' && newNotification.publico_alvo === 'alunos-full') ||
@@ -173,7 +202,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [user?.accessLevel])
+  }, [user?.accessLevel, user?.id])
 
   // Calcular contagem de não lidas
   const unreadCount = notifications.filter(n => !readIds.has(n.id)).length

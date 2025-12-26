@@ -90,7 +90,9 @@ export default function ComunidadePage() {
   const [categoriaCustomizada, setCategoriaCustomizada] = useState<string>('')
   const [showCategoriaCustom, setShowCategoriaCustom] = useState(false)
   const [perguntaImagem, setPerguntaImagem] = useState<File | null>(null)
+  const [perguntaImagemResetTrigger, setPerguntaImagemResetTrigger] = useState(0)
   const [perguntaImagemEdit, setPerguntaImagemEdit] = useState<File | null | undefined>(undefined)
+  const [perguntaImagemEditResetTrigger, setPerguntaImagemEditResetTrigger] = useState(0)
   const [perguntaImagemUrlAtual, setPerguntaImagemUrlAtual] = useState<string | null>(null)
   const [showExemplos, setShowExemplos] = useState(false)
   const [badgesMap, setBadgesMap] = useState<Map<string, string[]>>(new Map())
@@ -437,6 +439,16 @@ export default function ComunidadePage() {
       }
       
       setSuccess('✅ Pergunta criada com sucesso!')
+      
+      // Disparar evento de XP ganho para atualizar AuthContext
+      if (typeof window !== 'undefined' && user?.id) {
+        window.dispatchEvent(
+          new CustomEvent('xpGained', {
+            detail: { userId: user.id, amount: 10 },
+          })
+        )
+      }
+      
       setPerguntaTitulo('')
       setPerguntaDescricao('')
       setPerguntaTags('')
@@ -444,6 +456,7 @@ export default function ComunidadePage() {
       setCategoriaCustomizada('')
       setShowCategoriaCustom(false)
       setPerguntaImagem(null)
+      setPerguntaImagemResetTrigger((prev) => prev + 1) // Resetar componente de imagem
       setShowCriarPergunta(false)
       setIsSubmitting(false) // Desativar loading antes de recarregar
       
@@ -626,6 +639,7 @@ export default function ComunidadePage() {
     setPerguntaCategoria('')
     setPerguntaImagemUrlAtual(null)
     setPerguntaImagemEdit(undefined)
+    setPerguntaImagemEditResetTrigger((prev) => prev + 1) // Resetar componente de imagem
     setCategoriaCustomizada('')
     setShowCategoriaCustom(false)
     setError('')
@@ -1004,6 +1018,7 @@ export default function ComunidadePage() {
           <QuestionImageUpload
             onImageChange={setPerguntaImagem}
             currentImageUrl={null}
+            resetTrigger={perguntaImagemResetTrigger}
           />
 
           <div className="flex items-center justify-between gap-3">
@@ -1156,6 +1171,7 @@ export default function ComunidadePage() {
               setPerguntaImagemEdit(file)
             }}
             currentImageUrl={perguntaImagemUrlAtual}
+            resetTrigger={perguntaImagemEditResetTrigger}
           />
 
           <div className="flex gap-2 pt-2">

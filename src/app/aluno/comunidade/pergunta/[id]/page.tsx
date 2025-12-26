@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, ThumbsUp, CheckCircle2, Eye, MessageSquare, Tag, Send } from 'lucide-react'
+import { ArrowLeft, ThumbsUp, CheckCircle2, Eye, MessageSquare, Tag, Send, Trash2 } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
@@ -10,6 +10,7 @@ import { getAuthToken } from '@/lib/getAuthToken'
 import { hasFullAccess } from '@/lib/types/auth'
 import BadgeDisplay from '@/components/comunidade/BadgeDisplay'
 import CommentThread from '@/components/comunidade/CommentThread'
+import QuestionImageUpload from '@/components/comunidade/QuestionImageUpload'
 import { getUserBadges } from '@/lib/badges'
 
 interface Autor {
@@ -24,6 +25,7 @@ interface Comentario {
   conteudo: string
   mencoes: string[]
   dataCriacao: string
+  imagemUrl?: string | null
   autor: Autor | null
 }
 
@@ -34,6 +36,7 @@ interface Resposta {
   votos: number
   melhorResposta: boolean
   dataCriacao: string
+  imagemUrl?: string | null
   comentarios: Comentario[]
   autor: Autor | null
 }
@@ -64,9 +67,13 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string>('')
   const [respostaConteudo, setRespostaConteudo] = useState('')
+  const [respostaImagem, setRespostaImagem] = useState<File | null>(null)
+  const [respostaImagemResetTrigger, setRespostaImagemResetTrigger] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [avatarErrors, setAvatarErrors] = useState<Set<string>>(new Set())
   const [badgesMap, setBadgesMap] = useState<Map<string, string[]>>(new Map())
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
   const visualizacaoRegistrada = useRef(false)
 
   const canCreate = hasFullAccess(user)
@@ -203,6 +210,7 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
         return
       }
 
+      // Primeiro, criar a resposta
       const res = await fetch(`/api/comunidade/perguntas/${pergunta.id}/responder`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -215,13 +223,52 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
         throw new Error(json?.error || 'Erro ao enviar resposta')
       }
 
-      // Recarregar pergunta
+      // Se houver imagem, fazer upload
+      if (respostaImagem && json.result?.respostaId) {
+        try {
+          const formData = new FormData()
+          formData.append('imagem', respostaImagem)
+
+          const resImagem = await fetch(`/api/comunidade/respostas/${json.result.respostaId}/imagem`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          })
+
+          const jsonImagem = await resImagem.json()
+
+          if (!resImagem.ok) {
+            console.error('Erro ao fazer upload de imagem:', jsonImagem)
+            setError(`Resposta criada, mas houve erro ao fazer upload da imagem: ${jsonImagem.error || 'Erro desconhecido'}`)
+          }
+        } catch (imgError: any) {
+          console.error('Erro ao fazer upload de imagem:', imgError)
+          setError(`Resposta criada, mas houve erro ao fazer upload da imagem: ${imgError.message || 'Erro desconhecido'}`)
+        }
+      }
+
+      // Recarregar pergunta para atualizar lista de respostas e threads
       const resPergunta = await fetch(`/api/comunidade/perguntas/${params.id}`)
       const jsonPergunta = await resPergunta.json()
 
       if (jsonPergunta.success && jsonPergunta.pergunta) {
         setPergunta(jsonPergunta.pergunta)
         setRespostaConteudo('')
+        setRespostaImagem(null)
+        setRespostaImagemResetTrigger((prev) => prev + 1) // Resetar componente de imagem
+        setError('') // Limpar erros anteriores
+        
+        // Disparar evento de XP ganho para atualizar AuthContext
+        if (typeof window !== 'undefined' && user?.id) {
+          window.dispatchEvent(
+            new CustomEvent('xpGained', {
+              detail: { userId: user.id, amount: 1 },
+            })
+          )
+        }
+        
+        // Forçar atualização dos threads de comentários
+        setRefreshTrigger((prev) => prev + 1)
       }
     } catch (e: any) {
       setError(e?.message || 'Erro ao enviar resposta')
@@ -262,6 +309,56 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
     } catch (e: any) {
       console.error('Erro ao votar:', e)
       setError(e?.message || 'Erro ao votar')
+    }
+  }
+
+  const deletarPergunta = async () => {
+    if (!user?.id || !pergunta) return
+
+    const confirmar = window.confirm(
+      '⚠️ ATENÇÃO: Esta ação irá deletar a pergunta e REMOVER TODO O XP de todos os usuários envolvidos (autor, respostas, melhor resposta). Deseja continuar?'
+    )
+
+    if (!confirmar) return
+
+    try {
+      setIsDeleting(true)
+      const token = await getAuthToken()
+      if (!token) {
+        setError('Não foi possível obter o token de autenticação.')
+        setIsDeleting(false)
+        return
+      }
+
+      const res = await fetch(`/api/comunidade/perguntas/${pergunta.id}/delete`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const json = await res.json()
+
+      if (!res.ok) {
+        throw new Error(json?.error || 'Erro ao deletar pergunta')
+      }
+
+      // Mostrar mensagem de sucesso
+      alert(
+        `✅ Pergunta deletada com sucesso!\n\n` +
+        `${json.usuariosAfetados} usuário(s) tiveram seu XP revertido.\n\n` +
+        (json.detalhes && json.detalhes.length > 0
+          ? `Detalhes:\n${json.detalhes.map((d: any) => 
+              `• ${d.nome}: ${d.xpAnterior} XP → ${d.novoXp} XP (perdeu ${d.xpPerdido} XP)`
+            ).join('\n')}`
+          : '')
+      )
+
+      // Voltar para a lista de perguntas
+      router.push('/aluno/comunidade')
+    } catch (e: any) {
+      console.error('Erro ao deletar pergunta:', e)
+      setError(e?.message || 'Erro ao deletar pergunta')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -316,19 +413,39 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Botão Voltar */}
-      <button
-        onClick={handleVoltar}
-        className={cn(
-          'flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors',
-          theme === 'dark'
-            ? 'bg-black/20 border-white/10 text-gray-300 hover:bg-black/40 hover:border-yellow-400/50'
-            : 'bg-white border-yellow-400/90 text-gray-700 hover:bg-gray-50 hover:border-yellow-500'
+      {/* Botões de Ação */}
+      <div className="flex items-center justify-between gap-4">
+        <button
+          onClick={handleVoltar}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors',
+            theme === 'dark'
+              ? 'bg-black/20 border-white/10 text-gray-300 hover:bg-black/40 hover:border-yellow-400/50'
+              : 'bg-white border-yellow-400/90 text-gray-700 hover:bg-gray-50 hover:border-yellow-500'
+          )}
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Voltar
+        </button>
+
+        {/* Botão de Deletar (apenas para admins) */}
+        {user?.role === 'admin' && (
+          <button
+            onClick={deletarPergunta}
+            disabled={isDeleting}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors',
+              theme === 'dark'
+                ? 'bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20 hover:border-red-500/50'
+                : 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100 hover:border-red-400',
+              isDeleting && 'opacity-50 cursor-not-allowed'
+            )}
+          >
+            <Trash2 className="w-4 h-4" />
+            {isDeleting ? 'Deletando...' : 'Deletar Pergunta'}
+          </button>
         )}
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Voltar
-      </button>
+      </div>
 
       {error && (
         <div className={cn(
@@ -506,6 +623,12 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
                 : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
             )}
           />
+          <div className="mb-3">
+            <QuestionImageUpload
+              onImageChange={setRespostaImagem}
+              resetTrigger={respostaImagemResetTrigger}
+            />
+          </div>
           <button
             onClick={submitResposta}
             disabled={isSubmitting || !respostaConteudo.trim()}
@@ -637,11 +760,23 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
                     {resposta.conteudo}
                   </p>
 
+                  {resposta.imagemUrl && (
+                    <div className="mb-3">
+                      <img
+                        src={resposta.imagemUrl}
+                        alt="Imagem da resposta"
+                        className="w-full max-w-2xl rounded-lg border object-contain"
+                        style={{ maxHeight: '500px' }}
+                      />
+                    </div>
+                  )}
+
                   {/* Thread de comentários */}
                   <CommentThread
                     respostaId={resposta.id}
                     perguntaId={pergunta.id}
                     canCreate={canCreate}
+                    refreshTrigger={refreshTrigger}
                   />
                 </div>
               </div>

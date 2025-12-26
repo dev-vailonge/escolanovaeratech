@@ -505,28 +505,50 @@ export async function deleteDesafio(desafioId: string): Promise<boolean> {
 // NOTIFICAÇÕES
 // ============================================================
 
-export async function getNotificacoesAtivas(publicoAlvo?: string): Promise<DatabaseNotificacao[]> {
+export async function getNotificacoesAtivas(userId?: string, publicoAlvo?: string): Promise<DatabaseNotificacao[]> {
   const now = new Date().toISOString()
   
-  let query = supabase
+  // Buscar notificações individuais para este usuário (se userId fornecido)
+  let individualNotifs: DatabaseNotificacao[] = []
+  if (userId) {
+    const { data: individual, error: indError } = await supabase
+      .from('notificacoes')
+      .select('*')
+      .eq('target_user_id', userId)
+      .lte('data_inicio', now)
+      .gte('data_fim', now)
+      .order('created_at', { ascending: false })
+    
+    if (!indError && individual) {
+      individualNotifs = individual
+    }
+  }
+
+  // Buscar notificações broadcast (sem target_user_id)
+  let broadcastQuery = supabase
     .from('notificacoes')
     .select('*')
+    .is('target_user_id', null)
     .lte('data_inicio', now)
     .gte('data_fim', now)
     .order('created_at', { ascending: false })
 
   if (publicoAlvo) {
-    query = query.or(`publico_alvo.eq.${publicoAlvo},publico_alvo.eq.todos`)
+    broadcastQuery = broadcastQuery.or(`publico_alvo.eq.${publicoAlvo},publico_alvo.eq.todos`)
   }
 
-  const { data, error } = await query
+  const { data: broadcastNotifs, error } = await broadcastQuery
 
   if (error) {
     console.error('Error fetching notificacoes:', error)
-    return []
+    return individualNotifs // Retornar ao menos as individuais
   }
 
-  return data || []
+  // Combinar e ordenar por data
+  const allNotifs = [...individualNotifs, ...(broadcastNotifs || [])]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+  return allNotifs
 }
 
 export async function getAllNotificacoes(): Promise<DatabaseNotificacao[]> {
@@ -1028,19 +1050,118 @@ export async function deleteFormulario(formularioId: string): Promise<boolean> {
   }
 
   try {
-    const { error } = await supabase
+    console.log(`🗑️ Iniciando exclusão do formulário ${formularioId}`)
+
+    // Buscar todas as respostas ao formulário
+    const { data: respostas, error: respostasError } = await supabase
+      .from('formulario_respostas')
+      .select('user_id, id')
+      .eq('formulario_id', formularioId)
+
+    if (respostasError) {
+      console.error('Erro ao buscar respostas do formulário:', respostasError)
+      return false
+    }
+
+    console.log(`📊 Encontradas ${respostas?.length || 0} respostas ao formulário`)
+
+    // Se houver respostas, reverter o XP dos usuários
+    if (respostas && respostas.length > 0) {
+      // Buscar informações do formulário para calcular XP
+      const { data: formulario, error: formularioError } = await supabase
+        .from('formularios')
+        .select('nome')
+        .eq('id', formularioId)
+        .single()
+
+      if (formularioError) {
+        console.error('Erro ao buscar informações do formulário:', formularioError)
+        return false
+      }
+
+      const nomeFormulario = formulario?.nome || 'Formulário excluído'
+
+      // Usar Supabase Admin para inserir entradas negativas de XP
+      if (getSupabaseAdmin && typeof window === 'undefined') {
+        try {
+          const supabaseAdmin = getSupabaseAdmin()
+          
+          // Para cada usuário que respondeu, inserir entrada negativa de XP
+          const xpEntries = respostas.map(resposta => ({
+            user_id: resposta.user_id,
+            amount: -1, // Negativo para subtrair XP (formulários dão 1 XP)
+            source: 'comunidade' as const,
+            source_id: formularioId,
+            description: `XP removido - Formulário excluído: ${nomeFormulario}`
+          }))
+
+          console.log(`💰 Revertendo XP de ${xpEntries.length} usuário(s)...`)
+
+          const { error: xpError } = await supabaseAdmin
+            .from('user_xp_history')
+            .insert(xpEntries)
+
+          if (xpError) {
+            console.error('❌ Erro ao reverter XP dos usuários:', xpError)
+            return false
+          }
+
+          console.log('✅ XP revertido com sucesso para todos os usuários')
+        } catch (adminError) {
+          console.error('❌ Erro ao usar Supabase Admin para reverter XP:', adminError)
+          return false
+        }
+      } else {
+        console.warn('⚠️ Supabase Admin não disponível - XP não será revertido')
+      }
+    }
+
+    // Excluir notificações relacionadas ao formulário
+    // As notificações têm action_url apontando para o formulário
+    const actionUrlPattern = `/aluno/formularios/${formularioId}`
+    console.log(`🔔 Excluindo notificações com action_url: ${actionUrlPattern}`)
+    
+    const { data: notificacoes, error: notifFindError } = await supabase
+      .from('notificacoes')
+      .select('id')
+      .eq('action_url', actionUrlPattern)
+    
+    if (notifFindError) {
+      console.error('⚠️ Erro ao buscar notificações relacionadas:', notifFindError)
+      // Não bloquear a exclusão se houver erro ao buscar notificações
+    } else if (notificacoes && notificacoes.length > 0) {
+      console.log(`📢 Encontradas ${notificacoes.length} notificação(ões) para excluir`)
+      
+      const { error: notifDeleteError } = await supabase
+        .from('notificacoes')
+        .delete()
+        .eq('action_url', actionUrlPattern)
+      
+      if (notifDeleteError) {
+        console.error('⚠️ Erro ao excluir notificações:', notifDeleteError)
+        // Não bloquear a exclusão se houver erro ao excluir notificações
+      } else {
+        console.log(`✅ ${notificacoes.length} notificação(ões) excluída(s)`)
+      }
+    } else {
+      console.log('ℹ️ Nenhuma notificação encontrada para este formulário')
+    }
+
+    // Agora excluir o formulário (as respostas serão excluídas em cascata pelo banco)
+    const { error: deleteError } = await supabase
       .from('formularios')
       .delete()
       .eq('id', formularioId)
 
-    if (error) {
-      console.error('Error deleting formulario:', error)
+    if (deleteError) {
+      console.error('❌ Erro ao excluir formulário:', deleteError)
       return false
     }
 
+    console.log(`✅ Formulário ${formularioId} excluído com sucesso`)
     return true
   } catch (error) {
-    console.error('Error in deleteFormulario:', error)
+    console.error('❌ Erro crítico em deleteFormulario:', error)
     return false
   }
 }

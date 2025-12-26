@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { mockRanking } from '@/data/aluno/mockRanking'
 import { mockUser } from '@/data/aluno/mockUser'
-import { Trophy, TrendingUp, HelpCircle, MessageSquare, CheckCircle, Target, FileText, Award, Lock } from 'lucide-react'
+import { Trophy, TrendingUp, HelpCircle, MessageSquare, CheckCircle, Target, FileText, Award, Lock, RefreshCw } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/AuthContext'
@@ -23,6 +23,7 @@ export default function RankingPage() {
   const [ranking, setRanking] = useState<any[] | null>(null)
   const [rankingMensal, setRankingMensal] = useState<any[] | null>(null)
   const [isPontuacaoModalOpen, setIsPontuacaoModalOpen] = useState(false)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
   
   // Buscar ranking mensal para o Card Mural (sempre)
   useEffect(() => {
@@ -33,8 +34,9 @@ export default function RankingPage() {
         const token = session?.access_token
         if (!token) return
 
-        const res = await fetch(`/api/ranking?type=mensal`, {
+        const res = await fetch(`/api/ranking?type=mensal&_t=${Date.now()}`, {
           headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store', // Forçar busca de dados frescos
         })
         const json = await res.json().catch(() => ({}))
         if (!res.ok) return
@@ -50,7 +52,7 @@ export default function RankingPage() {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [refreshTrigger])
 
   // Buscar ranking conforme o tipo selecionado (para a lista)
   // Mensal: ranking do mês atual (ordenado por xp_mensal)
@@ -66,8 +68,9 @@ export default function RankingPage() {
         if (!token) throw new Error('Não autenticado')
 
         // Busca ranking mensal ou geral conforme o seletor
-        const res = await fetch(`/api/ranking?type=${rankingType}`, {
+        const res = await fetch(`/api/ranking?type=${rankingType}&_t=${Date.now()}`, {
           headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store', // Forçar busca de dados frescos
         })
         const json = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(json?.error || 'Erro ao carregar ranking')
@@ -91,7 +94,7 @@ export default function RankingPage() {
     return () => {
       mounted = false
     }
-  }, [rankingType])
+  }, [rankingType, refreshTrigger])
 
   const fallbackRankingMensal = useMemo(() => {
     return mockRanking
@@ -351,12 +354,28 @@ export default function RankingPage() {
           )}>
             Ranking Completo
           </h2>
-          <div className={cn(
-            "flex items-center gap-2 text-xs md:text-sm",
-            theme === 'dark' ? "text-gray-400" : "text-gray-600"
-          )}>
-            <TrendingUp className="w-3 h-3 md:w-4 md:h-4" />
-            Atualizado hoje
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setRefreshTrigger((prev) => prev + 1)}
+              disabled={loading}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors text-xs md:text-sm",
+                loading && "opacity-50 cursor-not-allowed",
+                theme === 'dark'
+                  ? "bg-black/30 border-white/10 text-gray-300 hover:bg-black/50 hover:border-yellow-400/50"
+                  : "bg-white border-yellow-400/70 text-gray-700 hover:bg-yellow-50 hover:border-yellow-500"
+              )}
+            >
+              <RefreshCw className={cn("w-3 h-3 md:w-4 md:h-4", loading && "animate-spin")} />
+              {loading ? 'Atualizando...' : 'Atualizar'}
+            </button>
+            <div className={cn(
+              "flex items-center gap-2 text-xs md:text-sm",
+              theme === 'dark' ? "text-gray-400" : "text-gray-600"
+            )}>
+              <TrendingUp className="w-3 h-3 md:w-4 md:h-4" />
+              Atualizado hoje
+            </div>
           </div>
         </div>
 

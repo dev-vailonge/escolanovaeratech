@@ -1,192 +1,682 @@
 'use client'
 
-import { mockDesafios } from '@/data/aluno/mockDesafios'
-import { mockUser } from '@/data/aluno/mockUser'
-import { Target, Clock, CheckCircle2, Coins, Trophy, Users, Calendar, Lock, BookOpen } from 'lucide-react'
+import { Target, Clock, CheckCircle2, Trophy, Sparkles, Github, Loader2, ExternalLink, XCircle, Send, AlertCircle, Flag } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
-import { isFeatureEnabled } from '@/lib/features'
 import { hasFullAccess } from '@/lib/types/auth'
 import { useAuth } from '@/lib/AuthContext'
-import { useMemo, useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Modal from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
-import { getDesafios } from '@/lib/database'
-import type { DatabaseDesafio } from '@/types/database'
-import { getCursoNome, type CursoId } from '@/lib/constants/cursos'
+import type { DatabaseDesafio, DatabaseDesafioSubmission } from '@/types/database'
+
+// Tecnologias organizadas por categoria/curso
+const TECNOLOGIAS_POR_CATEGORIA = {
+  'Frontend Web': ['HTML', 'CSS', 'JavaScript', 'TypeScript', 'React', 'Next.js', 'Tailwind CSS'],
+  'Backend': ['Node.js', 'Express', 'APIs REST', 'PostgreSQL', 'MongoDB'],
+  'Mobile Android': ['Kotlin', 'Jetpack Compose', 'Android'],
+  'Mobile iOS': ['Swift', 'SwiftUI'],
+  'Análise de Dados': ['Python', 'Pandas', 'SQL', 'Data Visualization'],
+  'Fundamentos': ['Lógica de Programação', 'Algoritmos', 'Estrutura de Dados', 'Git'],
+}
+
+// Lista flat de todas as tecnologias para o select
+const TECNOLOGIAS = Object.values(TECNOLOGIAS_POR_CATEGORIA).flat()
+const NIVEIS: Array<'iniciante' | 'intermediario' | 'avancado'> = ['iniciante', 'intermediario', 'avancado']
+
+// Tipo para desafio do usuário com status
+interface MeuDesafio {
+  id: string
+  desafio: DatabaseDesafio
+  atribuido_em: string
+  submission?: DatabaseDesafioSubmission
+  status: 'pendente_envio' | 'aguardando_aprovacao' | 'aprovado' | 'rejeitado' | 'desistiu'
+}
 
 export default function DesafiosPage() {
   const { theme } = useTheme()
   const { user: authUser } = useAuth()
-  const user = authUser
-    ? { ...mockUser, id: authUser.id, role: authUser.role, accessLevel: authUser.accessLevel }
-    : mockUser
-  const canParticipate = hasFullAccess({ ...user, role: user.role as 'aluno' | 'admin', accessLevel: user.accessLevel })
+  const canParticipate = hasFullAccess(authUser)
 
-  // Alunos com access_level = 'full' têm acesso a todos os cursos
-  const userCourses = canParticipate 
-    ? (['android', 'frontend', 'backend', 'ios', 'analise-dados', 'norte-tech', 'logica-programacao'] as CursoId[])
-    : []
-
-  const [desafiosDB, setDesafiosDB] = useState<DatabaseDesafio[]>([])
-  const [loadingDesafios, setLoadingDesafios] = useState(true)
-  const [desafios, setDesafios] = useState(mockDesafios)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  // Estados
+  const [activeTab, setActiveTab] = useState<'gerar' | 'meus'>('gerar')
+  const [loading, setLoading] = useState(true)
+  const [meusDesafios, setMeusDesafios] = useState<MeuDesafio[]>([])
   const [error, setError] = useState<string>('')
   const [success, setSuccess] = useState<string>('')
-  const [selectedDesafioId, setSelectedDesafioId] = useState<string | null>(null)
 
-  // Carregar desafios do banco
-  useEffect(() => {
-    const loadDesafios = async () => {
-      try {
-        setLoadingDesafios(true)
-        const dados = await getDesafios()
-        setDesafiosDB(dados)
-        // Converter DatabaseDesafio para o formato usado na página (temporário até migrar completamente)
-        // Por enquanto, continuamos usando mockDesafios mas podemos adicionar indicadores baseados em desafiosDB
-      } catch (err) {
-        console.error('Erro ao carregar desafios:', err)
-      } finally {
-        setLoadingDesafios(false)
-      }
-    }
-    loadDesafios()
-  }, [])
+  // Estados para modal de seleção
+  const [showSelectionModal, setShowSelectionModal] = useState(false)
+  const [selectedTecnologia, setSelectedTecnologia] = useState('')
+  const [selectedNivel, setSelectedNivel] = useState<'iniciante' | 'intermediario' | 'avancado' | ''>('')
+  const [selectionError, setSelectionError] = useState<string>('')
+  const [isGerando, setIsGerando] = useState(false)
 
-  // Função helper para verificar se um desafio é do curso do aluno
-  const isDesafioDoCursoDoAluno = (cursoId: CursoId): boolean => {
-    if (!cursoId) return true // Desafios gerais são sempre visíveis
-    return userCourses.includes(cursoId)
-  }
+  // Estados para submeter GitHub
+  const [showSubmitModal, setShowSubmitModal] = useState(false)
+  const [desafioParaSubmeter, setDesafioParaSubmeter] = useState<MeuDesafio | null>(null)
+  const [githubUrl, setGithubUrl] = useState('')
+  const [isSubmittingGithub, setIsSubmittingGithub] = useState(false)
 
-  // Função helper para obter curso_id de um desafio mockado (temporário até migrar completamente)
-  const getCursoIdFromMock = (desafioId: string): CursoId => {
-    const desafioDB = desafiosDB.find(d => d.id === desafioId)
-    return (desafioDB?.curso_id ?? null) as CursoId
-  }
+  // Estados para desistir
+  const [showDesistirModal, setShowDesistirModal] = useState(false)
+  const [desafioParaDesistir, setDesafioParaDesistir] = useState<MeuDesafio | null>(null)
+  const [isDesistindo, setIsDesistindo] = useState(false)
 
-  const desafiosAtivos = useMemo(() => desafios.filter(d => !d.completo), [desafios])
-  const desafiosCompletos = useMemo(() => desafios.filter(d => d.completo), [desafios])
-  const totalDesafiosDisponiveis = desafios.length
-
-  const selectedDesafio = useMemo(
-    () => desafios.find((d) => d.id === selectedDesafioId) || null,
-    [desafios, selectedDesafioId]
-  )
-
-  const handleCompleteDesafio = async () => {
-    if (!selectedDesafio) return
-    setError('')
-    setSuccess('')
-
+  // Carregar desafios do usuário
+  const loadMeusDesafios = useCallback(async () => {
     if (!authUser?.id) {
-      setError('Você precisa estar logado para concluir desafios.')
+      setLoading(false)
       return
     }
 
-    setIsSubmitting(true)
+    try {
+      setLoading(true)
+
+      // Buscar atribuições do usuário
+      const { data: atribuicoes, error: atribError } = await supabase
+        .from('user_desafio_atribuido')
+        .select('desafio_id, created_at')
+        .eq('user_id', authUser.id)
+        .order('created_at', { ascending: false })
+
+      if (atribError) {
+        console.error('Erro ao buscar atribuições:', atribError)
+        setMeusDesafios([])
+        return
+      }
+
+      if (!atribuicoes || atribuicoes.length === 0) {
+        setMeusDesafios([])
+        return
+      }
+
+      const desafioIds = atribuicoes.map(a => a.desafio_id)
+
+      // Buscar detalhes dos desafios
+      const { data: desafios } = await supabase
+        .from('desafios')
+        .select('*')
+        .in('id', desafioIds)
+
+      // Buscar submissions do usuário
+      const { data: submissions } = await supabase
+        .from('desafio_submissions')
+        .select('*')
+        .eq('user_id', authUser.id)
+        .in('desafio_id', desafioIds)
+
+      // Montar lista de "Meus Desafios"
+      const meusDesafiosList: MeuDesafio[] = atribuicoes.map(atrib => {
+        const desafio = desafios?.find(d => d.id === atrib.desafio_id)
+        const submission = submissions?.find(s => s.desafio_id === atrib.desafio_id)
+
+        let status: MeuDesafio['status'] = 'pendente_envio'
+        if (submission) {
+          if (submission.status === 'pendente') status = 'aguardando_aprovacao'
+          else if (submission.status === 'aprovado') status = 'aprovado'
+          else if (submission.status === 'rejeitado') status = 'rejeitado'
+          else if (submission.status === 'desistiu') status = 'desistiu'
+        }
+
+        return {
+          id: atrib.desafio_id,
+          desafio: desafio as DatabaseDesafio,
+          atribuido_em: atrib.created_at,
+          submission,
+          status
+        }
+      }).filter(d => d.desafio)
+
+      setMeusDesafios(meusDesafiosList)
+    } catch (err) {
+      console.error('Erro ao carregar meus desafios:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [authUser?.id])
+
+  useEffect(() => {
+    loadMeusDesafios()
+  }, [loadMeusDesafios])
+
+  // Verificar se pode gerar novo desafio
+  const podeGerarNovo = meusDesafios.every(d => d.status === 'aprovado' || d.status === 'rejeitado' || d.status === 'desistiu')
+  const desafioAtivo = meusDesafios.find(d => d.status === 'pendente_envio' || d.status === 'aguardando_aprovacao')
+
+  // Contadores
+  const totalAprovados = meusDesafios.filter(d => d.status === 'aprovado').length
+
+  // Abrir modal de seleção
+  const handleGerarDesafio = () => {
+    if (!canParticipate) return
+    setSelectionError('')
+    setSelectedTecnologia('')
+    setSelectedNivel('')
+    setShowSelectionModal(true)
+  }
+
+  // Confirmar seleção e gerar desafio
+  const handleConfirmarSelecao = async () => {
+    if (!selectedTecnologia || !selectedNivel) {
+      setSelectionError('Por favor, selecione tecnologia e nível')
+      return
+    }
+
+    setIsGerando(true)
+    setSelectionError('')
+
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
       if (!token) throw new Error('Não autenticado')
 
-      const res = await fetch(`/api/desafios/${selectedDesafio.id}/completar`, {
+      const res = await fetch('/api/desafios/gerar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tecnologia: selectedTecnologia, nivel: selectedNivel })
       })
-      const json = await res.json().catch(() => ({}))
+
+      const json = await res.json()
       if (!res.ok) {
-        throw new Error(json?.error || 'Falha ao concluir desafio')
+        throw new Error(json?.error || 'Erro ao gerar desafio')
       }
 
-      const awarded = json?.result?.awarded
-      const xp = json?.result?.xp
-
-      if (awarded) {
-        setDesafios((prev) => prev.map((d) => (d.id === selectedDesafio.id ? { ...d, completo: true } : d)))
-        setSuccess(`✅ Desafio concluído! Você ganhou ${xp ?? selectedDesafio.xpGanho} XP.`)
-      } else {
-        setSuccess('Este desafio já estava concluído.')
-      }
-      setSelectedDesafioId(null)
+      setShowSelectionModal(false)
+      setSuccess('🎯 Desafio gerado com sucesso! Confira na aba "Meus Desafios".')
+      await loadMeusDesafios()
+      setActiveTab('meus')
     } catch (e: any) {
-      setError(e?.message || 'Erro ao concluir desafio')
+      setSelectionError(e?.message || 'Erro ao gerar desafio')
     } finally {
-      setIsSubmitting(false)
+      setIsGerando(false)
     }
   }
 
-  const getTipoIcon = (tipo: string) => {
-    switch (tipo) {
-      case 'semanal':
-        return <Calendar className="w-4 h-4 text-blue-500" />
-      case 'mensal':
-        return <Calendar className="w-4 h-4 text-purple-500" />
-      default:
-        return <Trophy className={cn(
-          "w-4 h-4",
-          theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-        )} />
+  // Submeter link do GitHub
+  const handleSubmitGithub = async () => {
+    if (!desafioParaSubmeter || !githubUrl) {
+      setError('Informe o link do GitHub')
+      return
+    }
+
+    setIsSubmittingGithub(true)
+    setError('')
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) throw new Error('Não autenticado')
+
+      const res = await fetch(`/api/desafios/${desafioParaSubmeter.id}/submeter`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ github_url: githubUrl })
+      })
+
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json?.error || 'Erro ao submeter')
+      }
+
+      setSuccess('✅ Solução enviada! Aguarde a aprovação do admin.')
+      setShowSubmitModal(false)
+      setGithubUrl('')
+      setDesafioParaSubmeter(null)
+      await loadMeusDesafios()
+    } catch (e: any) {
+      setError(e?.message || 'Erro ao submeter')
+    } finally {
+      setIsSubmittingGithub(false)
     }
   }
 
-  const getTipoColor = (tipo: string) => {
-    if (theme === 'light') {
-      switch (tipo) {
-        case 'semanal':
-          return 'border-blue-400/90 bg-blue-50'
-        case 'mensal':
-          return 'border-purple-400/90 bg-purple-50'
-        default:
-          return 'border-yellow-400/90 bg-yellow-50'
+  const openSubmitModal = (desafio: MeuDesafio) => {
+    setDesafioParaSubmeter(desafio)
+    setGithubUrl('')
+    setShowSubmitModal(true)
+    setError('')
+  }
+
+  // Desistir do desafio
+  const openDesistirModal = (desafio: MeuDesafio) => {
+    setDesafioParaDesistir(desafio)
+    setShowDesistirModal(true)
+    setError('')
+  }
+
+  const handleDesistir = async () => {
+    if (!desafioParaDesistir) return
+
+    setIsDesistindo(true)
+    setError('')
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) throw new Error('Não autenticado')
+
+      const res = await fetch(`/api/desafios/${desafioParaDesistir.id}/desistir`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+      })
+
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json?.error || 'Erro ao desistir')
       }
-    } else {
-      switch (tipo) {
-        case 'semanal':
-          return 'border-blue-400/30 bg-blue-400/10'
-        case 'mensal':
-          return 'border-purple-400/30 bg-purple-400/10'
-        default:
-          return 'border-yellow-400/30 bg-yellow-400/10'
-      }
+
+      setSuccess('⚠️ Você desistiu do desafio e perdeu 20 XP.')
+      setShowDesistirModal(false)
+      setDesafioParaDesistir(null)
+      await loadMeusDesafios()
+    } catch (e: any) {
+      setError(e?.message || 'Erro ao desistir')
+    } finally {
+      setIsDesistindo(false)
     }
+  }
+
+  const getStatusBadge = (status: MeuDesafio['status']) => {
+    switch (status) {
+      case 'pendente_envio':
+        return (
+          <span className={cn(
+            "px-2 py-1 text-xs rounded-full border flex items-center gap-1",
+            theme === 'dark'
+              ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+              : "bg-blue-100 text-blue-700 border-blue-300"
+          )}>
+            <Send className="w-3 h-3" />
+            Enviar solução
+          </span>
+        )
+      case 'aguardando_aprovacao':
+        return (
+          <span className={cn(
+            "px-2 py-1 text-xs rounded-full border flex items-center gap-1",
+            theme === 'dark'
+              ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+              : "bg-yellow-100 text-yellow-700 border-yellow-300"
+          )}>
+            <Clock className="w-3 h-3" />
+            Aguardando
+          </span>
+        )
+      case 'aprovado':
+        return (
+          <span className={cn(
+            "px-2 py-1 text-xs rounded-full border flex items-center gap-1",
+            theme === 'dark'
+              ? "bg-green-500/20 text-green-400 border-green-500/30"
+              : "bg-green-100 text-green-700 border-green-300"
+          )}>
+            <CheckCircle2 className="w-3 h-3" />
+            Aprovado
+          </span>
+        )
+      case 'rejeitado':
+        return (
+          <span className={cn(
+            "px-2 py-1 text-xs rounded-full border flex items-center gap-1",
+            theme === 'dark'
+              ? "bg-red-500/20 text-red-400 border-red-500/30"
+              : "bg-red-100 text-red-700 border-red-300"
+          )}>
+            <XCircle className="w-3 h-3" />
+            Rejeitado
+          </span>
+        )
+      case 'desistiu':
+        return (
+          <span className={cn(
+            "px-2 py-1 text-xs rounded-full border flex items-center gap-1",
+            theme === 'dark'
+              ? "bg-gray-500/20 text-gray-400 border-gray-500/30"
+              : "bg-gray-100 text-gray-600 border-gray-300"
+          )}>
+            <Flag className="w-3 h-3" />
+            Desistiu
+          </span>
+        )
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-4 md:space-y-6">
+        <div>
+          <h1 className={cn(
+            "text-2xl md:text-3xl font-bold mb-2",
+            theme === 'dark' ? "text-white" : "text-gray-900"
+          )}>
+            Desafios
+          </h1>
+          <p className={cn(
+            "text-sm md:text-base",
+            theme === 'dark' ? "text-gray-400" : "text-gray-600"
+          )}>
+            Complete desafios práticos e ganhe XP
+          </p>
+        </div>
+        <div className={cn(
+          "flex items-center justify-center p-12",
+          theme === 'dark' ? "text-gray-400" : "text-gray-600"
+        )}>
+          <Loader2 className="w-6 h-6 animate-spin mr-2" />
+          <span>Carregando desafios...</span>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <Modal
-        isOpen={!!selectedDesafio}
-        onClose={() => setSelectedDesafioId(null)}
-        title="Concluir desafio"
-        size="sm"
+      {/* Modal de Seleção de Tecnologia e Nível */}
+      <Modal 
+        isOpen={showSelectionModal} 
+        onClose={() => {
+          setShowSelectionModal(false)
+          setSelectionError('')
+        }} 
+        title="Selecione Tecnologia e Nível" 
+        size="md"
       >
-        <div className="space-y-3">
-          <p className={cn(theme === 'dark' ? 'text-gray-300' : 'text-gray-700')}>
-            Confirmar conclusão de: <span className="font-semibold">{selectedDesafio?.titulo}</span>
-          </p>
-          <div className="flex items-center justify-between gap-3">
-            <button
+        <div className="space-y-4">
+          {selectionError && (
+            <div className={cn(
+              'border rounded-lg p-3 text-sm',
+              theme === 'dark'
+                ? 'bg-red-500/10 border-red-500/30 text-red-300'
+                : 'bg-red-50 border-red-200 text-red-700'
+            )}>
+              {selectionError}
+            </div>
+          )}
+
+          <div>
+            <label className={cn(
+              "block text-sm font-medium mb-2",
+              theme === 'dark' ? "text-gray-300" : "text-gray-700"
+            )}>
+              Tecnologia
+            </label>
+            <select
+              value={selectedTecnologia}
+              onChange={(e) => {
+                setSelectedTecnologia(e.target.value)
+                setSelectionError('')
+              }}
               className={cn(
-                'px-4 py-2 rounded-lg border text-sm font-medium',
+                "w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-yellow-400",
                 theme === 'dark'
-                  ? 'border-white/10 text-gray-300 hover:bg-white/5'
-                  : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                  ? "bg-black/30 border-white/10 text-white"
+                  : "bg-white border-gray-300 text-gray-900"
               )}
-              onClick={() => setSelectedDesafioId(null)}
-              disabled={isSubmitting}
+            >
+              <option value="">Selecione uma tecnologia</option>
+              {Object.entries(TECNOLOGIAS_POR_CATEGORIA).map(([categoria, techs]) => (
+                <optgroup key={categoria} label={categoria}>
+                  {techs.map(tech => (
+                    <option key={tech} value={tech}>{tech}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={cn(
+              "block text-sm font-medium mb-2",
+              theme === 'dark' ? "text-gray-300" : "text-gray-700"
+            )}>
+              Nível
+            </label>
+            <select
+              value={selectedNivel}
+              onChange={(e) => {
+                setSelectedNivel(e.target.value as 'iniciante' | 'intermediario' | 'avancado' | '')
+                setSelectionError('')
+              }}
+              className={cn(
+                "w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-yellow-400",
+                theme === 'dark'
+                  ? "bg-black/30 border-white/10 text-white"
+                  : "bg-white border-gray-300 text-gray-900"
+              )}
+            >
+              <option value="">Selecione um nível</option>
+              {NIVEIS.map(nivel => (
+                <option key={nivel} value={nivel}>
+                  {nivel === 'iniciante' ? 'Iniciante' : nivel === 'intermediario' ? 'Intermediário' : 'Avançado'}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => {
+                setShowSelectionModal(false)
+                setSelectionError('')
+              }}
+              className={cn(
+                "flex-1 px-4 py-2 rounded-lg font-medium transition-colors",
+                theme === 'dark'
+                  ? "bg-gray-700 hover:bg-gray-600 text-white"
+                  : "bg-gray-200 hover:bg-gray-300 text-gray-900"
+              )}
             >
               Cancelar
             </button>
-            <button className="btn-primary" onClick={handleCompleteDesafio} disabled={isSubmitting || !canParticipate}>
-              {isSubmitting ? 'Salvando...' : 'Concluir e ganhar XP'}
+            <button
+              onClick={handleConfirmarSelecao}
+              disabled={isGerando}
+              className={cn(
+                "flex-1 px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2",
+                isGerando && "opacity-50 cursor-not-allowed",
+                theme === 'dark'
+                  ? "bg-yellow-400 hover:bg-yellow-500 text-black"
+                  : "bg-yellow-500 hover:bg-yellow-600 text-white"
+              )}
+            >
+              {isGerando ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Gerando...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Gerar Desafio
+                </>
+              )}
             </button>
           </div>
-          {!canParticipate && (
-            <p className={cn('text-sm', theme === 'dark' ? 'text-yellow-400' : 'text-yellow-700')}>
-              Seu acesso é limitado. Faça upgrade para participar.
-            </p>
+        </div>
+      </Modal>
+
+      {/* Modal para submeter GitHub */}
+      <Modal
+        isOpen={showSubmitModal}
+        onClose={() => setShowSubmitModal(false)}
+        title="Enviar Solução"
+        size="md"
+      >
+        <div className="space-y-4">
+          {desafioParaSubmeter && (
+            <div className={cn(
+              "p-3 rounded-lg border",
+              theme === 'dark' ? "bg-white/5 border-white/10" : "bg-gray-50 border-gray-200"
+            )}>
+              <p className={cn("text-sm font-medium", theme === 'dark' ? "text-white" : "text-gray-900")}>
+                {desafioParaSubmeter.desafio.titulo}
+              </p>
+              <p className={cn("text-xs", theme === 'dark' ? "text-gray-400" : "text-gray-600")}>
+                {desafioParaSubmeter.desafio.tecnologia} • {desafioParaSubmeter.desafio.xp} XP
+              </p>
+            </div>
           )}
+
+          <div>
+            <label className={cn("block text-sm font-medium mb-2", theme === 'dark' ? 'text-gray-300' : 'text-gray-700')}>
+              Link do repositório GitHub
+            </label>
+            <div className="relative">
+              <Github className={cn(
+                "absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4",
+                theme === 'dark' ? "text-gray-400" : "text-gray-500"
+              )} />
+              <input
+                type="url"
+                value={githubUrl}
+                onChange={(e) => setGithubUrl(e.target.value)}
+                placeholder="https://github.com/usuario/repositorio"
+                className={cn(
+                  "w-full pl-10 pr-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400",
+                  theme === 'dark'
+                    ? "bg-black/30 border-white/10 text-white placeholder-gray-500"
+                    : "bg-white border-gray-300 text-gray-900 placeholder-gray-400"
+                )}
+              />
+            </div>
+            <p className={cn("text-xs mt-1", theme === 'dark' ? "text-gray-500" : "text-gray-500")}>
+              Cole o link do repositório público com sua solução
+            </p>
+          </div>
+
+          {error && (
+            <div className={cn(
+              "border rounded-lg p-3 text-sm",
+              theme === 'dark' ? "bg-red-500/10 border-red-500/30 text-red-300" : "bg-red-50 border-red-200 text-red-700"
+            )}>
+              {error}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => setShowSubmitModal(false)}
+              className={cn(
+                "flex-1 px-4 py-2 rounded-lg font-medium transition-colors",
+                theme === 'dark'
+                  ? "bg-gray-700 hover:bg-gray-600 text-white"
+                  : "bg-gray-200 hover:bg-gray-300 text-gray-900"
+              )}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSubmitGithub}
+              disabled={isSubmittingGithub || !githubUrl}
+              className={cn(
+                "flex-1 px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2",
+                (isSubmittingGithub || !githubUrl) && "opacity-50 cursor-not-allowed",
+                theme === 'dark'
+                  ? "bg-yellow-400 hover:bg-yellow-500 text-black"
+                  : "bg-yellow-500 hover:bg-yellow-600 text-white"
+              )}
+            >
+              {isSubmittingGithub ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <ExternalLink className="w-4 h-4" />
+                  Enviar
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal de confirmação para desistir */}
+      <Modal
+        isOpen={showDesistirModal}
+        onClose={() => setShowDesistirModal(false)}
+        title="Desistir do Desafio"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className={cn(
+            "p-4 rounded-lg border",
+            theme === 'dark' ? "bg-red-500/10 border-red-500/30" : "bg-red-50 border-red-200"
+          )}>
+            <div className="flex items-start gap-3">
+              <AlertCircle className={cn(
+                "w-5 h-5 flex-shrink-0 mt-0.5",
+                theme === 'dark' ? "text-red-400" : "text-red-600"
+              )} />
+              <div>
+                <p className={cn(
+                  "font-medium mb-1",
+                  theme === 'dark' ? "text-red-300" : "text-red-800"
+                )}>
+                  Tem certeza que deseja desistir?
+                </p>
+                <p className={cn(
+                  "text-sm",
+                  theme === 'dark' ? "text-red-200" : "text-red-700"
+                )}>
+                  Ao desistir deste desafio, você perderá <strong>20 XP</strong> como penalidade.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {desafioParaDesistir && (
+            <div className={cn(
+              "p-3 rounded-lg border",
+              theme === 'dark' ? "bg-white/5 border-white/10" : "bg-gray-50 border-gray-200"
+            )}>
+              <p className={cn("text-sm font-medium", theme === 'dark' ? "text-white" : "text-gray-900")}>
+                {desafioParaDesistir.desafio.titulo}
+              </p>
+              <p className={cn("text-xs", theme === 'dark' ? "text-gray-400" : "text-gray-600")}>
+                {desafioParaDesistir.desafio.tecnologia} • {desafioParaDesistir.desafio.dificuldade}
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => setShowDesistirModal(false)}
+              className={cn(
+                "flex-1 px-4 py-2 rounded-lg font-medium transition-colors",
+                theme === 'dark'
+                  ? "bg-gray-700 hover:bg-gray-600 text-white"
+                  : "bg-gray-200 hover:bg-gray-300 text-gray-900"
+              )}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleDesistir}
+              disabled={isDesistindo}
+              className={cn(
+                "flex-1 px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2",
+                isDesistindo && "opacity-50 cursor-not-allowed",
+                theme === 'dark'
+                  ? "bg-red-500 hover:bg-red-600 text-white"
+                  : "bg-red-500 hover:bg-red-600 text-white"
+              )}
+            >
+              {isDesistindo ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <Flag className="w-4 h-4" />
+                  Desistir (-20 XP)
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </Modal>
 
@@ -219,348 +709,366 @@ export default function DesafiosPage() {
           "text-sm md:text-base",
           theme === 'dark' ? "text-gray-400" : "text-gray-600"
         )}>
-          Complete desafios e ganhe XP para subir no ranking
+          Complete desafios práticos e ganhe XP
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-2 md:gap-4">
-        <div className={cn(
-          "backdrop-blur-md border rounded-xl p-3 md:p-4 transition-colors duration-300",
-          theme === 'dark'
-            ? "bg-black/20 border-white/10"
-            : "bg-white border-yellow-400/90 shadow-md"
-        )}>
-          <div className="flex items-center gap-2 md:gap-3">
-            <Target className="w-4 h-4 md:w-5 md:h-5 text-green-500 flex-shrink-0" />
-            <div className="min-w-0">
-              <p className={cn(
-                "text-xl md:text-2xl font-bold",
-                theme === 'dark' ? "text-white" : "text-gray-900"
-              )}>
-                {desafiosCompletos.length}
-              </p>
-              <p className={cn(
-                "text-xs md:text-sm",
-                theme === 'dark' ? "text-gray-400" : "text-gray-600"
-              )}>
-                Desafios Concluídos
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className={cn(
-          "backdrop-blur-md border rounded-xl p-3 md:p-4 transition-colors duration-300",
-          theme === 'dark'
-            ? "bg-black/20 border-white/10"
-            : "bg-white border-yellow-400/90 shadow-md"
-        )}>
-          <div className="flex items-center gap-2 md:gap-3">
-            <Target className={cn(
-              "w-4 h-4 md:w-5 md:h-5 flex-shrink-0",
-              theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-            )} />
-            <div className="min-w-0">
-              <p className={cn(
-                "text-xl md:text-2xl font-bold",
-                theme === 'dark' ? "text-white" : "text-gray-900"
-              )}>
-                {totalDesafiosDisponiveis}
-              </p>
-              <p className={cn(
-                "text-xs md:text-sm",
-                theme === 'dark' ? "text-gray-400" : "text-gray-600"
-              )}>
-                Desafios Disponíveis
-              </p>
-            </div>
-          </div>
+      {/* Abas */}
+      <div className={cn(
+        "backdrop-blur-md border rounded-xl p-1 transition-colors duration-300",
+        theme === 'dark'
+          ? "bg-black/20 border-white/10"
+          : "bg-white border-yellow-400/90 shadow-md"
+      )}>
+        <div className="flex gap-1">
+          <button
+            onClick={() => { setActiveTab('gerar'); setError(''); setSuccess(''); }}
+            className={cn(
+              "flex-1 px-4 py-2 rounded-lg font-medium transition-all text-sm md:text-base",
+              activeTab === 'gerar'
+                ? theme === 'dark'
+                  ? "bg-yellow-400 text-black"
+                  : "bg-yellow-500 text-white"
+                : theme === 'dark'
+                  ? "text-gray-400 hover:text-white hover:bg-white/5"
+                  : "text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20"
+            )}
+          >
+            Novo Desafio
+          </button>
+          <button
+            onClick={() => { setActiveTab('meus'); setError(''); setSuccess(''); }}
+            className={cn(
+              "flex-1 px-4 py-2 rounded-lg font-medium transition-all text-sm md:text-base",
+              activeTab === 'meus'
+                ? theme === 'dark'
+                  ? "bg-yellow-400 text-black"
+                  : "bg-yellow-500 text-white"
+                : theme === 'dark'
+                  ? "text-gray-400 hover:text-white hover:bg-white/5"
+                  : "text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20"
+            )}
+          >
+            Meus Desafios
+          </button>
         </div>
       </div>
 
-      {/* Desafios Ativos */}
-      <div className="space-y-3 md:space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
-          <h2 className={cn(
-            "text-lg md:text-xl font-bold",
-            theme === 'dark' ? "text-white" : "text-gray-900"
-          )}>
-            Desafios Ativos
-          </h2>
-          {desafiosAtivos.length > 0 && (
-            <p className={cn(
-              "text-xs md:text-sm",
-              theme === 'dark' ? "text-gray-400" : "text-gray-600"
-            )}>
-              {desafiosAtivos.length} desafio{desafiosAtivos.length !== 1 ? 's' : ''} ativo{desafiosAtivos.length !== 1 ? 's' : ''}
-            </p>
-          )}
-        </div>
-        {desafiosAtivos.map((desafio) => {
-          const prazo = new Date(desafio.prazo)
-          const diasRestantes = Math.ceil((prazo.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-          const cursoId = getCursoIdFromMock(desafio.id)
-          const isDoMeuCurso = isDesafioDoCursoDoAluno(cursoId)
-
-          return (
-            <div
-              key={desafio.id}
-              className={cn(
-                "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-all duration-300",
-                getTipoColor(desafio.tipo),
-                theme === 'light' && "shadow-md",
-                isDoMeuCurso && cursoId && "ring-2 ring-yellow-400/50"
-              )}
-            >
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2">
-                    {getTipoIcon(desafio.tipo)}
-                    <h3 className={cn(
-                      "text-base md:text-lg font-semibold flex-1 min-w-0",
-                      theme === 'dark' ? "text-white" : "text-gray-900"
-                    )}>
-                      {desafio.titulo}
-                    </h3>
-                    <span className={cn(
-                      "px-2 py-1 text-xs rounded-full capitalize whitespace-nowrap",
+      {/* Conteúdo das Abas */}
+      <div className={cn(
+        "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
+        theme === 'dark'
+          ? "bg-black/20 border-white/10"
+          : "bg-white border-yellow-400/90 shadow-md"
+      )}>
+        {activeTab === 'gerar' ? (
+          // Aba Gerar Desafio
+          <div className="flex flex-col items-center justify-center py-12 md:py-16">
+            {!podeGerarNovo && desafioAtivo ? (
+              // Tem desafio ativo - mostrar aviso
+              <>
+                <AlertCircle className={cn(
+                  "w-16 h-16 md:w-20 md:h-20 mb-6",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )} />
+                <h2 className={cn(
+                  "text-xl md:text-2xl font-bold mb-4 text-center",
+                  theme === 'dark' ? "text-white" : "text-gray-900"
+                )}>
+                  Você já tem um desafio ativo
+                </h2>
+                <p className={cn(
+                  "text-sm md:text-base mb-4 text-center max-w-md",
+                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                )}>
+                  {desafioAtivo.status === 'pendente_envio'
+                    ? 'Envie sua solução no GitHub antes de gerar outro desafio.'
+                    : 'Aguarde a aprovação do admin para gerar outro desafio.'
+                  }
+                </p>
+                <p className={cn(
+                  "text-sm font-medium mb-6 text-center",
+                  theme === 'dark' ? "text-white" : "text-gray-900"
+                )}>
+                  Desafio: {desafioAtivo.desafio.titulo}
+                </p>
+                {desafioAtivo.status === 'pendente_envio' && (
+                  <button
+                    onClick={() => openSubmitModal(desafioAtivo)}
+                    className={cn(
+                      "px-6 py-3 rounded-lg font-semibold text-base md:text-lg transition-all flex items-center gap-2 mb-4",
                       theme === 'dark'
-                        ? "bg-white/10 text-white"
-                        : "bg-gray-100 text-gray-700"
-                    )}>
-                      {desafio.tipo}
-                    </span>
-                    {cursoId && (
-                      <span
-                        className={cn(
-                          "px-2 py-1 text-xs rounded-full border flex items-center gap-1",
-                          isDoMeuCurso
-                            ? theme === 'dark'
-                              ? "bg-yellow-400/20 text-yellow-400 border-yellow-400/30"
-                              : "bg-yellow-100 text-yellow-700 border-yellow-300"
-                            : theme === 'dark'
-                              ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
-                              : "bg-blue-100 text-blue-700 border-blue-300"
-                        )}
-                        title={isDoMeuCurso ? `Este desafio é do seu curso: ${getCursoNome(cursoId)}` : `Este desafio é do curso: ${getCursoNome(cursoId)}`}
-                      >
-                        <BookOpen className="w-3 h-3" />
-                        {getCursoNome(cursoId)}
-                      </span>
+                        ? "bg-yellow-400 hover:bg-yellow-500 text-black"
+                        : "bg-yellow-500 hover:bg-yellow-600 text-white"
                     )}
-                  </div>
-                  {cursoId && isDoMeuCurso && (
-                    <div className={cn(
-                      "mb-2 text-xs flex items-center gap-1",
-                      theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                    )}>
-                      <Trophy className="w-3 h-3" />
-                      Este desafio é do seu curso!
-                    </div>
-                  )}
-                  <p className={cn(
-                    "text-sm md:text-base mb-3 md:mb-4",
-                    theme === 'dark' ? "text-gray-300" : "text-gray-700"
-                  )}>
-                    {desafio.descricao}
-                  </p>
-                  
-                  <div className={cn(
-                    "grid gap-2 md:gap-4 mb-3 md:mb-4",
-                    // Grid responsivo: ajusta colunas baseado nas features habilitadas
-                    isFeatureEnabled('coins')
-                      ? "grid-cols-2 md:grid-cols-4"
-                      : "grid-cols-2 md:grid-cols-3"
-                  )}>
-                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
-                      <Trophy className={cn(
-                        "w-3 h-3 md:w-4 md:h-4 flex-shrink-0",
-                        theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                      )} />
-                      <span className={cn(
-                        "truncate",
-                        theme === 'dark' ? "text-gray-300" : "text-gray-700"
-                      )}>
-                        +{desafio.xpGanho} XP
-                      </span>
-                    </div>
-                    {/* Moedas - Oculto no MVP */}
-                    {isFeatureEnabled('coins') && (
-                      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
-                        <Coins className={cn(
-                          "w-3 h-3 md:w-4 md:h-4 flex-shrink-0",
-                          theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                        )} />
-                        <span className={cn(
-                          "truncate",
-                          theme === 'dark' ? "text-gray-300" : "text-gray-700"
-                        )}>
-                          {desafio.moedasGanho} moedas
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
-                      <Clock className="w-3 h-3 md:w-4 md:h-4 text-blue-500 flex-shrink-0" />
-                      <span className={cn(
-                        "truncate",
-                        theme === 'dark' ? "text-gray-300" : "text-gray-700"
-                      )}>
-                        {diasRestantes} dias
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
-                      <Users className="w-3 h-3 md:w-4 md:h-4 text-green-500 flex-shrink-0" />
-                      <span className={cn(
-                        "truncate",
-                        theme === 'dark' ? "text-gray-300" : "text-gray-700"
-                      )}>
-                        {desafio.participantes}
-                      </span>
-                    </div>
-                  </div>
-
-                  {desafio.requisitos && (
-                    <div className="flex flex-wrap gap-2">
-                      {desafio.requisitos.map((req, idx) => (
-                        <span
-                          key={idx}
-                          className={cn(
-                            "px-2 py-1 text-xs rounded border",
-                            theme === 'dark'
-                              ? "bg-white/5 text-gray-300 border-white/10"
-                              : "bg-gray-100 text-gray-700 border-gray-200"
-                          )}
-                        >
-                          {req}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {!canParticipate && (
-                  <div className={cn(
-                    "mb-3 p-3 rounded-lg text-sm",
-                    theme === 'dark'
-                      ? "bg-yellow-400/10 border border-yellow-400/30 text-yellow-400"
-                      : "bg-yellow-50 border border-yellow-300 text-yellow-700"
-                  )}>
-                    <div className="flex items-center gap-2">
-                      <Lock className="w-4 h-4" />
-                      <span>Upgrade sua conta para participar de desafios e aparecer no ranking</span>
-                    </div>
-                  </div>
+                  >
+                    <Github className="w-5 h-5" />
+                    Enviar Solução
+                  </button>
                 )}
-                <button 
+                <button
+                  onClick={() => setActiveTab('meus')}
                   className={cn(
-                    "btn-primary w-full md:w-auto mt-2 md:mt-0",
-                    !canParticipate && "opacity-50 cursor-not-allowed"
+                    "text-sm hover:underline",
+                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
                   )}
-                  disabled={!canParticipate}
-                  onClick={() => setSelectedDesafioId(desafio.id)}
                 >
-                  {!canParticipate ? 'Acesso Limitado' : 'Concluir desafio'}
+                  Ver meus desafios →
                 </button>
+              </>
+            ) : (
+              // Pode gerar novo desafio
+              <>
+                <Sparkles className={cn(
+                  "w-16 h-16 md:w-20 md:h-20 mb-6",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )} />
+                <h2 className={cn(
+                  "text-xl md:text-2xl font-bold mb-4 text-center",
+                  theme === 'dark' ? "text-white" : "text-gray-900"
+                )}>
+                  Pronto para um novo desafio?
+                </h2>
+                <p className={cn(
+                  "text-sm md:text-base mb-8 text-center max-w-md",
+                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                )}>
+                  Escolha uma tecnologia e nível. Nossa IA irá gerar um desafio prático para você!
+                </p>
+                <button
+                  onClick={handleGerarDesafio}
+                  disabled={!canParticipate}
+                  className={cn(
+                    "px-6 py-3 rounded-lg font-semibold text-base md:text-lg transition-all flex items-center gap-2",
+                    !canParticipate
+                      ? "opacity-50 cursor-not-allowed bg-gray-400 text-white"
+                      : theme === 'dark'
+                        ? "bg-yellow-400 hover:bg-yellow-500 text-black"
+                        : "bg-yellow-500 hover:bg-yellow-600 text-white"
+                  )}
+                >
+                  <Sparkles className="w-5 h-5" />
+                  {!canParticipate ? 'Acesso Limitado' : 'Gerar Desafio'}
+                </button>
+                <p className={cn(
+                  "text-xs mt-4",
+                  theme === 'dark' ? "text-gray-500" : "text-gray-500"
+                )}>
+                  <Trophy className="w-3 h-3 inline mr-1" />
+                  Cada desafio vale 40 XP
+                </p>
+              </>
+            )}
+          </div>
+        ) : (
+          // Aba Meus Desafios
+          <div className="space-y-3 md:space-y-4">
+            {/* Card de Estatísticas */}
+            <div className={cn(
+              "backdrop-blur-md border rounded-xl p-3 md:p-4 transition-colors duration-300",
+              theme === 'dark'
+                ? "bg-black/20 border-white/10"
+                : "bg-white border-yellow-400/90 shadow-md"
+            )}>
+              <div className="flex items-center gap-2 md:gap-3">
+                <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-500 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className={cn(
+                    "text-xl md:text-2xl font-bold",
+                    theme === 'dark' ? "text-white" : "text-gray-900"
+                  )}>
+                    {totalAprovados}
+                  </p>
+                  <p className={cn(
+                    "text-xs md:text-sm",
+                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                  )}>
+                    Desafios Concluídos
+                  </p>
+                </div>
               </div>
             </div>
-          )
-        })}
-      </div>
 
-      {/* Desafios Completos */}
-      {desafiosCompletos.length > 0 && (
-        <div className="space-y-3 md:space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
-            <h2 className={cn(
-              "text-lg md:text-xl font-bold",
-              theme === 'dark' ? "text-white" : "text-gray-900"
-            )}>
-              Desafios Completos
-            </h2>
-            <p className={cn(
-              "text-xs md:text-sm",
-              theme === 'dark' ? "text-gray-400" : "text-gray-600"
-            )}>
-              Você já concluiu {desafiosCompletos.length} desafio{desafiosCompletos.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-          {desafiosCompletos.map((desafio) => {
-            const cursoId = getCursoIdFromMock(desafio.id)
-            return (
-              <div
-                key={desafio.id}
-                className={cn(
-                  "backdrop-blur-md border rounded-xl p-4 md:p-6 opacity-75 transition-colors duration-300",
-                  theme === 'dark'
-                    ? "bg-black/20 border-green-500/30"
-                    : "bg-green-50 border-green-400/90 shadow-md"
-                )}
-              >
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2">
-                    <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-500 flex-shrink-0" />
-                    <h3 className={cn(
-                      "text-base md:text-lg font-semibold flex-1 min-w-0",
-                      theme === 'dark' ? "text-white" : "text-gray-900"
-                    )}>
-                      {desafio.titulo}
-                    </h3>
-                    <span className={cn(
-                      "px-2 py-1 text-xs rounded-full border whitespace-nowrap",
-                      theme === 'dark'
-                        ? "bg-green-500/20 text-green-400 border-green-500/30"
-                        : "bg-green-100 text-green-700 border-green-300"
-                    )}>
-                      Completo
-                    </span>
-                    {cursoId && (
-                      <span
-                        className={cn(
-                          "px-2 py-1 text-xs rounded-full border flex items-center gap-1",
+            {meusDesafios.length === 0 ? (
+              <div className={cn(
+                "p-8 text-center rounded-xl border",
+                theme === 'dark'
+                  ? "bg-black/20 border-white/10 text-gray-400"
+                  : "bg-gray-50 border-gray-200 text-gray-600"
+              )}>
+                <Trophy className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium mb-2">Nenhum desafio ainda</p>
+                <p className="text-sm">Gere seu primeiro desafio para começar!</p>
+              </div>
+            ) : (
+              meusDesafios.map((meuDesafio) => (
+                <div
+                  key={meuDesafio.id}
+                  className={cn(
+                    "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-all duration-300",
+                    theme === 'dark'
+                      ? "bg-black/20 border-white/10 hover:border-yellow-400/50"
+                      : "bg-white border-yellow-400/90 shadow-md hover:border-yellow-500 hover:shadow-lg"
+                  )}
+                >
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2">
+                        <Target className="w-4 h-4 md:w-5 md:h-5 text-purple-500 flex-shrink-0" />
+                        <h3 className={cn(
+                          "text-base md:text-lg font-semibold flex-1 min-w-0",
+                          theme === 'dark' ? "text-white" : "text-gray-900"
+                        )}>
+                          {meuDesafio.desafio.titulo}
+                        </h3>
+                        <span className={cn(
+                          "px-2 py-1 text-xs rounded-full border",
                           theme === 'dark'
                             ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
                             : "bg-blue-100 text-blue-700 border-blue-300"
-                        )}
-                        title={`Curso: ${getCursoNome(cursoId)}`}
-                      >
-                        <BookOpen className="w-3 h-3" />
-                        {getCursoNome(cursoId)}
-                      </span>
-                    )}
-                  </div>
-                  <p className={cn(
-                    "text-sm md:text-base mb-3 md:mb-4",
-                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                  )}>
-                    {desafio.descricao}
-                  </p>
-                  
-                  <div className={cn(
-                    "flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm",
-                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                  )}>
-                    <span>+{desafio.xpGanho} XP ganhos</span>
-                    {/* Moedas - Oculto no MVP */}
-                    {isFeatureEnabled('coins') && (
-                      <span>{desafio.moedasGanho} moedas ganhas</span>
-                    )}
-                    {desafio.badgeGanho && (
-                      <span className={cn(
-                        theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                        )}>
+                          {meuDesafio.desafio.tecnologia}
+                        </span>
+                        {getStatusBadge(meuDesafio.status)}
+                      </div>
+                      <p className={cn(
+                        "text-sm md:text-base mb-3 md:mb-4 line-clamp-2",
+                        theme === 'dark' ? "text-gray-400" : "text-gray-600"
                       )}>
-                        Badge desbloqueada!
-                      </span>
-                    )}
+                        {meuDesafio.desafio.descricao}
+                      </p>
+
+                      {/* Requisitos */}
+                      {meuDesafio.desafio.requisitos && meuDesafio.desafio.requisitos.length > 0 && (
+                        <div className="mb-3">
+                          <p className={cn(
+                            "text-xs font-semibold mb-2 flex items-center gap-1",
+                            theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                          )}>
+                            📋 O que você precisa fazer:
+                          </p>
+                          <ul className={cn(
+                            "space-y-1 text-xs pl-4",
+                            theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                          )}>
+                            {meuDesafio.desafio.requisitos.map((req: string, idx: number) => (
+                              <li
+                                key={idx}
+                                className="list-disc"
+                              >
+                                {req}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      <div className={cn(
+                        "flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm",
+                        theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                      )}>
+                        <span className="capitalize">{meuDesafio.desafio.dificuldade}</span>
+                        <span className={cn(
+                          "font-semibold",
+                          theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                        )}>
+                          +{meuDesafio.desafio.xp} XP
+                        </span>
+                      </div>
+
+                      {meuDesafio.submission?.github_url && (
+                        <div className="mt-3">
+                          <a
+                            href={meuDesafio.submission.github_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn(
+                              "text-sm flex items-center gap-1 hover:underline",
+                              theme === 'dark' ? "text-blue-400" : "text-blue-600"
+                            )}
+                          >
+                            <Github className="w-4 h-4" />
+                            Ver repositório
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Feedback do admin para aprovado */}
+                      {meuDesafio.status === 'aprovado' && meuDesafio.submission?.admin_notes && (
+                        <div className={cn(
+                          "mt-3 p-3 rounded text-sm",
+                          theme === 'dark' ? "bg-green-500/10 text-green-300" : "bg-green-50 text-green-700"
+                        )}>
+                          <strong>Feedback do Admin:</strong> {meuDesafio.submission.admin_notes}
+                        </div>
+                      )}
+                      
+                      {/* Feedback do admin para rejeitado */}
+                      {meuDesafio.status === 'rejeitado' && meuDesafio.submission?.admin_notes && (
+                        <div className={cn(
+                          "mt-3 p-3 rounded text-sm",
+                          theme === 'dark' ? "bg-red-500/10 text-red-300" : "bg-red-50 text-red-700"
+                        )}>
+                          <strong>Motivo da rejeição:</strong> {meuDesafio.submission.admin_notes}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Botões de ação */}
+                    <div className="flex flex-col gap-2">
+                      {/* Enviar (pendente) ou Reenviar (rejeitado) */}
+                      {(meuDesafio.status === 'pendente_envio' || meuDesafio.status === 'rejeitado') && (
+                        <button
+                          onClick={() => openSubmitModal(meuDesafio)}
+                          className={cn(
+                            "px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 w-full md:w-auto",
+                            theme === 'dark'
+                              ? "bg-yellow-400 hover:bg-yellow-500 text-black"
+                              : "bg-yellow-500 hover:bg-yellow-600 text-white"
+                          )}
+                        >
+                          <Github className="w-4 h-4" />
+                          {meuDesafio.status === 'rejeitado' ? 'Reenviar' : 'Enviar'}
+                        </button>
+                      )}
+                      {/* Editar submissão (aguardando aprovação) */}
+                      {meuDesafio.status === 'aguardando_aprovacao' && (
+                        <button
+                          onClick={() => openSubmitModal(meuDesafio)}
+                          className={cn(
+                            "px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 w-full md:w-auto",
+                            theme === 'dark'
+                              ? "bg-transparent border border-yellow-400/50 text-yellow-400 hover:bg-yellow-400/10"
+                              : "bg-transparent border border-yellow-500 text-yellow-600 hover:bg-yellow-50"
+                          )}
+                        >
+                          <Github className="w-4 h-4" />
+                          Editar Link
+                        </button>
+                      )}
+                      {/* Desistir (só quando ainda não submeteu) */}
+                      {meuDesafio.status === 'pendente_envio' && (
+                        <button
+                          onClick={() => openDesistirModal(meuDesafio)}
+                          className={cn(
+                            "px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 w-full md:w-auto text-sm",
+                            theme === 'dark'
+                              ? "bg-transparent border border-red-500/50 text-red-400 hover:bg-red-500/10"
+                              : "bg-transparent border border-red-300 text-red-600 hover:bg-red-50"
+                          )}
+                        >
+                          <Flag className="w-3 h-3" />
+                          Desistir
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-            )
-          })}
-        </div>
-      )}
+              ))
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
-

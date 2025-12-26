@@ -9,7 +9,6 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
-  Sparkles,
   AlertCircle,
   CheckCircle2,
   GripVertical,
@@ -42,7 +41,7 @@ interface CreateQuizModalProps {
   quiz?: any // Para edição
 }
 
-type CreationMode = 'manual' | 'import' | 'ai'
+type CreationMode = 'manual' | 'import'
 
 // ─────────────────────────────────────────────────────────────
 // PARSER: Texto formatado → QuizQuestion[]
@@ -248,6 +247,7 @@ export default function CreateQuizModal({ isOpen, onClose, onSave, quiz }: Creat
   const [titulo, setTitulo] = useState('')
   const [descricao, setDescricao] = useState('')
   const [tecnologia, setTecnologia] = useState('HTML')
+  const [showTechSuggestions, setShowTechSuggestions] = useState(false)
   const [nivel, setNivel] = useState<'iniciante' | 'intermediario' | 'avancado'>('iniciante')
   const [xp, setXp] = useState(50)
   const [questions, setQuestions] = useState<QuizQuestion[]>([])
@@ -557,7 +557,7 @@ E: A propriedade 'color' define a cor do texto`
       title={isEditing ? 'Editar Quiz' : 'Criar Novo Quiz'}
       size="xl"
     >
-      {/* Toggle Manual / Importar / IA */}
+      {/* Toggle Manual / Importar */}
       <div className={cn(
         "flex items-center gap-1 p-1 rounded-lg mb-6",
         theme === 'dark' ? "bg-white/5" : "bg-gray-100"
@@ -594,18 +594,6 @@ E: A propriedade 'color' define a cor do texto`
         >
           <Upload className="w-4 h-4" />
           Importar
-        </button>
-        <button
-          type="button"
-          disabled
-          className={cn(
-            "flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-not-allowed opacity-50",
-            theme === 'dark' ? "text-gray-500" : "text-gray-400"
-          )}
-          title="Em breve"
-        >
-          <Sparkles className="w-4 h-4" />
-          IA (em breve)
         </button>
       </div>
 
@@ -857,20 +845,45 @@ E: A propriedade 'color' define a cor do texto`
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
+              <div className="relative">
                 <label className={labelClass}>Tecnologia</label>
-                <select
+                <input
+                  type="text"
                   value={tecnologia}
                   onChange={(e) => setTecnologia(e.target.value)}
+                  onFocus={() => setShowTechSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowTechSuggestions(false), 200)}
                   className={inputClass}
-                >
-                  <option value="HTML">HTML</option>
-                  <option value="CSS">CSS</option>
-                  <option value="JavaScript">JavaScript</option>
-                  <option value="React">React</option>
-                  <option value="Android">Android</option>
-                  <option value="Web Development">Web Development</option>
-                </select>
+                  placeholder="Digite ou selecione..."
+                />
+                {showTechSuggestions && (
+                  <div className={cn(
+                    "absolute z-50 w-full mt-1 rounded-lg border shadow-lg max-h-48 overflow-y-auto",
+                    theme === 'dark' 
+                      ? "bg-black/95 border-white/10" 
+                      : "bg-white border-gray-200"
+                  )}>
+                    {['HTML', 'CSS', 'JavaScript', 'React', 'Android', 'Web Development', 'TypeScript', 'Node.js', 'Python', 'Java', 'Kotlin'].map((tech) => (
+                      <button
+                        key={tech}
+                        type="button"
+                        onClick={() => {
+                          setTecnologia(tech)
+                          setShowTechSuggestions(false)
+                        }}
+                        className={cn(
+                          "w-full text-left px-4 py-2 text-sm transition-colors",
+                          theme === 'dark'
+                            ? "hover:bg-yellow-400/10 text-gray-300 hover:text-white"
+                            : "hover:bg-yellow-50 text-gray-700 hover:text-gray-900",
+                          tecnologia === tech && (theme === 'dark' ? "bg-yellow-400/20 text-yellow-400" : "bg-yellow-100 text-yellow-700")
+                        )}
+                      >
+                        {tech}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>

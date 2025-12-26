@@ -9,11 +9,13 @@ import { compressImage, isValidImageFile, blobToFile } from '@/lib/imageCompress
 interface QuestionImageUploadProps {
   onImageChange: (file: File | null) => void
   currentImageUrl?: string | null
+  resetTrigger?: number // Prop para forçar reset do componente
 }
 
 export default function QuestionImageUpload({
   onImageChange,
   currentImageUrl,
+  resetTrigger,
 }: QuestionImageUploadProps) {
   const { theme } = useTheme()
   const [preview, setPreview] = useState<string | null>(currentImageUrl || null)
@@ -25,6 +27,13 @@ export default function QuestionImageUpload({
   useEffect(() => {
     setPreview(currentImageUrl || null)
   }, [currentImageUrl])
+
+  // Reset quando resetTrigger mudar
+  useEffect(() => {
+    if (resetTrigger !== undefined) {
+      handleRemove()
+    }
+  }, [resetTrigger])
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -115,18 +124,26 @@ export default function QuestionImageUpload({
 
       {preview ? (
         <div className="relative">
-          <div className={cn(
-            'relative rounded-lg border overflow-hidden',
-            theme === 'dark' ? 'border-white/10' : 'border-gray-200'
-          )}>
-            <img
-              src={preview}
-              alt="Preview"
-              className="w-full h-48 object-cover"
-            />
+          <div 
+            className={cn(
+              'relative rounded-lg border overflow-hidden cursor-pointer hover:opacity-90 transition-opacity',
+              theme === 'dark' ? 'border-white/10 bg-black/30' : 'border-gray-200 bg-gray-50'
+            )}
+            onClick={handleClick}
+          >
+            <div className="w-full max-h-96 flex items-center justify-center p-2">
+              <img
+                src={preview}
+                alt="Preview"
+                className="max-w-full max-h-96 h-auto object-contain rounded"
+              />
+            </div>
             <button
               type="button"
-              onClick={handleRemove}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleRemove()
+              }}
               className={cn(
                 'absolute top-2 right-2 p-1.5 rounded-full backdrop-blur-sm border transition-colors',
                 theme === 'dark'
@@ -138,8 +155,8 @@ export default function QuestionImageUpload({
               <X className="w-4 h-4" />
             </button>
           </div>
-          <p className={cn('text-xs mt-1', theme === 'dark' ? 'text-gray-400' : 'text-gray-600')}>
-            Clique na imagem para trocar
+          <p className={cn('text-xs mt-1 text-center', theme === 'dark' ? 'text-gray-400' : 'text-gray-600')}>
+            Clique na imagem para trocar ou no X para remover
           </p>
         </div>
       ) : (

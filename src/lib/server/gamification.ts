@@ -1,7 +1,8 @@
 import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { XP_CONSTANTS } from '@/lib/gamification/constants'
+import { calculateLevel } from '@/lib/gamification'
 
-export type XPSource = 'aula' | 'quiz' | 'desafio' | 'comunidade'
+export type XPSource = 'aula' | 'quiz' | 'desafio' | 'comunidade' | 'hotmart'
 
 export type RankingType = 'mensal' | 'geral'
 
@@ -16,6 +17,42 @@ export type RankingRow = {
   quizzesCompletos: number
   quizTentativas: number
   respostasComunidade: number
+}
+
+/**
+ * Sincroniza o nível do usuário baseado no XP atual
+ */
+async function syncUserLevel(userId: string) {
+  const supabase = getSupabaseAdmin()
+  
+  // Buscar XP atual do usuário
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('xp, level')
+    .eq('id', userId)
+    .single()
+
+  if (userError || !user) {
+    console.warn('⚠️ Não foi possível buscar XP do usuário para sincronizar nível:', userError)
+    return
+  }
+
+  // Calcular nível correto
+  const correctLevel = calculateLevel(user.xp || 0)
+
+  // Atualizar apenas se necessário
+  if (user.level !== correctLevel) {
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ level: correctLevel })
+      .eq('id', userId)
+
+    if (updateError) {
+      console.error('❌ Erro ao atualizar nível do usuário:', updateError)
+    } else {
+      console.log(`✅ Nível do usuário ${userId} atualizado de ${user.level} para ${correctLevel}`)
+    }
+  }
 }
 
 export async function insertXpEntry(params: {
@@ -35,6 +72,33 @@ export async function insertXpEntry(params: {
   })
 
   if (error) throw error
+
+  // Atualizar nível automaticamente após inserir XP
+  await syncUserLevel(params.userId)
+}
+
+/**
+ * Insere uma entrada de XP da Hotmart Club
+ * 
+ * @param params - Parâmetros da entrada de XP
+ * @param params.userId - ID do usuário
+ * @param params.sourceId - ID único da ação na Hotmart (ex: hotmart_comment_{id}_{timestamp})
+ * @param params.amount - Quantidade de XP ganho
+ * @param params.description - Descrição da ação
+ */
+export async function insertHotmartXpEntry(params: {
+  userId: string
+  sourceId: string
+  amount: number
+  description?: string
+}) {
+  return insertXpEntry({
+    userId: params.userId,
+    source: 'hotmart',
+    sourceId: params.sourceId,
+    amount: params.amount,
+    description: params.description ?? undefined,
+  })
 }
 
 export async function completarDesafio(params: { userId: string; desafioId: string }) {

@@ -206,6 +206,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [initialized])
 
+  // Escutar eventos de XP ganho para atualizar o usuário
+  useEffect(() => {
+    if (!user) return
+
+    const handleXPGained = () => {
+      // Atualizar dados do usuário quando ganhar XP
+      refreshSession()
+    }
+
+    window.addEventListener('xpGained', handleXPGained)
+
+    return () => {
+      window.removeEventListener('xpGained', handleXPGained)
+    }
+  }, [user, refreshSession])
+
   return (
     <AuthContext.Provider value={{ user, loading, initialized, signOut, refreshSession, initializeAuth }}>
       {children}

@@ -47,9 +47,42 @@ export interface DatabaseDesafio {
   prazo: string | null
   requisitos: any[] // JSONB - array de requisitos
   curso_id?: string | null // ID do curso/formação vinculado: 'android', 'frontend', 'backend', 'ios', 'analise-dados', 'norte-tech', 'logica-programacao', ou null para desafios gerais
+  gerado_por_ia?: boolean // Se foi gerado pela IA
+  solicitado_por?: string | null // ID do usuário que solicitou o desafio (se gerado por IA)
   created_at: string
   updated_at: string
   created_by: string | null
+}
+
+export interface DatabaseDesafioSubmission {
+  id: string
+  user_id: string
+  desafio_id: string
+  github_url: string
+  status: 'pendente' | 'aprovado' | 'rejeitado'
+  admin_notes?: string | null
+  reviewed_by?: string | null
+  reviewed_at?: string | null
+  created_at: string
+}
+
+// Tipo com dados do usuário para listagem no admin
+export interface DesafioSubmissionWithUser extends DatabaseDesafioSubmission {
+  user?: {
+    id: string
+    name: string
+    email: string
+    avatar_url?: string | null
+    xp?: number
+    level?: number
+    ranking_position?: number | null
+  }
+  desafio?: {
+    id: string
+    titulo: string
+    tecnologia: string
+    xp: number
+  }
 }
 
 export interface DatabaseNotificacao {
@@ -60,6 +93,8 @@ export interface DatabaseNotificacao {
   data_inicio: string
   data_fim: string
   publico_alvo: 'todos' | 'alunos-full' | 'alunos-limited'
+  target_user_id?: string | null // Se preenchido, notificação individual
+  related_desafio_id?: string | null // Referência ao desafio (se aplicável)
   action_url?: string | null // URL para navegação quando a notificação é clicada
   created_at: string
   updated_at: string
@@ -119,7 +154,7 @@ export interface DatabaseUserDesafioProgress {
 export interface DatabaseUserXpHistory {
   id: string
   user_id: string
-  source: 'aula' | 'quiz' | 'desafio' | 'comunidade'
+  source: 'aula' | 'quiz' | 'desafio' | 'comunidade' | 'hotmart'
   source_id: string | null
   amount: number
   description: string | null
@@ -151,6 +186,7 @@ export interface DatabaseResposta {
   melhor_resposta: boolean
   resposta_pai_id: string | null
   mencoes: string[]
+  imagem_url?: string | null
   created_at: string
   updated_at: string
 }
@@ -165,6 +201,20 @@ export interface DatabaseHotmartSubscription {
   created_at: string
   updated_at: string
   expires_at: string | null
+}
+
+export interface OpenAITokenUsage {
+  id: string
+  user_id: string
+  feature: string
+  endpoint: string
+  model: string
+  prompt_tokens: number
+  completion_tokens: number
+  total_tokens: number
+  estimated_cost_usd: number
+  metadata?: Record<string, any>
+  created_at: string
 }
 
 

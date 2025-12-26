@@ -75,7 +75,7 @@ export interface XPState {
 
 export interface XPEntry {
   id: string
-  source: 'aula' | 'quiz' | 'desafio' | 'comunidade'
+  source: 'aula' | 'quiz' | 'desafio' | 'comunidade' | 'hotmart'
   sourceId: string
   amount: number
   timestamp: string

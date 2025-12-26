@@ -1,9 +1,7 @@
 'use client'
 
 import { mockUser } from '@/data/aluno/mockUser'
-import { mockStats } from '@/data/aluno/mockStats'
-import { mockCourseProgress } from '@/data/aluno/studyPlan'
-import { Edit2, BookOpen, GraduationCap, Trophy, Lock, HelpCircle } from 'lucide-react'
+import { Edit2, Trophy, Lock, HelpCircle } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { isFeatureEnabled } from '@/lib/features'
@@ -28,8 +26,6 @@ export default function PerfilPage() {
     bio: authUser.bio ?? null, // Não usar mockUser.bio como fallback - deixar null para novos usuários
     joinDate: authUser.createdAt ?? mockUser.joinDate,
   } : mockUser
-  const stats = mockStats
-  const courses = mockCourseProgress
   const { theme } = useTheme()
 
   // Helper para obter avatarUrl corretamente (mockUser usa 'avatar', authUser usa 'avatarUrl')
@@ -362,11 +358,6 @@ export default function PerfilPage() {
     }
   }
 
-  // Calcular progresso de estudo
-  const completedLessons = stats.aulasCompletas
-  const activeCourses = courses.length
-  const totalLessons = courses.reduce((sum, course) => sum + course.totalLessons, 0)
-
   // TODO: Futuramente exibir badges conquistados pelo aluno.
   // A API ainda não está definida.
 
@@ -551,7 +542,7 @@ export default function PerfilPage() {
           "text-sm md:text-base",
           theme === 'dark' ? "text-gray-400" : "text-gray-600"
         )}>
-          Gerencie suas informações e veja suas conquistas
+          Gerencie suas informações e acompanhe seu progresso
         </p>
       </div>
 
@@ -733,179 +724,6 @@ export default function PerfilPage() {
             </div>
           </div>
 
-          {/* Progresso de Estudo */}
-          <div className={cn(
-            "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
-            theme === 'dark'
-              ? "bg-black/20 border-white/10"
-              : "bg-white border-yellow-400/90 shadow-md"
-          )}>
-            <h3 className={cn(
-              "text-lg md:text-xl font-bold mb-3 md:mb-4",
-              theme === 'dark' ? "text-white" : "text-gray-900"
-            )}>
-              Progresso de Estudo
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-              <div className={cn(
-                "p-3 md:p-4 backdrop-blur-sm rounded-lg border transition-colors duration-300",
-                theme === 'dark'
-                  ? "bg-black/30 border-white/10"
-                  : "bg-yellow-50 border-yellow-400/80"
-              )}>
-                <div className="flex items-center gap-2 mb-2">
-                  <BookOpen className={cn(
-                    "w-4 h-4",
-                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                  )} />
-                  <p className={cn(
-                    "text-xs md:text-sm font-medium",
-                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                  )}>
-                    Aulas concluídas
-                  </p>
-                </div>
-                <p className={cn(
-                  "text-2xl md:text-3xl font-bold",
-                  theme === 'dark' ? "text-white" : "text-gray-900"
-                )}>
-                  {completedLessons}
-                </p>
-              </div>
-              <div className={cn(
-                "p-3 md:p-4 backdrop-blur-sm rounded-lg border transition-colors duration-300",
-                theme === 'dark'
-                  ? "bg-black/30 border-white/10"
-                  : "bg-yellow-50 border-yellow-400/80"
-              )}>
-                <div className="flex items-center gap-2 mb-2">
-                  <GraduationCap className={cn(
-                    "w-4 h-4",
-                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                  )} />
-                  <p className={cn(
-                    "text-xs md:text-sm font-medium",
-                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                  )}>
-                    Cursos ativos
-                  </p>
-                </div>
-                <p className={cn(
-                  "text-2xl md:text-3xl font-bold",
-                  theme === 'dark' ? "text-white" : "text-gray-900"
-                )}>
-                  {activeCourses}
-                </p>
-              </div>
-              {totalLessons > 0 && (
-                <div className={cn(
-                  "p-3 md:p-4 backdrop-blur-sm rounded-lg border transition-colors duration-300",
-                  theme === 'dark'
-                    ? "bg-black/30 border-white/10"
-                    : "bg-yellow-50 border-yellow-400/80"
-                )}>
-                  <p className={cn(
-                    "text-xs md:text-sm font-medium mb-2",
-                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                  )}>
-                    Progresso geral
-                  </p>
-                  <p className={cn(
-                    "text-2xl md:text-3xl font-bold",
-                    theme === 'dark' ? "text-white" : "text-gray-900"
-                  )}>
-                    {completedLessons}
-                  </p>
-                  <p className={cn(
-                    "text-xs mt-1",
-                    theme === 'dark' ? "text-gray-500" : "text-gray-500"
-                  )}>
-                    Aulas concluídas
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Estatísticas Detalhadas */}
-          <div className={cn(
-            "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
-            theme === 'dark'
-              ? "bg-black/20 border-white/10"
-              : "bg-white border-yellow-400/90 shadow-md"
-          )}>
-            <h3 className={cn(
-              "text-lg md:text-xl font-bold mb-3 md:mb-4",
-              theme === 'dark' ? "text-white" : "text-gray-900"
-            )}>
-              Estatísticas
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
-              <div className={cn(
-                "p-3 md:p-4 backdrop-blur-sm rounded-lg border transition-colors duration-300",
-                theme === 'dark'
-                  ? "bg-black/30 border-white/10"
-                  : "bg-yellow-50 border-yellow-400/80"
-              )}>
-                <p className={cn(
-                  "text-xs md:text-sm",
-                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                )}>
-                  Quiz completos
-                </p>
-                <p className={cn(
-                  "text-xl md:text-2xl font-bold mt-1",
-                  theme === 'dark' ? "text-white" : "text-gray-900"
-                )}>
-                  {stats.quizCompletos}
-                </p>
-              </div>
-              <div className={cn(
-                "p-3 md:p-4 backdrop-blur-sm rounded-lg border transition-colors duration-300",
-                theme === 'dark'
-                  ? "bg-black/30 border-white/10"
-                  : "bg-yellow-50 border-yellow-400/80"
-              )}>
-                <p className={cn(
-                  "text-xs md:text-sm",
-                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                )}>
-                  Desafios concluídos
-                </p>
-                <p className={cn(
-                  "text-xl md:text-2xl font-bold mt-1",
-                  theme === 'dark' ? "text-white" : "text-gray-900"
-                )}>
-                  {stats.desafiosConcluidos}
-                </p>
-              </div>
-              <div className={cn(
-                "p-3 md:p-4 backdrop-blur-sm rounded-lg border transition-colors duration-300",
-                theme === 'dark'
-                  ? "bg-black/30 border-white/10"
-                  : "bg-yellow-50 border-yellow-400/80"
-              )}>
-                <p className={cn(
-                  "text-xs md:text-sm",
-                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                )}>
-                  Taxa de acerto
-                </p>
-                <p className={cn(
-                  "text-xl md:text-2xl font-bold mt-1",
-                  theme === 'dark' ? "text-white" : "text-gray-900"
-                )}>
-                  {Math.round((stats.respostasCorretas / stats.questoesTotais) * 100)}%
-                </p>
-                <p className={cn(
-                  "text-xs mt-1",
-                  theme === 'dark' ? "text-gray-500" : "text-gray-500"
-                )}>
-                  {stats.respostasCorretas} de {stats.questoesTotais} questões
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 

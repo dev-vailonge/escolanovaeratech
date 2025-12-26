@@ -27,6 +27,7 @@ export async function GET(
         melhor_resposta,
         resposta_pai_id,
         mencoes,
+        imagem_url,
         created_at,
         updated_at,
         autor:users!respostas_autor_id_fkey(id, name, level, avatar_url)
@@ -46,6 +47,7 @@ export async function GET(
         conteudo: c.conteudo,
         mencoes: c.mencoes || [],
         dataCriacao: c.created_at,
+        imagemUrl: c.imagem_url || null,
         autor: autor
           ? {
               id: autor.id,
@@ -144,6 +146,7 @@ export async function POST(
       conteudo: comentario.conteudo,
       mencoes: comentario.mencoes || [],
       dataCriacao: comentario.created_at,
+      imagemUrl: null, // Será atualizado após upload de imagem se houver
       autor: autor
         ? {
             id: autor.id,

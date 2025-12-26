@@ -1,28 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getRanking, type RankingType } from '@/lib/server/gamification'
 import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
-
-// Cache simples em memória (válido por 30 segundos)
-let rankingCache: {
-  mensal: { data: any[]; timestamp: number } | null
-  geral: { data: any[]; timestamp: number } | null
-} = { mensal: null, geral: null }
-
-const CACHE_TTL_MS = 30 * 1000 // 30 segundos
-
-function getCachedRanking(type: RankingType): any[] | null {
-  const cached = rankingCache[type]
-  if (!cached) return null
-  if (Date.now() - cached.timestamp > CACHE_TTL_MS) {
-    rankingCache[type] = null
-    return null
-  }
-  return cached.data
-}
-
-function setCachedRanking(type: RankingType, data: any[]) {
-  rankingCache[type] = { data, timestamp: Date.now() }
-}
+import { getCachedRanking, setCachedRanking } from '@/lib/server/rankingCache'
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,5 +43,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Erro ao buscar ranking' }, { status: 500 })
   }
 }
-
-

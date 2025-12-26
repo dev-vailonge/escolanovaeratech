@@ -153,7 +153,7 @@ export default function AlunoDashboard() {
       const sessionResult = await Promise.race([
         supabase.auth.getSession(),
         new Promise<{ data: { session: null } }>((resolve) => 
-          setTimeout(() => resolve({ data: { session: null } }), 2000) // Reduzido para 2s
+          setTimeout(() => resolve({ data: { session: null } }), 500) // Reduzido para 500ms
         )
       ])
       
@@ -175,19 +175,19 @@ export default function AlunoDashboard() {
     try {
       setLoadingData(true)
       
-      // Começar a carregar notificações imediatamente (não depende de auth)
-      const notificacoesPromise = getNotificacoesAtivas()
+      // Obter token e authUser primeiro
+      const [token, currentAuthUser] = await Promise.all([
+        getTokenWithTimeout(),
+        Promise.resolve(authUser) // Já está disponível no contexto
+      ])
       
-      // Obter token com timeout (não bloquear outras operações)
-      const tokenPromise = getTokenWithTimeout()
+      // Carregar notificações filtradas por userId (se disponível)
+      const notificacoesPromise = getNotificacoesAtivas(currentAuthUser?.id)
 
-      // Aguardar token enquanto outras operações já começam
-      const token = await tokenPromise
-
-      // Executar todas as requisições em paralelo
-      const [statsResult, notificacoesResult, rankingResult] = await Promise.allSettled([
+      // Executar requisições críticas primeiro (stats e notificações)
+      const [statsResult, notificacoesResult] = await Promise.allSettled([
         // Stats do usuário
-        token && authUser?.id
+        token && currentAuthUser?.id
           ? fetch('/api/users/me/stats', { 
               headers: { 
                 Authorization: `Bearer ${token}`,
@@ -232,42 +232,40 @@ export default function AlunoDashboard() {
             }),
         // Notificações (já iniciado acima)
         notificacoesPromise,
-        // Ranking (top 3)
-        token
-          ? fetch('/api/ranking?type=geral', { 
-              headers: { 
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              } 
-            })
-              .then(async (r) => {
-                if (!r.ok) {
-                  return { ranking: [] }
-                }
-                return r.json()
-              })
-              .catch(() => {
-                return { ranking: [] }
-              })
-          : Promise.resolve({ ranking: [] }),
       ])
-
-      // Processar stats - sempre definir, mesmo que seja valores padrão
+      
+      // Processar stats e notificações imediatamente
       if (statsResult.status === 'fulfilled' && statsResult.value) {
         setStats(statsResult.value)
       }
 
-      // Processar notificações
       if (notificacoesResult.status === 'fulfilled') {
         setAnnouncements(notificacoesResult.value.map(convertNotificacaoToAnnouncement))
       }
-
-      // Processar ranking - sempre definir, mesmo que seja array vazio
-      if (rankingResult.status === 'fulfilled' && rankingResult.value?.ranking) {
-        setTopRanking(rankingResult.value.ranking.slice(0, 3))
-      } else {
-        setTopRanking([])
+      
+      // Carregar ranking em background (não bloqueia a renderização)
+      if (token) {
+        fetch('/api/ranking?type=geral', { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        })
+          .then(async (r) => {
+            if (!r.ok) {
+              setTopRanking([])
+              return
+            }
+            const json = await r.json()
+            if (json?.ranking) {
+              setTopRanking(json.ranking.slice(0, 3))
+            }
+          })
+          .catch(() => {
+            setTopRanking([])
+          })
       }
+
     } catch (error) {
       // Silenciar erro em produção
       if (process.env.NODE_ENV === 'development') {
@@ -276,11 +274,15 @@ export default function AlunoDashboard() {
     } finally {
       setLoadingData(false)
     }
-  }, [authUser?.id, getTokenWithTimeout])
+  }, [authUser, getTokenWithTimeout])
 
   useEffect(() => {
-    // Iniciar carregamento imediatamente, não esperar authUser
-    fetchAllData()
+    // Aguardar um pouco para garantir que authUser está disponível, mas não bloquear muito
+    const timer = setTimeout(() => {
+      fetchAllData()
+    }, 100) // Pequeno delay para garantir que authUser está disponível
+    
+    return () => clearTimeout(timer)
   }, [fetchAllData])
 
   // Nome do usuário (real ou fallback) - memoizado
@@ -298,7 +300,7 @@ export default function AlunoDashboard() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Welcome Section */}
+      {/* Welcome Section - Sempre visível, não depende de loading */}
       <div className={cn(
         "backdrop-blur-md bg-gradient-to-r rounded-xl p-4 md:p-6 border transition-colors duration-300",
         theme === 'dark'

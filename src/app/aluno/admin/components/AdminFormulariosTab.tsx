@@ -141,11 +141,13 @@ export default function AdminFormulariosTab() {
     // Buscar informações do formulário antes de deletar
     const formulario = formularios.find(f => f.id === formularioId)
     const nomeFormulario = formulario?.nome || 'este formulário'
+    const numeroRespostas = respostasCount[formularioId] || 0
     
-    const mensagem = `Tem certeza que deseja excluir "${nomeFormulario}"?\n\n` +
+    let mensagem = `Tem certeza que deseja excluir "${nomeFormulario}"?\n\n` +
       `⚠️ ATENÇÃO:\n` +
-      `- Todas as respostas serão excluídas\n` +
-      `- Os pontos de XP ganhos por responder este formulário serão SUBTRAÍDOS dos usuários\n` +
+      `- Todas as ${numeroRespostas} resposta(s) serão excluídas\n` +
+      `- ${numeroRespostas > 0 ? `Os ${numeroRespostas} usuário(s) que responderam perderão 1 XP cada\n` : ''}`+
+      `- As notificações relacionadas serão excluídas\n` +
       `- Esta ação não pode ser desfeita`
     
     if (!confirm(mensagem)) {
@@ -157,6 +159,7 @@ export default function AdminFormulariosTab() {
       const sucesso = await deleteFormulario(formularioId)
       if (sucesso) {
         await carregarFormularios()
+        console.log(`✅ Formulário "${nomeFormulario}" excluído. ${numeroRespostas} usuário(s) tiveram XP revertido.`)
       } else {
         setError('Erro ao excluir formulário. Tente novamente.')
       }

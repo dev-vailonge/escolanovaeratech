@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/AuthContext'
 import { getAuthToken } from '@/lib/getAuthToken'
 import { extractMentions } from '@/lib/mentionParser'
 import BadgeDisplay from './BadgeDisplay'
+import QuestionImageUpload from './QuestionImageUpload'
 import { getUserBadges } from '@/lib/badges'
 
 interface Comentario {
@@ -15,6 +16,7 @@ interface Comentario {
   conteudo: string
   mencoes: string[]
   dataCriacao: string
+  imagemUrl?: string | null
   autor: {
     id: string
     nome: string
@@ -27,9 +29,10 @@ interface CommentThreadProps {
   respostaId: string
   perguntaId: string
   canCreate?: boolean
+  refreshTrigger?: number // Trigger para forçar atualização
 }
 
-export default function CommentThread({ respostaId, perguntaId, canCreate = true }: CommentThreadProps) {
+export default function CommentThread({ respostaId, perguntaId, canCreate = true, refreshTrigger }: CommentThreadProps) {
   const { theme } = useTheme()
   const { user } = useAuth()
   const [comentarios, setComentarios] = useState<Comentario[]>([])
@@ -38,6 +41,8 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
   const [expanded, setExpanded] = useState(false)
   const [showInput, setShowInput] = useState(false)
   const [comentarioTexto, setComentarioTexto] = useState('')
+  const [comentarioImagem, setComentarioImagem] = useState<File | null>(null)
+  const [comentarioImagemResetTrigger, setComentarioImagemResetTrigger] = useState(0)
   const [error, setError] = useState<string>('')
   const [badgesMap, setBadgesMap] = useState<Map<string, string[]>>(new Map())
 
@@ -52,7 +57,7 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
         setComentarios(json.comentarios)
         
         // Buscar badges dos autores
-        const userIds = [...new Set(json.comentarios.map((c: Comentario) => c.autor?.id).filter(Boolean))]
+        const userIds = [...new Set(json.comentarios.map((c: Comentario) => c.autor?.id).filter(Boolean))] as string[]
         const badges = new Map<string, string[]>()
         
         for (const userId of userIds) {
@@ -73,7 +78,7 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
     if (expanded) {
       fetchComentarios()
     }
-  }, [expanded, respostaId])
+  }, [expanded, respostaId, refreshTrigger])
 
   const submitComentario = async () => {
     if (!user?.id) {
@@ -98,6 +103,7 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
         return
       }
 
+      // Primeiro, criar o comentário
       const res = await fetch(`/api/comunidade/respostas/${respostaId}/comentarios`, {
         method: 'POST',
         headers: {
@@ -113,11 +119,50 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
         throw new Error(json?.error || 'Erro ao criar comentário')
       }
 
-      // Adicionar comentário à lista
+      // Se houver imagem, fazer upload
+      if (comentarioImagem && json.comentario?.id) {
+        try {
+          const formData = new FormData()
+          formData.append('imagem', comentarioImagem)
+
+          const resImagem = await fetch(`/api/comunidade/respostas/${json.comentario.id}/imagem`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          })
+
+          const jsonImagem = await resImagem.json()
+
+          if (resImagem.ok && jsonImagem.imagem_url) {
+            // Atualizar o comentário com a URL da imagem
+            json.comentario.imagemUrl = jsonImagem.imagem_url
+          } else {
+            console.error('Erro ao fazer upload de imagem do comentário:', jsonImagem)
+          }
+        } catch (imgError: any) {
+          console.error('Erro ao fazer upload de imagem:', imgError)
+        }
+      }
+
+      // Adicionar comentário à lista e atualizar badges se necessário
       if (json.success && json.comentario) {
+        // Atualizar a lista de comentários
         setComentarios((prev) => [...prev, json.comentario])
         setComentarioTexto('')
+        setComentarioImagem(null)
+        setComentarioImagemResetTrigger((prev) => prev + 1) // Resetar componente de imagem
         setShowInput(false)
+        
+        // Atualizar badges se o autor do comentário não estiver no mapa
+        if (json.comentario.autor && !badgesMap.has(json.comentario.autor.id)) {
+          getUserBadges(json.comentario.autor.id).then((badges) => {
+            setBadgesMap((prev) => {
+              const newMap = new Map(prev)
+              newMap.set(json.comentario.autor.id, badges.map((b) => b.type))
+              return newMap
+            })
+          })
+        }
       }
     } catch (e: any) {
       setError(e?.message || 'Erro ao criar comentário')
@@ -199,6 +244,16 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
                     <p className={cn('mt-1 whitespace-pre-wrap', theme === 'dark' ? 'text-gray-300' : 'text-gray-700')}>
                       {comentario.conteudo}
                     </p>
+                    {comentario.imagemUrl && (
+                      <div className="mt-2">
+                        <img
+                          src={comentario.imagemUrl}
+                          alt="Imagem do comentário"
+                          className="w-full max-w-md rounded-lg border object-contain"
+                          style={{ maxHeight: '300px' }}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -233,6 +288,12 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
                         : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
                     )}
                   />
+                  <div className="text-xs">
+                    <QuestionImageUpload
+                      onImageChange={setComentarioImagem}
+                      resetTrigger={comentarioImagemResetTrigger}
+                    />
+                  </div>
                   {error && (
                     <p className={cn('text-xs', theme === 'dark' ? 'text-red-400' : 'text-red-600')}>
                       {error}
@@ -243,6 +304,7 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
                       onClick={() => {
                         setShowInput(false)
                         setComentarioTexto('')
+                        setComentarioImagem(null)
                         setError('')
                       }}
                       className={cn(

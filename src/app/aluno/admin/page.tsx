@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
-import { HelpCircle, Target, Bell, FileText, Users, Loader2 } from 'lucide-react'
+import { HelpCircle, Target, Bell, FileText, Users, Loader2, DollarSign } from 'lucide-react'
 
 // Lazy loading dos componentes das abas para melhor performance
 const AdminQuizTab = lazy(() => import('./components/AdminQuizTab'))
@@ -13,11 +13,12 @@ const AdminDesafiosTab = lazy(() => import('./components/AdminDesafiosTab'))
 const AdminNotificacoesTab = lazy(() => import('./components/AdminNotificacoesTab'))
 const AdminFormulariosTab = lazy(() => import('./components/AdminFormulariosTab'))
 const AdminAlunosTab = lazy(() => import('./components/AdminAlunosTab'))
+const AdminTokensTab = lazy(() => import('./components/AdminTokensTab'))
 
-type AdminTab = 'quiz' | 'desafios' | 'notificacoes' | 'formularios' | 'alunos'
+type AdminTab = 'quiz' | 'desafios' | 'notificacoes' | 'formularios' | 'alunos' | 'tokens'
 
 // Lista de abas válidas para validação
-const validTabs: AdminTab[] = ['quiz', 'desafios', 'notificacoes', 'formularios', 'alunos']
+const validTabs: AdminTab[] = ['quiz', 'desafios', 'notificacoes', 'formularios', 'alunos', 'tokens']
 
 // Componente de loading para Suspense
 const TabLoading = memo(function TabLoading({ theme }: { theme: string }) {
@@ -68,6 +69,8 @@ export default function AdminPage() {
       import('./components/AdminFormulariosTab')
     } else if (tabToPreload === 'alunos') {
       import('./components/AdminAlunosTab')
+    } else if (tabToPreload === 'tokens') {
+      import('./components/AdminTokensTab')
     }
   }, [tabFromUrl]) // Executar quando a aba da URL mudar
 
@@ -142,6 +145,7 @@ export default function AdminPage() {
     { id: 'notificacoes', label: 'Notificações', icon: Bell },
     { id: 'formularios', label: 'Formulários', icon: FileText },
     { id: 'alunos', label: 'Alunos', icon: Users },
+    { id: 'tokens', label: 'Tokens', icon: DollarSign },
   ]
 
   return (
@@ -158,7 +162,7 @@ export default function AdminPage() {
           "text-sm md:text-base",
           theme === 'dark' ? "text-gray-400" : "text-gray-600"
         )}>
-          Gerencie quizzes, desafios, notificações, formulários e alunos
+          Gerencie quizzes, desafios, notificações, formulários, alunos e tokens OpenAI
         </p>
       </div>
 
@@ -221,6 +225,9 @@ export default function AdminPage() {
           </div>
           <div style={{ display: activeTab === 'alunos' ? 'block' : 'none' }}>
             {(activeTab === 'alunos' || visitedTabs.has('alunos')) && <AdminAlunosTab />}
+          </div>
+          <div style={{ display: activeTab === 'tokens' ? 'block' : 'none' }}>
+            {(activeTab === 'tokens' || visitedTabs.has('tokens')) && <AdminTokensTab />}
           </div>
         </Suspense>
       </div>

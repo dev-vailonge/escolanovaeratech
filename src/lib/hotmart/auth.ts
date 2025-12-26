@@ -134,6 +134,10 @@ export async function getHotmartAccessToken(): Promise<string | null> {
 
     const data = await response.json()
     
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth.ts:135',message:'OAuth token response',data:{hasAccessToken:!!data.access_token,hasScope:!!data.scope,scope:data.scope||null,expiresIn:data.expires_in||null,tokenType:data.token_type||null,responseKeys:Object.keys(data)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    
     // Log se scope foi aceito ou não
     if (data.scope) {
       console.log(`✅ Escopo retornado pelo OAuth: ${data.scope}`)
@@ -155,6 +159,10 @@ export async function getHotmartAccessToken(): Promise<string | null> {
       access_token: data.access_token,
       expires_at: expiresAt,
     }
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auth.ts:159',message:'Token cached and returned',data:{tokenLength:data.access_token.length,tokenPrefix:data.access_token.substring(0,20),tokenSuffix:data.access_token.substring(data.access_token.length-20),expiresIn:expiresIn,expiresAt:expiresAt},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
 
     console.log(`✅ Token obtido e cacheado (expira em ${Math.round(expiresIn / 60)} minutos)`)
     return data.access_token
