@@ -62,3 +62,5 @@ export async function hasBadge(userId: string, badgeType: Badge['type']): Promis
   return badges.some((b) => b.type === badgeType)
 }
 
+
+
