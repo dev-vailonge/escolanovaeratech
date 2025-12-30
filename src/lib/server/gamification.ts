@@ -273,8 +273,31 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
 }
 
 export async function getRanking(params: { type: RankingType; limit?: number }) {
-  const supabase = getSupabaseAdmin()
   const limit = params.limit || 50
+
+  // Tentar usar admin primeiro (se disponível)
+  let supabase
+  try {
+    supabase = getSupabaseAdmin()
+  } catch (adminError) {
+    // Se não tiver service role key, usar anon key
+    // Isso permite que funcione mesmo sem SUPABASE_SERVICE_ROLE_KEY configurado
+    const { createClient } = await import('@supabase/supabase-js')
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (!url || !anonKey) {
+      throw new Error('Supabase não configurado')
+    }
+    
+    supabase = createClient(url, anonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    })
+  }
 
   // Query otimizada: apenas campos necessários, ordenado pelo XP, com limite
   const orderColumn = params.type === 'mensal' ? 'xp_mensal' : 'xp'
@@ -287,7 +310,10 @@ export async function getRanking(params: { type: RankingType; limit?: number }) 
     .order(orderColumn, { ascending: false })
     .limit(limit)
 
-  if (usersError) throw usersError
+  if (usersError) {
+    console.error('Erro ao buscar ranking do Supabase:', usersError)
+    throw usersError
+  }
   
   // Retorna direto com posição calculada
   return (users || []).map((u, idx) => ({

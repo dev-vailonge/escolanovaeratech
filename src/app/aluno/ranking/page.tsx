@@ -1,8 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { mockRanking } from '@/data/aluno/mockRanking'
-import { mockUser } from '@/data/aluno/mockUser'
+import { useEffect, useState } from 'react'
 import { Trophy, TrendingUp, HelpCircle, MessageSquare, CheckCircle, Target, FileText, Award, Lock, RefreshCw } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
@@ -96,95 +94,44 @@ export default function RankingPage() {
     }
   }, [rankingType, refreshTrigger])
 
-  const fallbackRankingMensal = useMemo(() => {
-    return mockRanking
-      .filter(user => user.accessLevel === 'full')
-      .sort((a, b) => b.xpMensal - a.xpMensal)
-      .map((user, index) => ({ ...user, position: index + 1, avatarUrl: user.avatar || null }))
-  }, [])
-
-  // Fallback ranking para quando a API não retornar dados
-  // Mensal: ordena por xpMensal (maior pontuação do mês)
-  // Geral: ordena por xp (maior pontuação all time)
-  const fallbackRanking = useMemo(() => {
-    return mockRanking
-      .filter(user => user.accessLevel === 'full')
-      .sort((a, b) => {
-        // Mensal: ordena por XP do mês
-        // Geral: ordena por XP total (all time)
-        const xpA = rankingType === 'mensal' ? a.xpMensal : a.xp
-        const xpB = rankingType === 'mensal' ? b.xpMensal : b.xp
-        return xpB - xpA // Descendente (maior primeiro)
-      })
-      .map((user, index) => {
-        const xpTotal = user.xp || 0
-        const calculatedLevel = calculateLevel(xpTotal) // Calcular nível baseado no XP
-        return { 
-          ...user, 
-          level: calculatedLevel, // Usar nível calculado
-          position: index + 1, 
-          avatarUrl: user.avatar || null 
-        }
-      })
-  }, [rankingType])
+  // Removido fallback para mock - ranking deve vir sempre da API
 
   // Campeão do mês para o Card Mural
-  const campeaoMensal = useMemo(() => {
-    if (rankingMensal && rankingMensal.length > 0) {
-      const u = rankingMensal[0]
-      const xpTotal = u.xp || 0
-      const calculatedLevel = calculateLevel(xpTotal)
-      return {
-        id: u.id,
-        name: u.name,
-        level: calculatedLevel, // Usar nível calculado
-        xp: xpTotal, // XP total para cálculo do nível
-        xpMensal: u.xp_mensal,
-        avatarUrl: u.avatar_url || null,
-      }
+  const campeaoMensal = rankingMensal && rankingMensal.length > 0 ? (() => {
+    const u = rankingMensal[0]
+    const xpTotal = u.xp || 0
+    const calculatedLevel = calculateLevel(xpTotal)
+    return {
+      id: u.id,
+      name: u.name,
+      level: calculatedLevel,
+      xp: xpTotal,
+      xpMensal: u.xp_mensal,
+      avatarUrl: u.avatar_url || null,
     }
-    // Fallback para mock
-    const fallback = fallbackRankingMensal[0]
-    if (fallback) {
-      const xpTotal = fallback.xp || 0
-      const calculatedLevel = calculateLevel(xpTotal)
-      return {
-        id: fallback.id,
-        name: fallback.name,
-        level: calculatedLevel, // Usar nível calculado
-        xp: xpTotal,
-        xpMensal: fallback.xpMensal,
-        avatarUrl: fallback.avatarUrl,
-      }
-    }
-    return null
-  }, [rankingMensal, fallbackRankingMensal])
+  })() : null
 
   // Normaliza dados do ranking da API para o formato esperado
   // A API já retorna ordenado corretamente:
   // - Mensal: ordenado por xp_mensal (maior pontuação do mês primeiro)
   // - Geral: ordenado por xp (maior pontuação all time primeiro)
-  const filteredRanking = useMemo(() => {
-    if (!ranking) return fallbackRanking
-    // Adapter: API retorna xp/xp_mensal/level (snake_case), aqui normalizamos
-    return (ranking || []).map((u: any, idx: number) => {
-      const xpTotal = u.xp || 0
-      const calculatedLevel = calculateLevel(xpTotal) // Calcular nível baseado no XP total
-      return {
-        id: u.id,
-        name: u.name,
-        level: calculatedLevel, // Usar nível calculado
-        xp: xpTotal, // XP total (all time)
-        xpMensal: u.xp_mensal, // XP do mês
-        position: u.position ?? idx + 1,
-        accessLevel: 'full',
-        avatarUrl: u.avatar_url || null,
-      }
-    })
-  }, [ranking, fallbackRanking])
+  const filteredRanking = ranking ? ranking.map((u: any, idx: number) => {
+    const xpTotal = u.xp || 0
+    const calculatedLevel = calculateLevel(xpTotal) // Calcular nível baseado no XP total
+    return {
+      id: u.id,
+      name: u.name,
+      level: calculatedLevel, // Usar nível calculado
+      xp: xpTotal, // XP total (all time)
+      xpMensal: u.xp_mensal, // XP do mês
+      position: u.position ?? idx + 1,
+      accessLevel: 'full',
+      avatarUrl: u.avatar_url || null,
+    }
+  }) : []
 
-  const currentUserId = authUser?.id || mockUser.id
-  const currentUser = filteredRanking.find(u => u.id === currentUserId)
+  const currentUserId = authUser?.id
+  const currentUser = currentUserId ? filteredRanking.find(u => u.id === currentUserId) : null
   const currentUserPosition = currentUser?.position || 0
 
   return (
@@ -380,12 +327,29 @@ export default function RankingPage() {
         </div>
 
         <div className="space-y-2">
-          {filteredRanking.map((user) => (
+          {filteredRanking.length === 0 && !loading ? (
+            <div className={cn(
+              "text-center py-8 px-4 rounded-lg",
+              theme === 'dark'
+                ? "bg-black/30 border border-white/10 text-gray-400"
+                : "bg-gray-50 border border-gray-200 text-gray-600"
+            )}>
+              <p className="text-sm md:text-base">
+                {error || 'Nenhum ranking disponível no momento.'}
+              </p>
+              {!error && (
+                <p className="text-xs mt-2">
+                  Complete aulas, quizzes e desafios para aparecer no ranking!
+                </p>
+              )}
+            </div>
+          ) : (
+            filteredRanking.map((user) => (
             <div
               key={user.id}
               className={cn(
                 "flex items-center gap-2 md:gap-4 p-3 md:p-4 rounded-lg transition-all duration-300",
-                user.id === mockUser.id
+                user.id === currentUserId
                   ? theme === 'dark'
                     ? "bg-yellow-400/10 backdrop-blur-sm border border-yellow-400/30"
                     : "bg-yellow-100 border border-yellow-300 shadow-sm"
@@ -396,7 +360,7 @@ export default function RankingPage() {
             >
               <div className={cn(
                 "text-sm md:text-lg font-bold w-8 md:w-12 text-center flex-shrink-0",
-                user.id === mockUser.id
+                user.id === currentUserId
                   ? theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                   : theme === 'dark' ? "text-gray-400" : "text-gray-600"
               )}>
@@ -427,12 +391,12 @@ export default function RankingPage() {
               <div className="flex-1 min-w-0">
                 <p className={cn(
                   "font-semibold text-sm md:text-base truncate",
-                  user.id === mockUser.id
+                  user.id === currentUserId
                     ? theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                     : theme === 'dark' ? "text-white" : "text-gray-900"
                 )}>
                   {user.name}
-                  {user.id === mockUser.id && ' (Você)'}
+                  {user.id === currentUserId && ' (Você)'}
                 </p>
                 <p className={cn(
                   "text-xs md:text-sm",
@@ -458,7 +422,7 @@ export default function RankingPage() {
                 </p>
               </div>
             </div>
-          ))}
+          )))}
         </div>
       </div>
 
