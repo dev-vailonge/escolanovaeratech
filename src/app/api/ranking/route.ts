@@ -14,8 +14,15 @@ export async function GET(request: NextRequest) {
     let ranking = getCachedRanking(type)
     
     if (!ranking) {
-      ranking = await getRanking({ type, limit: 50 })
-      setCachedRanking(type, ranking)
+      try {
+        ranking = await getRanking({ type, limit: 50 })
+        setCachedRanking(type, ranking)
+      } catch (rankingError: any) {
+        console.error('Erro ao buscar ranking do banco:', rankingError)
+        // Se falhar, retornar array vazio em vez de erro 500
+        // Isso permite que a página carregue mesmo sem dados
+        ranking = []
+      }
     }
 
     const currentUser = ranking.find((r: any) => r.id === userId)
@@ -27,7 +34,7 @@ export async function GET(request: NextRequest) {
         status: 'aguardando_permissao',
         message: 'Progresso de aulas assistidas na Hotmart ainda não está liberado.',
       },
-      ranking,
+      ranking: ranking || [],
       currentUserPosition: currentUser?.position || null,
     })
 
@@ -40,6 +47,13 @@ export async function GET(request: NextRequest) {
     if (String(error?.message || '').includes('Não autenticado')) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
-    return NextResponse.json({ error: 'Erro ao buscar ranking' }, { status: 500 })
+    // Retornar array vazio em vez de erro 500 para não quebrar a página
+    return NextResponse.json({ 
+      success: true,
+      type: 'mensal',
+      ranking: [],
+      currentUserPosition: null,
+      error: 'Erro ao carregar ranking. Tente novamente mais tarde.'
+    }, { status: 200 })
   }
 }
