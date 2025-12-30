@@ -182,7 +182,11 @@ export default function AlunoDashboard() {
       ])
       
       // Carregar notificações filtradas por userId (se disponível)
-      const notificacoesPromise = getNotificacoesAtivas(currentAuthUser?.id)
+      // Incluir notificações individuais do usuário e notificações broadcast (avisos da escola)
+      const notificacoesPromise = getNotificacoesAtivas(
+        currentAuthUser?.id,
+        currentAuthUser?.accessLevel === 'full' ? 'alunos-full' : 'alunos-limited'
+      )
 
       // Executar requisições críticas primeiro (stats e notificações)
       const [statsResult, notificacoesResult] = await Promise.allSettled([
@@ -236,11 +240,18 @@ export default function AlunoDashboard() {
       
       // Processar stats e notificações imediatamente
       if (statsResult.status === 'fulfilled' && statsResult.value) {
+        console.log('[Dashboard] Stats recebidos:', statsResult.value)
         setStats(statsResult.value)
+      } else if (statsResult.status === 'rejected') {
+        console.error('[Dashboard] Erro ao buscar stats:', statsResult.reason)
       }
 
       if (notificacoesResult.status === 'fulfilled') {
-        setAnnouncements(notificacoesResult.value.map(convertNotificacaoToAnnouncement))
+        const notificacoes = notificacoesResult.value || []
+        console.log('[Dashboard] Notificações recebidas:', notificacoes.length)
+        setAnnouncements(notificacoes.map(convertNotificacaoToAnnouncement))
+      } else if (notificacoesResult.status === 'rejected') {
+        console.error('[Dashboard] Erro ao buscar notificações:', notificacoesResult.reason)
       }
       
       // Carregar ranking em background (não bloqueia a renderização)
