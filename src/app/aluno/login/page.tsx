@@ -64,24 +64,65 @@ function AlunoLoginContent() {
       }
 
       if (data?.user) {
+        console.log('✅ Login bem-sucedido, atualizando sessão...')
+        
         // Forçar refresh da sessão no AuthContext
         // Isso vai criar o usuário automaticamente se não existir
-        await refreshSession()
+        try {
+          await refreshSession()
+          console.log('✅ Primeira atualização de sessão concluída')
+        } catch (refreshError) {
+          console.error('⚠️ Erro ao atualizar sessão:', refreshError)
+        }
         
-        // Aguardar um pouco para o AuthContext atualizar e criar o usuário se necessário
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // Aguardar o AuthContext processar a mudança de estado
+        // O onAuthStateChange deve disparar automaticamente
+        let attempts = 0
+        const maxAttempts = 10
         
-        // Verificar novamente se o usuário foi criado
-        await refreshSession()
+        while (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 300))
+          
+          // Verificar se o usuário foi atualizado no AuthContext
+          if (user && !loading) {
+            console.log('✅ Usuário confirmado no AuthContext')
+            break
+          }
+          
+          // Tentar refresh novamente a cada 3 tentativas
+          if (attempts % 3 === 0 && attempts > 0) {
+            try {
+              await refreshSession()
+              console.log(`✅ Tentativa ${attempts + 1}: Atualização de sessão`)
+            } catch (refreshError) {
+              console.error('⚠️ Erro ao atualizar sessão:', refreshError)
+            }
+          }
+          
+          attempts++
+        }
+        
+        if (attempts >= maxAttempts && !user) {
+          console.warn('⚠️ Timeout aguardando atualização do usuário, mas continuando...')
+        }
         
         // Resetar loading antes do redirect
         setIsLoading(false)
         
         // Successful login - redirect to aluno dashboard
+        // Usar window.location para forçar reload completo e garantir que o AuthContext seja atualizado
         const redirectParam = searchParams.get('redirect')
         const redirectTo = redirectParam ? decodeURIComponent(redirectParam) : '/aluno'
-        router.push(redirectTo)
+        console.log('🔄 Redirecionando para:', redirectTo)
+        
+        // Usar window.location.href para garantir que a página recarregue completamente
+        window.location.href = redirectTo
         return
+      } else {
+        // Se não tem user, algo deu errado
+        console.error('❌ Login retornou sem usuário')
+        setError('Erro ao fazer login. Tente novamente.')
+        setIsLoading(false)
       }
     } catch (err: any) {
       console.error('Login error:', err)
