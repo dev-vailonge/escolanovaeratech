@@ -76,12 +76,32 @@ function AlunoLoginContent() {
         throw signInError
       }
 
-      if (data?.user) {
+      if (data?.user && data?.session) {
         console.log('✅ Login bem-sucedido, atualizando sessão...')
+        
+        // Criar cookie manualmente para o middleware detectar
+        // O Supabase client-side usa localStorage, mas o middleware precisa de cookies
+        const sessionData = {
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+          expires_at: data.session.expires_at,
+          user: data.user
+        }
+        
+        // Criar cookie com nome padrão do Supabase
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const projectRef = supabaseUrl?.split('//')[1]?.split('.')[0] || 'default'
+        const cookieName = `sb-${projectRef}-auth-token`
+        const cookieValue = encodeURIComponent(JSON.stringify(sessionData))
+        const expires = new Date(data.session.expires_at * 1000).toUTCString()
+        
+        // Criar cookie com configurações seguras
+        document.cookie = `${cookieName}=${cookieValue}; expires=${expires}; path=/; SameSite=Lax; Secure=${window.location.protocol === 'https:'}`
+        
         // #region agent log
         const allCookies = document.cookie.split(';').map(c=>c.trim());
         const supabaseCookies = allCookies.filter(c=>c.toLowerCase().includes('supabase')||c.toLowerCase().startsWith('sb-')||c.toLowerCase().includes('auth-token'));
-        fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:67',message:'Login successful, starting refresh',data:{userId:data.user.id,email:data.user.email,allCookiesCount:allCookies.length,supabaseCookiesCount:supabaseCookies.length,supabaseCookieNames:supabaseCookies.map(c=>c.split('=')[0])},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:67',message:'Login successful, cookie created',data:{userId:data.user.id,email:data.user.email,allCookiesCount:allCookies.length,supabaseCookiesCount:supabaseCookies.length,supabaseCookieNames:supabaseCookies.map(c=>c.split('=')[0]),cookieName},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
         // #endregion
         
         // Forçar refresh da sessão no AuthContext

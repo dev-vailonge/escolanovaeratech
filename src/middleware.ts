@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { SecureSessionManager } from './lib/session'
 
 export async function middleware(request: NextRequest) {
@@ -44,41 +45,34 @@ export async function middleware(request: NextRequest) {
           )
         }
         
-        // Em produção com Supabase: verificar se há cookies de sessão
-        // O middleware apenas verifica a presença de cookies, a validação real é feita pelo AuthContext
-        const allCookies = request.cookies.getAll()
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware.ts:49',message:'Middleware checking cookies',data:{pathname,allCookiesCount:allCookies.length,cookieNames:allCookies.map(c=>c.name)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        const hasSupabaseCookies = allCookies.some(cookie => {
-          const name = cookie.name.toLowerCase()
-          // Verificar padrões comuns de cookies do Supabase
-          return (
-            name.includes('supabase') ||
-            name.startsWith('sb-') ||
-            name.includes('auth-token') ||
-            name.includes('access-token') ||
-            name.includes('refresh-token')
-          )
-        })
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware.ts:62',message:'Middleware cookie check result',data:{hasSupabaseCookies,pathname},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        
-        // Se não tem cookies do Supabase, redirecionar para login
-        if (!hasSupabaseCookies) {
+        // Em produção com Supabase: verificar sessão usando createMiddlewareClient
+        // Isso lê cookies automaticamente e valida a sessão
+        try {
+          const response = NextResponse.next()
+          const supabase = createMiddlewareClient({ req: request, res: response })
+          const { data: { session }, error } = await supabase.auth.getSession()
+          
           // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware.ts:66',message:'Middleware redirecting to login',data:{pathname,reason:'no-supabase-cookies'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // Note: logs no middleware não funcionam via fetch, mas podemos usar console
+          console.log('[Middleware] Session check:', { hasSession: !!session, hasUser: !!session?.user, error: error?.message, pathname })
           // #endregion
+          
+          // Se não tem sessão válida, redirecionar para login
+          if (error || !session?.user) {
+            const loginUrl = new URL('/aluno/login', request.url)
+            loginUrl.searchParams.set('redirect', pathname)
+            return NextResponse.redirect(loginUrl)
+          }
+          
+          // Se tem sessão válida, permitir acesso
+          return response
+        } catch (authError) {
+          // Se houver erro ao verificar sessão, redirecionar para login por segurança
+          console.error('[Middleware] Erro ao verificar sessão:', authError)
           const loginUrl = new URL('/aluno/login', request.url)
           loginUrl.searchParams.set('redirect', pathname)
           return NextResponse.redirect(loginUrl)
         }
-        
-        // Se tem cookies, permitir acesso e deixar o AuthContext validar a sessão
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware.ts:72',message:'Middleware allowing access',data:{pathname,hasSupabaseCookies},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
       } else {
         // Em desenvolvimento: permitir acesso sem Supabase (para desenvolvimento local)
         if (hasSupabaseConfig) {

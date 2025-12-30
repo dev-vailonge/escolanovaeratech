@@ -9,8 +9,15 @@ if (typeof window !== 'undefined') {
 }
 // #endregion
 
-// Cria cliente apenas se as variáveis de ambiente existirem
-// Se não existirem, cria um cliente mockado que não quebra a aplicação
+// Cria cliente Supabase padrão (usa localStorage no cliente)
+// O middleware vai verificar sessão diretamente usando createMiddlewareClient
 export const supabase = supabaseUrl && supabaseAnonKey
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'pkce'
+      }
+    })
   : createClient('https://placeholder.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTI4MDAsImV4cCI6MTk2MDc2ODgwMH0.placeholder') 
