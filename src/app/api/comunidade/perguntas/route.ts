@@ -1,22 +1,28 @@
 import { NextResponse } from 'next/server'
 import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { insertXpEntry } from '@/lib/server/gamification'
 import { XP_CONSTANTS } from '@/lib/gamification/constants'
+import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 
 export async function GET(request: Request) {
   try {
-    const supabase = getSupabaseAdmin()
     const url = new URL(request.url)
     const searchParams = url.searchParams
 
     // Tentar obter userId do token (opcional, para saber se curtiu)
     let currentUserId: string | null = null
+    let accessToken: string | null = null
     try {
+      const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+      accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : null
       currentUserId = await requireUserIdFromBearer(request).catch(() => null)
     } catch {
       // Usuário não autenticado, mas pode ver as perguntas
     }
+
+    // Usar helper com fallback
+    const supabase = await getSupabaseClient(accessToken || undefined)
 
     // Filtros opcionais
     const autorId = searchParams.get('autor_id')
@@ -62,9 +68,34 @@ export async function GET(request: Request) {
     const { data: perguntas, error } = await query
 
     if (error) {
-      console.error('Erro ao buscar perguntas:', error)
-      return NextResponse.json({ error: 'Erro ao buscar perguntas' }, { status: 500 })
+      const errorDetails = {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      }
+      console.error('Erro ao buscar perguntas:', errorDetails)
+      
+      // Se for erro de permissão (RLS), dar mensagem mais clara
+      if (error.code === 'PGRST301' || error.message?.includes('permission') || error.message?.includes('RLS')) {
+        return NextResponse.json({ 
+          error: 'Erro de permissão ao buscar perguntas. ' +
+            'Configure SUPABASE_SERVICE_ROLE_KEY nas variáveis de ambiente da Vercel ' +
+            'ou ajuste as políticas RLS no Supabase para permitir leitura pública da tabela perguntas. ' +
+            `Detalhes: ${error.message}`,
+          success: false,
+          perguntas: []
+        }, { status: 200 }) // Retornar 200 com array vazio para não quebrar a página
+      }
+      
+      return NextResponse.json({ 
+        error: 'Erro ao buscar perguntas',
+        success: false,
+        perguntas: []
+      }, { status: 200 }) // Retornar 200 com array vazio para não quebrar a página
     }
+
+    console.log(`[API /comunidade/perguntas] Perguntas encontradas: ${perguntas?.length || 0}`)
 
     // Buscar contagem de respostas para cada pergunta
     const perguntaIds = perguntas?.map((p) => p.id) || []
@@ -135,7 +166,16 @@ export async function POST(request: Request) {
     const userId = await requireUserIdFromBearer(request)
     console.log('✅ [API] Usuário autenticado:', userId)
     
-    const supabase = getSupabaseAdmin()
+    // Para POST, sempre tentar usar admin primeiro (precisa de permissões de escrita)
+    let supabase
+    try {
+      supabase = getSupabaseAdmin()
+    } catch (adminError) {
+      // Se não tiver service role key, usar helper com fallback
+      const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+      const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : null
+      supabase = await getSupabaseClient(accessToken || undefined)
+    }
 
     // Verificar se o usuário tem acesso full
     console.log('🔍 [API] Verificando acesso do usuário...')
