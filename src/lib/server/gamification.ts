@@ -331,16 +331,28 @@ export async function getRanking(params: { type: RankingType; limit?: number; ac
     .limit(limit)
 
   if (usersError) {
-    console.error('Erro ao buscar ranking do Supabase:', {
+    const errorDetails = {
       message: usersError.message,
       details: usersError.details,
       hint: usersError.hint,
       code: usersError.code,
-    })
+    }
+    console.error('Erro ao buscar ranking do Supabase:', errorDetails)
+    
+    // Se for erro de permissão (RLS), dar mensagem mais clara
+    if (usersError.code === 'PGRST301' || usersError.message?.includes('permission') || usersError.message?.includes('RLS')) {
+      throw new Error(
+        'Erro de permissão ao buscar ranking. ' +
+        'Configure SUPABASE_SERVICE_ROLE_KEY nas variáveis de ambiente da Vercel ' +
+        'ou ajuste as políticas RLS no Supabase para permitir leitura pública da tabela users. ' +
+        `Detalhes: ${usersError.message}`
+      )
+    }
+    
     throw usersError
   }
   
-  console.log(`Ranking ${params.type} encontrado: ${users?.length || 0} usuários`)
+  console.log(`[getRanking] Ranking ${params.type} encontrado: ${users?.length || 0} usuários`)
   
   // Retorna direto com posição calculada
   return (users || []).map((u, idx) => ({
