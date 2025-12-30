@@ -73,16 +73,19 @@ function AlunoLoginContent() {
       if (data?.user && data?.session) {
         console.log('✅ Login bem-sucedido, redirecionando para criar cookies...')
         
-        // Redirecionar para auth-callback que cria cookies no servidor
-        // Isso garante que os cookies sejam criados antes do redirect final
+        // Redirecionar para auth-callback que cria cookies no servidor via redirect
+        // Isso garante que os cookies sejam criados e enviados ao navegador
         const redirectParam = searchParams.get('redirect')
         const finalRedirect = redirectParam ? encodeURIComponent(redirectParam) : encodeURIComponent('/aluno')
         
+        // Usar auth-callback que faz redirect do servidor (não fetch)
+        // Isso garante que os cookies sejam criados e enviados corretamente
         const callbackUrl = `/api/aluno/auth-callback?access_token=${encodeURIComponent(data.session.access_token)}&refresh_token=${encodeURIComponent(data.session.refresh_token)}&redirect=${finalRedirect}`
         
         console.log('🔄 Redirecionando para callback:', callbackUrl)
         
         // Usar window.location.href para garantir reload completo
+        // O auth-callback vai criar os cookies e redirecionar para /aluno
         window.location.href = callbackUrl
         return
       } else {

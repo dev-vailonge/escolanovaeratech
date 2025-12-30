@@ -48,23 +48,48 @@ export async function middleware(request: NextRequest) {
         // Em produção com Supabase: verificar sessão usando createMiddlewareClient
         // Isso lê cookies automaticamente e valida a sessão
         try {
+          // Verificar cookies antes de criar o cliente
+          const allCookies = request.cookies.getAll()
+          const supabaseCookies = allCookies.filter(c => {
+            const name = c.name.toLowerCase()
+            return name.includes('supabase') || name.startsWith('sb-') || name.includes('auth-token')
+          })
+          
+          console.log('[Middleware] Cookie check:', {
+            pathname,
+            totalCookies: allCookies.length,
+            supabaseCookies: supabaseCookies.length,
+            cookieNames: supabaseCookies.map(c => c.name),
+            allCookieNames: allCookies.map(c => c.name)
+          })
+          
           const response = NextResponse.next()
           const supabase = createMiddlewareClient({ req: request, res: response })
           const { data: { session }, error } = await supabase.auth.getSession()
           
-          // #region agent log
-          // Note: logs no middleware não funcionam via fetch, mas podemos usar console
-          console.log('[Middleware] Session check:', { hasSession: !!session, hasUser: !!session?.user, error: error?.message, pathname })
-          // #endregion
+          console.log('[Middleware] Session check:', { 
+            hasSession: !!session, 
+            hasUser: !!session?.user, 
+            userId: session?.user?.id,
+            error: error?.message, 
+            pathname,
+            hasCookies: supabaseCookies.length > 0
+          })
           
           // Se não tem sessão válida, redirecionar para login
           if (error || !session?.user) {
+            console.log('[Middleware] Redirecionando para login:', {
+              reason: error ? 'error' : 'no-session',
+              errorMessage: error?.message,
+              pathname
+            })
             const loginUrl = new URL('/aluno/login', request.url)
             loginUrl.searchParams.set('redirect', pathname)
             return NextResponse.redirect(loginUrl)
           }
           
           // Se tem sessão válida, permitir acesso
+          console.log('[Middleware] Acesso permitido:', { pathname, userId: session.user.id })
           return response
         } catch (authError) {
           // Se houver erro ao verificar sessão, redirecionar para login por segurança

@@ -24,12 +24,34 @@ export async function GET(request: NextRequest) {
     })
 
     if (error || !data?.session) {
+      console.error('[auth-callback] Erro ao definir sessão:', error)
       return NextResponse.redirect(new URL('/aluno/login?error=invalid_session', request.url))
     }
 
-    // Redirecionar para a rota desejada
-    // Os cookies já foram criados pelo createRouteHandlerClient
-    return NextResponse.redirect(new URL(redirectTo, request.url))
+    // Verificar se os cookies foram criados
+    const allCookies = cookieStore.getAll()
+    const supabaseCookies = allCookies.filter(c => 
+      c.name.includes('supabase') || 
+      c.name.startsWith('sb-') || 
+      c.name.includes('auth-token')
+    )
+    
+    console.log('[auth-callback] Cookies criados:', {
+      totalCookies: allCookies.length,
+      supabaseCookies: supabaseCookies.length,
+      cookieNames: supabaseCookies.map(c => c.name),
+      hasSession: !!data?.session,
+      userId: data?.user?.id
+    })
+
+    // Criar resposta de redirect
+    const response = NextResponse.redirect(new URL(redirectTo, request.url))
+    
+    // IMPORTANTE: Os cookies são gerenciados automaticamente pelo createRouteHandlerClient
+    // Mas precisamos garantir que eles sejam incluídos na resposta
+    // O createRouteHandlerClient já deve ter feito isso, mas vamos verificar
+    
+    return response
   } catch (error: any) {
     console.error('Erro no auth-callback:', error)
     return NextResponse.redirect(new URL('/aluno/login?error=server_error', request.url))
