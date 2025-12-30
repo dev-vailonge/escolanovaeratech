@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const supabase = getSupabaseAdmin()
+    // Extrair token se disponível
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : null
+    
+    const supabase = await getSupabaseClient(accessToken || undefined)
     const perguntaId = params.id
 
     if (!perguntaId) {

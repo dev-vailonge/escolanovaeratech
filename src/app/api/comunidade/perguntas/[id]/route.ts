@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = getSupabaseAdmin()
+    // Extrair token se disponível
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : null
+    
+    const supabase = await getSupabaseClient(accessToken || undefined)
     const perguntaId = params.id
 
     if (!perguntaId) {
@@ -172,7 +176,12 @@ export async function PUT(
   try {
     const { requireUserIdFromBearer } = await import('@/lib/server/requestAuth')
     const userId = await requireUserIdFromBearer(request)
-    const supabase = getSupabaseAdmin()
+    
+    // Extrair token para usar no cliente
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : null
+    
+    const supabase = await getSupabaseClient(accessToken || undefined)
     const perguntaId = params.id
 
     if (!perguntaId) {
