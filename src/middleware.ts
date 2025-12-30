@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { SecureSessionManager } from './lib/session'
 
 export async function middleware(request: NextRequest) {
@@ -44,41 +45,86 @@ export async function middleware(request: NextRequest) {
           )
         }
         
-        // Em produção com Supabase: verificar se há cookies de sessão
-        // O middleware apenas verifica a presença de cookies, a validação real é feita pelo AuthContext
-        const allCookies = request.cookies.getAll()
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware.ts:49',message:'Middleware checking cookies',data:{pathname,allCookiesCount:allCookies.length,cookieNames:allCookies.map(c=>c.name)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        const hasSupabaseCookies = allCookies.some(cookie => {
-          const name = cookie.name.toLowerCase()
-          // Verificar padrões comuns de cookies do Supabase
-          return (
-            name.includes('supabase') ||
-            name.startsWith('sb-') ||
-            name.includes('auth-token') ||
-            name.includes('access-token') ||
-            name.includes('refresh-token')
-          )
-        })
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware.ts:62',message:'Middleware cookie check result',data:{hasSupabaseCookies,pathname},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        
-        // Se não tem cookies do Supabase, redirecionar para login
-        if (!hasSupabaseCookies) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware.ts:66',message:'Middleware redirecting to login',data:{pathname,reason:'no-supabase-cookies'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-          // #endregion
+        // Em produção com Supabase: verificar sessão usando createMiddlewareClient
+        // Isso lê cookies automaticamente e valida a sessão
+        try {
+          // Verificar cookies antes de criar o cliente
+          const allCookies = request.cookies.getAll()
+          const supabaseCookies = allCookies.filter(c => {
+            const name = c.name.toLowerCase()
+            return name.includes('supabase') || name.startsWith('sb-') || name.includes('auth-token')
+          })
+          
+          console.log('[Middleware PROD] Cookie check:', {
+            pathname,
+            totalCookies: allCookies.length,
+            supabaseCookies: supabaseCookies.length,
+            cookieNames: supabaseCookies.map(c => c.name),
+            allCookieNames: allCookies.map(c => c.name)
+          })
+          
+          const response = NextResponse.next()
+          const supabase = createMiddlewareClient({ req: request, res: response })
+          const { data: { session }, error } = await supabase.auth.getSession()
+          
+          console.log('[Middleware PROD] Session check:', { 
+            hasSession: !!session, 
+            hasUser: !!session?.user, 
+            userId: session?.user?.id,
+            error: error?.message, 
+            pathname,
+            hasCookies: supabaseCookies.length > 0
+          })
+          
+          // Se tem sessão válida, permitir acesso
+          if (session?.user) {
+            console.log('[Middleware PROD] Acesso permitido:', { pathname, userId: session.user.id })
+            return response
+          }
+          
+          // Se não tem sessão válida, verificar se há cookies do Supabase como fallback
+          // Isso ajuda quando cookies foram criados mas createMiddlewareClient não consegue ler
+          if (supabaseCookies.length > 0) {
+            console.log('[Middleware PROD] Tem cookies mas sem sessão, permitindo acesso (AuthContext vai validar):', {
+              pathname,
+              cookieCount: supabaseCookies.length
+            })
+            // Permitir acesso e deixar AuthContext validar
+            return response
+          }
+          
+          // Se não tem sessão E não tem cookies, redirecionar para login
+          console.log('[Middleware PROD] Redirecionando para login:', {
+            reason: 'no-session-no-cookies',
+            errorMessage: error?.message,
+            pathname
+          })
+          const loginUrl = new URL('/aluno/login', request.url)
+          loginUrl.searchParams.set('redirect', pathname)
+          return NextResponse.redirect(loginUrl)
+        } catch (authError) {
+          // Se houver erro ao verificar sessão, verificar cookies como fallback
+          console.error('[Middleware PROD] Erro ao verificar sessão:', authError)
+          
+          const allCookies = request.cookies.getAll()
+          const supabaseCookies = allCookies.filter(c => {
+            const name = c.name.toLowerCase()
+            return name.includes('supabase') || name.startsWith('sb-') || name.includes('auth-token')
+          })
+          
+          if (supabaseCookies.length > 0) {
+            console.log('[Middleware PROD] Erro mas tem cookies, permitindo acesso:', {
+              pathname,
+              cookieCount: supabaseCookies.length
+            })
+            return NextResponse.next()
+          }
+          
+          // Se não tem cookies, redirecionar para login
           const loginUrl = new URL('/aluno/login', request.url)
           loginUrl.searchParams.set('redirect', pathname)
           return NextResponse.redirect(loginUrl)
         }
-        
-        // Se tem cookies, permitir acesso e deixar o AuthContext validar a sessão
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware.ts:72',message:'Middleware allowing access',data:{pathname,hasSupabaseCookies},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
       } else {
         // Em desenvolvimento: permitir acesso sem Supabase (para desenvolvimento local)
         if (hasSupabaseConfig) {

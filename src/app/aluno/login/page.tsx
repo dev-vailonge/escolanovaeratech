@@ -53,7 +53,14 @@ function AlunoLoginContent() {
     setIsLoading(true)
     setError('')
     
+    // #region agent log
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const hasSupabaseKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:52',message:'Login attempt starting',data:{email:formData.email,hasSupabaseUrl:!!supabaseUrl,supabaseUrl:supabaseUrl?.substring(0,30)+'...',hasSupabaseKey,isProduction:process.env.NODE_ENV==='production'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    
     try {
+      // Fazer login diretamente no cliente (como /signin faz)
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
@@ -63,98 +70,41 @@ function AlunoLoginContent() {
         throw signInError
       }
 
-      if (data?.user) {
-        console.log('✅ Login bem-sucedido, atualizando sessão...')
-        // #region agent log
-        const allCookies = document.cookie.split(';').map(c=>c.trim());
-        const supabaseCookies = allCookies.filter(c=>c.toLowerCase().includes('supabase')||c.toLowerCase().startsWith('sb-')||c.toLowerCase().includes('auth-token'));
-        fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:67',message:'Login successful, starting refresh',data:{userId:data.user.id,email:data.user.email,allCookiesCount:allCookies.length,supabaseCookiesCount:supabaseCookies.length,supabaseCookieNames:supabaseCookies.map(c=>c.split('=')[0])},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
+      if (data?.user && data?.session) {
+        console.log('✅ Login bem-sucedido, redirecionando para criar cookies...')
         
-        // Forçar refresh da sessão no AuthContext
-        // Isso vai criar o usuário automaticamente se não existir
-        try {
-          await refreshSession()
-          console.log('✅ Primeira atualização de sessão concluída')
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:74',message:'First refreshSession completed',data:{userId:data.user.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
-        } catch (refreshError) {
-          console.error('⚠️ Erro ao atualizar sessão:', refreshError)
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:77',message:'RefreshSession error',data:{error:String(refreshError)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
-        }
-        
-        // Aguardar o AuthContext processar a mudança de estado
-        // O onAuthStateChange deve disparar automaticamente
-        let attempts = 0
-        const maxAttempts = 10
-        
-        while (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 300))
-          
-          // Verificar se o usuário foi atualizado no AuthContext
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:87',message:'Checking user state',data:{hasUser:!!user,loading,attempt:attempts+1},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
-          if (user && !loading) {
-            console.log('✅ Usuário confirmado no AuthContext')
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:90',message:'User confirmed in AuthContext',data:{userId:user.id,attempt:attempts+1},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
-            break
-          }
-          
-          // Tentar refresh novamente a cada 3 tentativas
-          if (attempts % 3 === 0 && attempts > 0) {
-            try {
-              await refreshSession()
-              console.log(`✅ Tentativa ${attempts + 1}: Atualização de sessão`)
-            } catch (refreshError) {
-              console.error('⚠️ Erro ao atualizar sessão:', refreshError)
-            }
-          }
-          
-          attempts++
-        }
-        
-        if (attempts >= maxAttempts && !user) {
-          console.warn('⚠️ Timeout aguardando atualização do usuário, mas continuando...')
-        }
-        
-        // Resetar loading antes do redirect
-        setIsLoading(false)
-        
-        // Successful login - redirect to aluno dashboard
-        // Usar window.location para forçar reload completo e garantir que o AuthContext seja atualizado
+        // IMPORTANTE: Não resetar isLoading aqui, deixar o redirect acontecer
+        // Redirecionar para auth-callback que cria cookies no servidor via redirect
+        // Isso garante que os cookies sejam criados e enviados ao navegador
         const redirectParam = searchParams.get('redirect')
-        const redirectTo = redirectParam ? decodeURIComponent(redirectParam) : '/aluno'
-        console.log('🔄 Redirecionando para:', redirectTo)
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:132',message:'Redirecting after login',data:{redirectTo,hasUser:!!user,loading,attempts},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
+        const finalRedirect = redirectParam ? encodeURIComponent(redirectParam) : encodeURIComponent('/aluno')
         
-        // Usar window.location.href para garantir que a página recarregue completamente
-        window.location.href = redirectTo
+        // Usar auth-callback que faz redirect do servidor (não fetch)
+        // Isso garante que os cookies sejam criados e enviados corretamente
+        const callbackUrl = `/api/aluno/auth-callback?access_token=${encodeURIComponent(data.session.access_token)}&refresh_token=${encodeURIComponent(data.session.refresh_token)}&redirect=${finalRedirect}`
+        
+        console.log('🔄 Redirecionando para callback:', callbackUrl)
+        
+        // Usar window.location.href para garantir reload completo
+        // O auth-callback vai criar os cookies e redirecionar para /aluno
+        // IMPORTANTE: Não chamar setIsLoading(false) antes do redirect
+        window.location.href = callbackUrl
         return
       } else {
-        // Se não tem user, algo deu errado
-        console.error('❌ Login retornou sem usuário')
         setError('Erro ao fazer login. Tente novamente.')
-        setIsLoading(false)
       }
     } catch (err: any) {
       console.error('Login error:', err)
+      setIsLoading(false) // Resetar loading apenas em caso de erro
       if (err?.message?.includes('Invalid login credentials') || err?.message?.includes('Invalid login')) {
         setError('Email ou senha inválidos.')
       } else if (err?.message?.includes('Email not confirmed') || err?.code === 'email_not_confirmed') {
         setError('Por favor, confirme seu email antes de fazer login. Verifique sua caixa de entrada.')
       } else {
-        setError('Ocorreu um erro ao tentar fazer login. Por favor, tente novamente.')
+        setError(err?.message || 'Ocorreu um erro ao tentar fazer login. Por favor, tente novamente.')
       }
-      setIsLoading(false)
     }
+    // NÃO usar finally aqui - se o redirect acontecer, não queremos resetar loading
   }
 
   return (
