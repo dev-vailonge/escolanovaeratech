@@ -60,122 +60,49 @@ function AlunoLoginContent() {
     // #endregion
     
     try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
+      // Usar API route que cria cookies automaticamente via auth-helpers
+      const response = await fetch('/api/aluno/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
       })
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:61',message:'signInWithPassword result',data:{hasData:!!data,hasUser:!!data?.user,hasError:!!signInError,errorMessage:signInError?.message,errorCode:signInError?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
+      const result = await response.json()
 
-      if (signInError) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:65',message:'Login error details',data:{errorMessage:signInError.message,errorCode:signInError.code,errorStatus:signInError.status,email:formData.email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        throw signInError
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao fazer login')
       }
 
-      if (data?.user && data?.session) {
-        console.log('✅ Login bem-sucedido, atualizando sessão...')
-        
-        // Criar cookie manualmente para o middleware detectar
-        // O Supabase client-side usa localStorage, mas o middleware precisa de cookies
-        const sessionData = {
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-          expires_at: data.session.expires_at,
-          user: data.user
-        }
-        
-        // Criar cookie com nome padrão do Supabase
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        const projectRef = supabaseUrl?.split('//')[1]?.split('.')[0] || 'default'
-        const cookieName = `sb-${projectRef}-auth-token`
-        const cookieValue = encodeURIComponent(JSON.stringify(sessionData))
-        const expires = new Date(data.session.expires_at * 1000).toUTCString()
-        
-        // Criar cookie com configurações seguras
-        document.cookie = `${cookieName}=${cookieValue}; expires=${expires}; path=/; SameSite=Lax; Secure=${window.location.protocol === 'https:'}`
-        
-        // #region agent log
-        const allCookies = document.cookie.split(';').map(c=>c.trim());
-        const supabaseCookies = allCookies.filter(c=>c.toLowerCase().includes('supabase')||c.toLowerCase().startsWith('sb-')||c.toLowerCase().includes('auth-token'));
-        fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:67',message:'Login successful, cookie created',data:{userId:data.user.id,email:data.user.email,allCookiesCount:allCookies.length,supabaseCookiesCount:supabaseCookies.length,supabaseCookieNames:supabaseCookies.map(c=>c.split('=')[0]),cookieName},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
+      if (result.success && result.user) {
+        console.log('✅ Login bem-sucedido via API, cookies criados automaticamente')
         
         // Forçar refresh da sessão no AuthContext
-        // Isso vai criar o usuário automaticamente se não existir
         try {
           await refreshSession()
-          console.log('✅ Primeira atualização de sessão concluída')
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:74',message:'First refreshSession completed',data:{userId:data.user.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
+          console.log('✅ Sessão atualizada')
         } catch (refreshError) {
           console.error('⚠️ Erro ao atualizar sessão:', refreshError)
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:77',message:'RefreshSession error',data:{error:String(refreshError)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
         }
         
-        // Aguardar o AuthContext processar a mudança de estado
-        // O onAuthStateChange deve disparar automaticamente
-        let attempts = 0
-        const maxAttempts = 10
-        
-        while (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 300))
-          
-          // Verificar se o usuário foi atualizado no AuthContext
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:87',message:'Checking user state',data:{hasUser:!!user,loading,attempt:attempts+1},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
-          if (user && !loading) {
-            console.log('✅ Usuário confirmado no AuthContext')
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:90',message:'User confirmed in AuthContext',data:{userId:user.id,attempt:attempts+1},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
-            break
-          }
-          
-          // Tentar refresh novamente a cada 3 tentativas
-          if (attempts % 3 === 0 && attempts > 0) {
-            try {
-              await refreshSession()
-              console.log(`✅ Tentativa ${attempts + 1}: Atualização de sessão`)
-            } catch (refreshError) {
-              console.error('⚠️ Erro ao atualizar sessão:', refreshError)
-            }
-          }
-          
-          attempts++
-        }
-        
-        if (attempts >= maxAttempts && !user) {
-          console.warn('⚠️ Timeout aguardando atualização do usuário, mas continuando...')
-        }
-        
-        // Resetar loading antes do redirect
-        setIsLoading(false)
+        // Aguardar um pouco para garantir que os cookies foram criados
+        await new Promise(resolve => setTimeout(resolve, 500))
         
         // Successful login - redirect to aluno dashboard
-        // Usar window.location para forçar reload completo e garantir que o AuthContext seja atualizado
         const redirectParam = searchParams.get('redirect')
         const redirectTo = redirectParam ? decodeURIComponent(redirectParam) : '/aluno'
         console.log('🔄 Redirecionando para:', redirectTo)
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:132',message:'Redirecting after login',data:{redirectTo,hasUser:!!user,loading,attempts},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         
-        // Usar window.location.href para garantir que a página recarregue completamente
+        // Usar window.location.href para garantir reload completo
+        // Isso garante que o middleware veja os cookies criados pela API
         window.location.href = redirectTo
         return
       } else {
-        // Se não tem user, algo deu errado
-        console.error('❌ Login retornou sem usuário')
         setError('Erro ao fazer login. Tente novamente.')
-        setIsLoading(false)
       }
     } catch (err: any) {
       console.error('Login error:', err)
@@ -184,9 +111,8 @@ function AlunoLoginContent() {
       } else if (err?.message?.includes('Email not confirmed') || err?.code === 'email_not_confirmed') {
         setError('Por favor, confirme seu email antes de fazer login. Verifique sua caixa de entrada.')
       } else {
-        setError('Ocorreu um erro ao tentar fazer login. Por favor, tente novamente.')
+        setError(err?.message || 'Ocorreu um erro ao tentar fazer login. Por favor, tente novamente.')
       }
-      setIsLoading(false)
     }
   }
 
