@@ -272,16 +272,17 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
   return { awarded: true as const, respostaId: resposta.id, xp: xpResposta }
 }
 
-export async function getRanking(params: { type: RankingType; limit?: number }) {
+export async function getRanking(params: { type: RankingType; limit?: number; accessToken?: string }) {
   const limit = params.limit || 50
 
-  // Tentar usar admin primeiro (se disponível)
+  // Tentar usar admin primeiro (se disponível) - sempre preferir service role key
   let supabase
   try {
     supabase = getSupabaseAdmin()
+    console.log('[getRanking] Usando Supabase Admin (service role key)')
   } catch (adminError) {
     // Se não tiver service role key, usar anon key
-    // Isso permite que funcione mesmo sem SUPABASE_SERVICE_ROLE_KEY configurado
+    // IMPORTANTE: Isso pode falhar se RLS estiver habilitado na tabela users
     const { createClient } = await import('@supabase/supabase-js')
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -290,13 +291,32 @@ export async function getRanking(params: { type: RankingType; limit?: number }) 
       throw new Error('Supabase não configurado')
     }
     
+    console.log('[getRanking] Usando Supabase com anon key (pode ter limitações RLS)')
+    
     supabase = createClient(url, anonKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
         detectSessionInUrl: false,
       },
+      global: {
+        headers: params.accessToken ? {
+          Authorization: `Bearer ${params.accessToken}`
+        } : {},
+      },
     })
+
+    // Se tiver token do usuário, definir na sessão
+    if (params.accessToken) {
+      try {
+        await supabase.auth.setSession({
+          access_token: params.accessToken,
+          refresh_token: '', // Não temos refresh token aqui
+        } as any)
+      } catch (sessionError) {
+        console.warn('[getRanking] Erro ao definir sessão com token:', sessionError)
+      }
+    }
   }
 
   // Query otimizada: apenas campos necessários, ordenado pelo XP, com limite
@@ -311,9 +331,28 @@ export async function getRanking(params: { type: RankingType; limit?: number }) 
     .limit(limit)
 
   if (usersError) {
-    console.error('Erro ao buscar ranking do Supabase:', usersError)
+    const errorDetails = {
+      message: usersError.message,
+      details: usersError.details,
+      hint: usersError.hint,
+      code: usersError.code,
+    }
+    console.error('Erro ao buscar ranking do Supabase:', errorDetails)
+    
+    // Se for erro de permissão (RLS), dar mensagem mais clara
+    if (usersError.code === 'PGRST301' || usersError.message?.includes('permission') || usersError.message?.includes('RLS')) {
+      throw new Error(
+        'Erro de permissão ao buscar ranking. ' +
+        'Configure SUPABASE_SERVICE_ROLE_KEY nas variáveis de ambiente da Vercel ' +
+        'ou ajuste as políticas RLS no Supabase para permitir leitura pública da tabela users. ' +
+        `Detalhes: ${usersError.message}`
+      )
+    }
+    
     throw usersError
   }
+  
+  console.log(`[getRanking] Ranking ${params.type} encontrado: ${users?.length || 0} usuários`)
   
   // Retorna direto com posição calculada
   return (users || []).map((u, idx) => ({
