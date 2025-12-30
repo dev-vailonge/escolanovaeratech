@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
 
 export async function GET(request: NextRequest) {
@@ -7,8 +7,12 @@ export async function GET(request: NextRequest) {
     // Obter userId autenticado via Bearer token
     const userId = await requireUserIdFromBearer(request)
 
-    // Usar supabaseAdmin para ter permissões completas (bypass RLS)
-    const supabaseAdmin = getSupabaseAdmin()
+    // Extrair token para usar no cliente
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : null
+
+    // Usar helper com fallback para anon key se necessário
+    const supabaseAdmin = await getSupabaseClient(accessToken || undefined)
 
     // Início do mês atual para filtrar participação na comunidade
     const startOfMonth = new Date()
@@ -18,6 +22,7 @@ export async function GET(request: NextRequest) {
     // Buscar todas as estatísticas em paralelo
     const [
       aulasResult,
+      aulasHotmartResult,
       quizzesResult,
       desafiosResult,
       comunidadeResult,
@@ -30,6 +35,14 @@ export async function GET(request: NextRequest) {
         .select('source_id')
         .eq('user_id', userId)
         .eq('source', 'aula'),
+      
+      // Aulas da Hotmart (source='hotmart' com descrição contendo "aula")
+      supabaseAdmin
+        .from('user_xp_history')
+        .select('source_id, description')
+        .eq('user_id', userId)
+        .eq('source', 'hotmart')
+        .ilike('description', '%aula%'),
       
       // Quizzes completos
       supabaseAdmin
@@ -65,17 +78,33 @@ export async function GET(request: NextRequest) {
         .eq('autor_id', userId),
     ])
 
-    // Debug logs
-    console.log('API stats - userId:', userId)
-    console.log('API stats - quizzes:', quizzesResult.data?.length, quizzesResult.error)
-    console.log('API stats - desafios:', desafiosResult.data?.length, desafiosResult.error)
+    // Debug logs detalhados
+    console.log('[API /users/me/stats] userId:', userId)
+    console.log('[API /users/me/stats] aulas (source=aula):', aulasResult.data?.length || 0, aulasResult.error?.message)
+    console.log('[API /users/me/stats] aulas (source=hotmart):', aulasHotmartResult.data?.length || 0, aulasHotmartResult.error?.message)
+    console.log('[API /users/me/stats] quizzes:', quizzesResult.data?.length || 0, quizzesResult.error?.message)
+    console.log('[API /users/me/stats] desafios:', desafiosResult.data?.length || 0, desafiosResult.error?.message)
+    console.log('[API /users/me/stats] perguntas respondidas:', perguntasRespondidasResult.data?.length || 0, perguntasRespondidasResult.error?.message)
+    console.log('[API /users/me/stats] perguntas feitas:', perguntasFeitasResult.data?.length || 0, perguntasFeitasResult.error?.message)
 
     // Contar aulas únicas (cada source_id diferente conta como uma aula)
-    const aulasUnicas = new Set(
-      (aulasResult.data || [])
+    // Incluir tanto source='aula' quanto source='hotmart' com descrição de aula
+    const aulasUnicas = new Set<string>()
+    
+    // Aulas com source='aula'
+    if (aulasResult.data) {
+      aulasResult.data
         .filter(item => item.source_id)
-        .map(item => item.source_id)
-    )
+        .forEach(item => aulasUnicas.add(item.source_id as string))
+    }
+    
+    // Aulas da Hotmart (extrair quantidade da descrição ou contar source_id únicos)
+    if (aulasHotmartResult.data) {
+      aulasHotmartResult.data
+        .filter(item => item.source_id)
+        .forEach(item => aulasUnicas.add(`hotmart_${item.source_id}`))
+    }
+    
     const aulasCompletas = aulasUnicas.size
 
     const quizCompletos = quizzesResult.data?.length || 0
@@ -87,7 +116,7 @@ export async function GET(request: NextRequest) {
     // Estimativa de tempo de estudo (30 min por aula, 10 min por quiz, 15 min por desafio)
     const tempoEstudo = (aulasCompletas * 30) + (quizCompletos * 10) + (desafiosConcluidos * 15)
 
-    return NextResponse.json({
+    const stats = {
       aulasCompletas,
       quizCompletos,
       desafiosConcluidos,
@@ -95,9 +124,13 @@ export async function GET(request: NextRequest) {
       participacaoComunidade,
       perguntasRespondidas,
       perguntasFeitas,
-    })
+    }
+
+    console.log('[API /users/me/stats] Stats finais:', stats)
+
+    return NextResponse.json(stats)
   } catch (error: any) {
-    console.error('Erro ao buscar estatísticas:', error)
+    console.error('[API /users/me/stats] Erro ao buscar estatísticas:', error)
     
     if (String(error?.message || '').includes('Não autenticado')) {
       return NextResponse.json(
@@ -106,9 +139,15 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    return NextResponse.json(
-      { error: 'Erro interno do servidor' },
-      { status: 500 }
-    )
+    // Retornar stats vazios em vez de erro 500 para não quebrar a página
+    return NextResponse.json({
+      aulasCompletas: 0,
+      quizCompletos: 0,
+      desafiosConcluidos: 0,
+      tempoEstudo: 0,
+      participacaoComunidade: 0,
+      perguntasRespondidas: 0,
+      perguntasFeitas: 0,
+    }, { status: 200 })
   }
 }
