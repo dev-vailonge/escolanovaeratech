@@ -73,6 +73,7 @@ function AlunoLoginContent() {
       if (data?.user && data?.session) {
         console.log('✅ Login bem-sucedido, redirecionando para criar cookies...')
         
+        // IMPORTANTE: Não resetar isLoading aqui, deixar o redirect acontecer
         // Redirecionar para auth-callback que cria cookies no servidor via redirect
         // Isso garante que os cookies sejam criados e enviados ao navegador
         const redirectParam = searchParams.get('redirect')
@@ -86,6 +87,7 @@ function AlunoLoginContent() {
         
         // Usar window.location.href para garantir reload completo
         // O auth-callback vai criar os cookies e redirecionar para /aluno
+        // IMPORTANTE: Não chamar setIsLoading(false) antes do redirect
         window.location.href = callbackUrl
         return
       } else {
@@ -93,6 +95,7 @@ function AlunoLoginContent() {
       }
     } catch (err: any) {
       console.error('Login error:', err)
+      setIsLoading(false) // Resetar loading apenas em caso de erro
       if (err?.message?.includes('Invalid login credentials') || err?.message?.includes('Invalid login')) {
         setError('Email ou senha inválidos.')
       } else if (err?.message?.includes('Email not confirmed') || err?.code === 'email_not_confirmed') {
@@ -101,6 +104,7 @@ function AlunoLoginContent() {
         setError(err?.message || 'Ocorreu um erro ao tentar fazer login. Por favor, tente novamente.')
       }
     }
+    // NÃO usar finally aqui - se o redirect acontecer, não queremos resetar loading
   }
 
   return (
