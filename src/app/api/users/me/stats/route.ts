@@ -80,12 +80,32 @@ export async function GET(request: NextRequest) {
 
     // Debug logs detalhados
     console.log('[API /users/me/stats] userId:', userId)
-    console.log('[API /users/me/stats] aulas (source=aula):', aulasResult.data?.length || 0, aulasResult.error?.message)
-    console.log('[API /users/me/stats] aulas (source=hotmart):', aulasHotmartResult.data?.length || 0, aulasHotmartResult.error?.message)
-    console.log('[API /users/me/stats] quizzes:', quizzesResult.data?.length || 0, quizzesResult.error?.message)
-    console.log('[API /users/me/stats] desafios:', desafiosResult.data?.length || 0, desafiosResult.error?.message)
-    console.log('[API /users/me/stats] perguntas respondidas:', perguntasRespondidasResult.data?.length || 0, perguntasRespondidasResult.error?.message)
-    console.log('[API /users/me/stats] perguntas feitas:', perguntasFeitasResult.data?.length || 0, perguntasFeitasResult.error?.message)
+    console.log('[API /users/me/stats] aulas (source=aula):', aulasResult.data?.length || 0, aulasResult.error?.message || 'OK')
+    if (aulasResult.error) {
+      console.error('[API /users/me/stats] Erro ao buscar aulas:', aulasResult.error)
+    }
+    console.log('[API /users/me/stats] aulas (source=hotmart):', aulasHotmartResult.data?.length || 0, aulasHotmartResult.error?.message || 'OK')
+    if (aulasHotmartResult.error) {
+      console.error('[API /users/me/stats] Erro ao buscar aulas Hotmart:', aulasHotmartResult.error)
+    }
+    console.log('[API /users/me/stats] quizzes:', quizzesResult.data?.length || 0, quizzesResult.error?.message || 'OK')
+    if (quizzesResult.error) {
+      console.error('[API /users/me/stats] Erro ao buscar quizzes:', quizzesResult.error)
+      console.error('[API /users/me/stats] Erro detalhado quizzes:', JSON.stringify(quizzesResult.error, null, 2))
+    }
+    console.log('[API /users/me/stats] desafios:', desafiosResult.data?.length || 0, desafiosResult.error?.message || 'OK')
+    if (desafiosResult.error) {
+      console.error('[API /users/me/stats] Erro ao buscar desafios:', desafiosResult.error)
+      console.error('[API /users/me/stats] Erro detalhado desafios:', JSON.stringify(desafiosResult.error, null, 2))
+    }
+    console.log('[API /users/me/stats] perguntas respondidas:', perguntasRespondidasResult.data?.length || 0, perguntasRespondidasResult.error?.message || 'OK')
+    if (perguntasRespondidasResult.error) {
+      console.error('[API /users/me/stats] Erro ao buscar perguntas respondidas:', perguntasRespondidasResult.error)
+    }
+    console.log('[API /users/me/stats] perguntas feitas:', perguntasFeitasResult.data?.length || 0, perguntasFeitasResult.error?.message || 'OK')
+    if (perguntasFeitasResult.error) {
+      console.error('[API /users/me/stats] Erro ao buscar perguntas feitas:', perguntasFeitasResult.error)
+    }
 
     // Contar aulas únicas (cada source_id diferente conta como uma aula)
     // Incluir tanto source='aula' quanto source='hotmart' com descrição de aula
