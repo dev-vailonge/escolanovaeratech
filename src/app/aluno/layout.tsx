@@ -35,6 +35,9 @@ function AlunoLayoutContent({
   useEffect(() => {
     // Se não é rota pública e a autenticação foi inicializada e não está carregando
     if (!isPublicRoute && initialized && !loading) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'layout.tsx:37',message:'Layout checking auth',data:{hasUser:!!user,loading,initialized,isPublicRoute,pathname},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
       if (!user) {
         // Verificar ambiente e configuração do Supabase
         const isProduction = process.env.NODE_ENV === 'production'
@@ -46,6 +49,9 @@ function AlunoLayoutContent({
         if (isProduction && hasValidSupabase) {
           // Produção com Supabase = sempre exigir autenticação
           const loginUrl = `/aluno/login?redirect=${encodeURIComponent(pathname)}`
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'layout.tsx:49',message:'Layout redirecting to login',data:{pathname,loginUrl,reason:'no-user-production'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+          // #endregion
           router.push(loginUrl)
         } else if (!isProduction && hasValidSupabase) {
           // Desenvolvimento com Supabase = verificar autenticação
