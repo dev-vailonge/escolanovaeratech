@@ -1,0 +1,265 @@
+'use client'
+
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
+import { supabase } from './supabase'
+import { useAuth } from './AuthContext'
+import type { DatabaseNotificacao } from '@/types/database'
+
+interface NotificationsContextType {
+  notifications: DatabaseNotificacao[]
+  unreadCount: number
+  isModalOpen: boolean
+  openModal: () => void
+  closeModal: () => void
+  markAsRead: (notificationId: string) => void
+  markAllAsRead: () => void
+  hasNewNotification: boolean
+  clearNewNotificationFlag: () => void
+}
+
+const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined)
+
+// Chave para armazenar IDs lidas no localStorage
+const STORAGE_KEY = 'ne_notifications_read'
+
+// Verificar se Supabase está configurado
+const isSupabaseConfigured = () => {
+  return !!(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && 
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+    process.env.NEXT_PUBLIC_SUPABASE_URL !== 'https://placeholder.supabase.co'
+  )
+}
+
+export function NotificationsProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
+  const [notifications, setNotifications] = useState<DatabaseNotificacao[]>([])
+  const [readIds, setReadIds] = useState<Set<string>>(new Set())
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [hasNewNotification, setHasNewNotification] = useState(false)
+
+  // Carregar IDs lidas do localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored)
+          setReadIds(new Set(parsed))
+        } catch (e) {
+          console.error('Erro ao parsear notificações lidas:', e)
+        }
+      }
+    }
+  }, [])
+
+  // Salvar IDs lidas no localStorage quando mudar
+  useEffect(() => {
+    if (typeof window !== 'undefined' && readIds.size > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([...readIds]))
+    }
+  }, [readIds])
+
+  // Função para buscar notificações ativas
+  const fetchNotifications = useCallback(async () => {
+    if (!isSupabaseConfigured() || !user?.id) {
+      return
+    }
+
+    try {
+      const now = new Date().toISOString()
+      
+      // Buscar notificações:
+      // 1. Notificações individuais para este usuário (target_user_id = user.id)
+      // 2. Notificações broadcast (target_user_id IS NULL) com público-alvo apropriado
+      
+      // Query para notificações individuais do usuário
+      const { data: individualNotifs, error: error1 } = await supabase
+        .from('notificacoes')
+        .select('*')
+        .eq('target_user_id', user.id)
+        .lte('data_inicio', now)
+        .gte('data_fim', now)
+        .order('created_at', { ascending: false })
+      
+      // Query para notificações broadcast (sem target_user_id)
+      const { data: broadcastNotifs, error: error2 } = await supabase
+        .from('notificacoes')
+        .select('*')
+        .is('target_user_id', null)
+        .lte('data_inicio', now)
+        .gte('data_fim', now)
+        .order('created_at', { ascending: false })
+
+      if (error1) {
+        console.error('Erro ao buscar notificações individuais:', error1)
+      }
+      if (error2) {
+        console.error('Erro ao buscar notificações broadcast:', error2)
+      }
+
+      // Filtrar notificações broadcast por público-alvo
+      const filteredBroadcast = (broadcastNotifs || []).filter(notif => {
+        if (notif.publico_alvo === 'todos') return true
+        if (notif.publico_alvo === 'alunos-full') return user?.accessLevel === 'full'
+        if (notif.publico_alvo === 'alunos-limited') return user?.accessLevel === 'limited'
+        return false
+      })
+
+      // Combinar e ordenar por data de criação
+      const allNotifications = [...(individualNotifs || []), ...filteredBroadcast]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+      setNotifications(allNotifications)
+    } catch (error) {
+      console.error('Erro ao buscar notificações:', error)
+    }
+  }, [user?.accessLevel, user?.id])
+
+  // Buscar notificações na montagem e quando o usuário mudar
+  useEffect(() => {
+    fetchNotifications()
+  }, [fetchNotifications])
+
+  // Configurar Supabase Realtime para notificações
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !user?.id) {
+      return
+    }
+
+    const channel = supabase
+      .channel('notificacoes-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notificacoes',
+        },
+        (payload) => {
+          console.log('Nova notificação recebida:', payload)
+          const newNotification = payload.new as DatabaseNotificacao
+          
+          // Verificar se a notificação está ativa (dentro do período)
+          const now = new Date()
+          const dataInicio = new Date(newNotification.data_inicio)
+          const dataFim = new Date(newNotification.data_fim)
+          
+          if (now >= dataInicio && now <= dataFim) {
+            // Se é notificação individual, verificar se é para este usuário
+            if (newNotification.target_user_id) {
+              if (newNotification.target_user_id === user?.id) {
+                setNotifications(prev => [newNotification, ...prev])
+                setHasNewNotification(true)
+              }
+              // IMPORTANTE: Se tem target_user_id mas não é para este usuário, ignorar
+              return
+            }
+
+            // Notificação broadcast (sem target_user_id) - verificar público-alvo
+            const isForUser = 
+              newNotification.publico_alvo === 'todos' ||
+              (user?.accessLevel === 'full' && newNotification.publico_alvo === 'alunos-full') ||
+              (user?.accessLevel === 'limited' && newNotification.publico_alvo === 'alunos-limited')
+
+            if (isForUser) {
+              setNotifications(prev => [newNotification, ...prev])
+              setHasNewNotification(true)
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notificacoes',
+        },
+        (payload) => {
+          console.log('Notificação atualizada:', payload)
+          const updatedNotification = payload.new as DatabaseNotificacao
+          setNotifications(prev =>
+            prev.map(n => n.id === updatedNotification.id ? updatedNotification : n)
+          )
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'notificacoes',
+        },
+        (payload) => {
+          console.log('Notificação deletada:', payload)
+          const deletedId = (payload.old as DatabaseNotificacao).id
+          setNotifications(prev => prev.filter(n => n.id !== deletedId))
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user?.accessLevel, user?.id])
+
+  // Calcular contagem de não lidas
+  const unreadCount = notifications.filter(n => !readIds.has(n.id)).length
+
+  // Marcar notificação como lida
+  const markAsRead = useCallback((notificationId: string) => {
+    setReadIds(prev => new Set([...prev, notificationId]))
+  }, [])
+
+  // Marcar todas como lidas
+  const markAllAsRead = useCallback(() => {
+    const allIds = notifications.map(n => n.id)
+    setReadIds(prev => new Set([...prev, ...allIds]))
+    setHasNewNotification(false)
+  }, [notifications])
+
+  // Abrir modal
+  const openModal = useCallback(() => {
+    setIsModalOpen(true)
+    setHasNewNotification(false)
+  }, [])
+
+  // Fechar modal
+  const closeModal = useCallback(() => {
+    setIsModalOpen(false)
+  }, [])
+
+  // Limpar flag de nova notificação
+  const clearNewNotificationFlag = useCallback(() => {
+    setHasNewNotification(false)
+  }, [])
+
+  return (
+    <NotificationsContext.Provider
+      value={{
+        notifications,
+        unreadCount,
+        isModalOpen,
+        openModal,
+        closeModal,
+        markAsRead,
+        markAllAsRead,
+        hasNewNotification,
+        clearNewNotificationFlag,
+      }}
+    >
+      {children}
+    </NotificationsContext.Provider>
+  )
+}
+
+export function useNotifications() {
+  const context = useContext(NotificationsContext)
+  if (context === undefined) {
+    throw new Error('useNotifications deve ser usado dentro de NotificationsProvider')
+  }
+  return context
+}
+
+
