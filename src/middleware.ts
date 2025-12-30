@@ -55,7 +55,7 @@ export async function middleware(request: NextRequest) {
             return name.includes('supabase') || name.startsWith('sb-') || name.includes('auth-token')
           })
           
-          console.log('[Middleware] Cookie check:', {
+          console.log('[Middleware PROD] Cookie check:', {
             pathname,
             totalCookies: allCookies.length,
             supabaseCookies: supabaseCookies.length,
@@ -67,7 +67,7 @@ export async function middleware(request: NextRequest) {
           const supabase = createMiddlewareClient({ req: request, res: response })
           const { data: { session }, error } = await supabase.auth.getSession()
           
-          console.log('[Middleware] Session check:', { 
+          console.log('[Middleware PROD] Session check:', { 
             hasSession: !!session, 
             hasUser: !!session?.user, 
             userId: session?.user?.id,
@@ -76,24 +76,51 @@ export async function middleware(request: NextRequest) {
             hasCookies: supabaseCookies.length > 0
           })
           
-          // Se não tem sessão válida, redirecionar para login
-          if (error || !session?.user) {
-            console.log('[Middleware] Redirecionando para login:', {
-              reason: error ? 'error' : 'no-session',
-              errorMessage: error?.message,
-              pathname
-            })
-            const loginUrl = new URL('/aluno/login', request.url)
-            loginUrl.searchParams.set('redirect', pathname)
-            return NextResponse.redirect(loginUrl)
+          // Se tem sessão válida, permitir acesso
+          if (session?.user) {
+            console.log('[Middleware PROD] Acesso permitido:', { pathname, userId: session.user.id })
+            return response
           }
           
-          // Se tem sessão válida, permitir acesso
-          console.log('[Middleware] Acesso permitido:', { pathname, userId: session.user.id })
-          return response
+          // Se não tem sessão válida, verificar se há cookies do Supabase como fallback
+          // Isso ajuda quando cookies foram criados mas createMiddlewareClient não consegue ler
+          if (supabaseCookies.length > 0) {
+            console.log('[Middleware PROD] Tem cookies mas sem sessão, permitindo acesso (AuthContext vai validar):', {
+              pathname,
+              cookieCount: supabaseCookies.length
+            })
+            // Permitir acesso e deixar AuthContext validar
+            return response
+          }
+          
+          // Se não tem sessão E não tem cookies, redirecionar para login
+          console.log('[Middleware PROD] Redirecionando para login:', {
+            reason: 'no-session-no-cookies',
+            errorMessage: error?.message,
+            pathname
+          })
+          const loginUrl = new URL('/aluno/login', request.url)
+          loginUrl.searchParams.set('redirect', pathname)
+          return NextResponse.redirect(loginUrl)
         } catch (authError) {
-          // Se houver erro ao verificar sessão, redirecionar para login por segurança
-          console.error('[Middleware] Erro ao verificar sessão:', authError)
+          // Se houver erro ao verificar sessão, verificar cookies como fallback
+          console.error('[Middleware PROD] Erro ao verificar sessão:', authError)
+          
+          const allCookies = request.cookies.getAll()
+          const supabaseCookies = allCookies.filter(c => {
+            const name = c.name.toLowerCase()
+            return name.includes('supabase') || name.startsWith('sb-') || name.includes('auth-token')
+          })
+          
+          if (supabaseCookies.length > 0) {
+            console.log('[Middleware PROD] Erro mas tem cookies, permitindo acesso:', {
+              pathname,
+              cookieCount: supabaseCookies.length
+            })
+            return NextResponse.next()
+          }
+          
+          // Se não tem cookies, redirecionar para login
           const loginUrl = new URL('/aluno/login', request.url)
           loginUrl.searchParams.set('redirect', pathname)
           return NextResponse.redirect(loginUrl)
