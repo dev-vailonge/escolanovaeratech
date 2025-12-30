@@ -71,45 +71,19 @@ function AlunoLoginContent() {
       }
 
       if (data?.user && data?.session) {
-        console.log('✅ Login bem-sucedido, sincronizando cookies...')
+        console.log('✅ Login bem-sucedido, redirecionando para criar cookies...')
         
-        // Sincronizar cookies via API route para o middleware conseguir ler
-        try {
-          await fetch('/api/aluno/sync-session', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include', // Importante: incluir cookies
-            body: JSON.stringify({
-              access_token: data.session.access_token,
-              refresh_token: data.session.refresh_token,
-            }),
-          })
-          console.log('✅ Cookies sincronizados')
-        } catch (syncError) {
-          console.error('⚠️ Erro ao sincronizar cookies:', syncError)
-          // Continuar mesmo se a sincronização falhar
-        }
-        
-        // Forçar refresh da sessão no AuthContext
-        try {
-          await refreshSession()
-          console.log('✅ Sessão atualizada')
-        } catch (refreshError) {
-          console.error('⚠️ Erro ao atualizar sessão:', refreshError)
-        }
-        
-        // Aguardar um pouco para garantir que os cookies foram criados
-        await new Promise(resolve => setTimeout(resolve, 300))
-        
-        // Successful login - redirect to aluno dashboard
+        // Redirecionar para auth-callback que cria cookies no servidor
+        // Isso garante que os cookies sejam criados antes do redirect final
         const redirectParam = searchParams.get('redirect')
-        const redirectTo = redirectParam ? decodeURIComponent(redirectParam) : '/aluno'
-        console.log('🔄 Redirecionando para:', redirectTo)
+        const finalRedirect = redirectParam ? encodeURIComponent(redirectParam) : encodeURIComponent('/aluno')
+        
+        const callbackUrl = `/api/aluno/auth-callback?access_token=${encodeURIComponent(data.session.access_token)}&refresh_token=${encodeURIComponent(data.session.refresh_token)}&redirect=${finalRedirect}`
+        
+        console.log('🔄 Redirecionando para callback:', callbackUrl)
         
         // Usar window.location.href para garantir reload completo
-        window.location.href = redirectTo
+        window.location.href = callbackUrl
         return
       } else {
         setError('Erro ao fazer login. Tente novamente.')

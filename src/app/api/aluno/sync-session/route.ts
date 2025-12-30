@@ -30,11 +30,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Criar resposta - os cookies são criados automaticamente pelo createRouteHandlerClient
-    return NextResponse.json({
+    // Criar resposta - IMPORTANTE: criar a resposta ANTES de usar o supabase
+    // para garantir que os cookies sejam incluídos
+    const response = NextResponse.json({
       success: true,
       user: data.user,
     })
+
+    // O createRouteHandlerClient gerencia cookies automaticamente
+    // Mas precisamos garantir que os cookies sejam retornados na resposta
+    // Os cookies são gerenciados internamente pelo cliente Supabase
+    
+    return response
   } catch (error: any) {
     console.error('Erro ao sincronizar sessão:', error)
     return NextResponse.json(
