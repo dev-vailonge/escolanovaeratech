@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 function AlunoLoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user, loading, initializeAuth } = useAuth()
+  const { user, loading, initializeAuth, refreshSession } = useAuth()
   const { theme } = useTheme()
   const [formData, setFormData] = useState({
     email: '',
@@ -66,17 +66,22 @@ function AlunoLoginContent() {
       if (data?.user) {
         // Forçar refresh da sessão no AuthContext
         // Isso vai criar o usuário automaticamente se não existir
-        await initializeAuth()
+        await refreshSession()
         
         // Aguardar um pouco para o AuthContext atualizar e criar o usuário se necessário
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        await new Promise(resolve => setTimeout(resolve, 1000))
         
         // Verificar novamente se o usuário foi criado
-        await initializeAuth()
+        await refreshSession()
+        
+        // Resetar loading antes do redirect
+        setIsLoading(false)
         
         // Successful login - redirect to aluno dashboard
-        router.push('/aluno')
-        return // Sair da função para não resetar isLoading
+        const redirectParam = searchParams.get('redirect')
+        const redirectTo = redirectParam ? decodeURIComponent(redirectParam) : '/aluno'
+        router.push(redirectTo)
+        return
       }
     } catch (err: any) {
       console.error('Login error:', err)
