@@ -60,26 +60,37 @@ function AlunoLoginContent() {
     // #endregion
     
     try {
-      // Usar API route que cria cookies automaticamente via auth-helpers
-      const response = await fetch('/api/aluno/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
+      // Fazer login diretamente no cliente (como /signin faz)
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
       })
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro ao fazer login')
+      if (signInError) {
+        throw signInError
       }
 
-      if (result.success && result.user) {
-        console.log('✅ Login bem-sucedido via API, cookies criados automaticamente')
+      if (data?.user && data?.session) {
+        console.log('✅ Login bem-sucedido, sincronizando cookies...')
+        
+        // Sincronizar cookies via API route para o middleware conseguir ler
+        try {
+          await fetch('/api/aluno/sync-session', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include', // Importante: incluir cookies
+            body: JSON.stringify({
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token,
+            }),
+          })
+          console.log('✅ Cookies sincronizados')
+        } catch (syncError) {
+          console.error('⚠️ Erro ao sincronizar cookies:', syncError)
+          // Continuar mesmo se a sincronização falhar
+        }
         
         // Forçar refresh da sessão no AuthContext
         try {
@@ -90,7 +101,7 @@ function AlunoLoginContent() {
         }
         
         // Aguardar um pouco para garantir que os cookies foram criados
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise(resolve => setTimeout(resolve, 300))
         
         // Successful login - redirect to aluno dashboard
         const redirectParam = searchParams.get('redirect')
@@ -98,7 +109,6 @@ function AlunoLoginContent() {
         console.log('🔄 Redirecionando para:', redirectTo)
         
         // Usar window.location.href para garantir reload completo
-        // Isso garante que o middleware veja os cookies criados pela API
         window.location.href = redirectTo
         return
       } else {
