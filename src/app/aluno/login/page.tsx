@@ -65,14 +65,25 @@ function AlunoLoginContent() {
 
       if (data?.user) {
         console.log('✅ Login bem-sucedido, atualizando sessão...')
+        // #region agent log
+        const allCookies = document.cookie.split(';').map(c=>c.trim());
+        const supabaseCookies = allCookies.filter(c=>c.toLowerCase().includes('supabase')||c.toLowerCase().startsWith('sb-')||c.toLowerCase().includes('auth-token'));
+        fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:67',message:'Login successful, starting refresh',data:{userId:data.user.id,email:data.user.email,allCookiesCount:allCookies.length,supabaseCookiesCount:supabaseCookies.length,supabaseCookieNames:supabaseCookies.map(c=>c.split('=')[0])},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
         
         // Forçar refresh da sessão no AuthContext
         // Isso vai criar o usuário automaticamente se não existir
         try {
           await refreshSession()
           console.log('✅ Primeira atualização de sessão concluída')
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:74',message:'First refreshSession completed',data:{userId:data.user.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
         } catch (refreshError) {
           console.error('⚠️ Erro ao atualizar sessão:', refreshError)
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:77',message:'RefreshSession error',data:{error:String(refreshError)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
         }
         
         // Aguardar o AuthContext processar a mudança de estado
@@ -84,8 +95,14 @@ function AlunoLoginContent() {
           await new Promise(resolve => setTimeout(resolve, 300))
           
           // Verificar se o usuário foi atualizado no AuthContext
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:87',message:'Checking user state',data:{hasUser:!!user,loading,attempt:attempts+1},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
           if (user && !loading) {
             console.log('✅ Usuário confirmado no AuthContext')
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:90',message:'User confirmed in AuthContext',data:{userId:user.id,attempt:attempts+1},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
             break
           }
           
@@ -114,6 +131,9 @@ function AlunoLoginContent() {
         const redirectParam = searchParams.get('redirect')
         const redirectTo = redirectParam ? decodeURIComponent(redirectParam) : '/aluno'
         console.log('🔄 Redirecionando para:', redirectTo)
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'login/page.tsx:132',message:'Redirecting after login',data:{redirectTo,hasUser:!!user,loading,attempts},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
         
         // Usar window.location.href para garantir que a página recarregue completamente
         window.location.href = redirectTo
