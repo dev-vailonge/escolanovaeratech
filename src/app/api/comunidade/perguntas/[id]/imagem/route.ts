@@ -1,60 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 
 const IMAGEM_BUCKET = 'comunidade-imagens'
-
-/**
- * Tenta criar o bucket se não existir
- */
-async function ensureBucketExists(supabase: any): Promise<boolean> {
-  try {
-    // Verificar se o bucket existe
-    const { data: buckets } = await supabase.storage.listBuckets()
-    const bucketExists = buckets?.some((b: { id: string }) => b.id === IMAGEM_BUCKET)
-
-    if (bucketExists) {
-      return true
-    }
-
-    // Tentar criar o bucket
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      console.error('Variáveis de ambiente do Supabase não configuradas')
-      return false
-    }
-
-    const createBucketResponse = await fetch(`${supabaseUrl}/storage/v1/bucket`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${serviceRoleKey}`,
-        'apikey': serviceRoleKey,
-      },
-      body: JSON.stringify({
-        id: IMAGEM_BUCKET,
-        name: IMAGEM_BUCKET,
-        public: true,
-        file_size_limit: 5242880, // 5MB
-        allowed_mime_types: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-      }),
-    })
-
-    if (createBucketResponse.ok) {
-      console.log(`✅ Bucket '${IMAGEM_BUCKET}' criado com sucesso!`)
-      return true
-    } else {
-      const errorText = await createBucketResponse.text()
-      console.error('Erro ao criar bucket:', errorText)
-      return false
-    }
-  } catch (error) {
-    console.error('Erro ao verificar/criar bucket:', error)
-    return false
-  }
-}
 
 function safeFileExt(filename: string): string {
   const parts = filename.split('.')
@@ -70,7 +18,10 @@ export async function POST(
 ) {
   try {
     const userId = await requireUserIdFromBearer(request)
-    const supabase = getSupabaseAdmin()
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : undefined
+    
+    const supabase = await getSupabaseClient(accessToken)
     const perguntaId = params.id
 
     if (!perguntaId) {
@@ -125,23 +76,13 @@ export async function POST(
 
     const ext = safeFileExt(imagemFile.name)
     const rand = Math.random().toString(16).slice(2)
-    const objectPath = `${perguntaId}/${Date.now()}-${rand}.${ext}`
+    const objectPath = `perguntas/${perguntaId}/${Date.now()}-${rand}.${ext}`
 
     const arrayBuffer = await imagemFile.arrayBuffer()
     const fileBuffer = Buffer.from(arrayBuffer)
 
-    // Garantir que o bucket existe antes de fazer upload
-    const bucketExists = await ensureBucketExists(supabase)
-    if (!bucketExists) {
-      return NextResponse.json(
-        {
-          error: `Bucket '${IMAGEM_BUCKET}' não existe e não foi possível criá-lo automaticamente. Por favor, crie o bucket manualmente no Supabase ou chame /api/comunidade/setup-bucket`,
-        },
-        { status: 500 }
-      )
-    }
-
-    // Fazer upload da imagem
+    // Fazer upload usando cliente autenticado do usuário (RLS deve permitir)
+    // Não precisa de service role key - as políticas RLS do bucket devem permitir upload para usuários autenticados
     const { error: uploadError } = await supabase.storage
       .from(IMAGEM_BUCKET)
       .upload(objectPath, fileBuffer, {
@@ -151,19 +92,38 @@ export async function POST(
 
     if (uploadError) {
       console.error('Erro upload imagem:', uploadError)
+      const errorMessage = uploadError?.message || 'Erro desconhecido'
+      if (errorMessage.includes('Bucket') || errorMessage.includes('bucket')) {
+        return NextResponse.json(
+          {
+            error: `Bucket '${IMAGEM_BUCKET}' não encontrado. Verifique se o bucket existe no Supabase.`,
+            details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+          },
+          { status: 500 }
+        )
+      }
+      if (errorMessage.includes('permission') || errorMessage.includes('policy') || errorMessage.includes('403') || errorMessage.toLowerCase().includes('forbidden')) {
+        return NextResponse.json(
+          {
+            error: 'Permissão negada para fazer upload. Verifique as políticas RLS do bucket no Supabase.',
+            details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+          },
+          { status: 403 }
+        )
+      }
       return NextResponse.json(
         {
-          error: `Falha ao enviar imagem: ${uploadError.message || 'Erro desconhecido'}`,
-          details: uploadError.message,
+          error: `Falha ao enviar imagem: ${errorMessage}`,
+          details: process.env.NODE_ENV === 'development' ? uploadError : undefined
         },
         { status: 500 }
       )
     }
 
-    const { data: publicData } = supabase.storage.from(IMAGEM_BUCKET).getPublicUrl(objectPath)
-    const imagemUrl = publicData.publicUrl
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const imagemUrl = `${supabaseUrl}/storage/v1/object/public/${IMAGEM_BUCKET}/${objectPath}`
 
-    // Atualizar pergunta com a URL da imagem
+    // Atualizar pergunta com a URL da imagem (usar cliente do usuário para RLS)
     const { error: updateError } = await supabase
       .from('perguntas')
       .update({ imagem_url: imagemUrl })
@@ -180,7 +140,11 @@ export async function POST(
     if (String(error?.message || '').includes('Não autenticado')) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
-    return NextResponse.json({ error: 'Erro ao fazer upload de imagem' }, { status: 500 })
+    if (String(error?.message || '').includes('permission') || String(error?.message || '').includes('RLS')) {
+      return NextResponse.json({ error: 'Erro de permissão. Verifique se você tem permissão para fazer upload nesta pergunta.', details: process.env.NODE_ENV === 'development' ? error?.message : undefined }, { status: 403 })
+    }
+    const errorMessage = process.env.NODE_ENV === 'development' ? error?.message || 'Erro ao fazer upload de imagem' : 'Erro ao fazer upload de imagem. Tente novamente mais tarde.'
+    return NextResponse.json({ error: errorMessage, details: process.env.NODE_ENV === 'development' ? error?.stack : undefined }, { status: 500 })
   }
 }
 
