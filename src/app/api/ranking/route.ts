@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       console.log(`[API /ranking] Usando cache para ranking ${type}: ${ranking.length} usuários`)
     }
 
-    const currentUser = ranking.find((r: any) => r.id === userId)
+    const currentUser = ranking?.find((r: any) => r.id === userId)
 
     const response = NextResponse.json({
       success: true,
