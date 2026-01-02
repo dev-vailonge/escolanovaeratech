@@ -4,64 +4,6 @@ import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 
 const IMAGEM_BUCKET = 'comunidade-imagens'
 
-/**
- * Tenta verificar se o bucket existe usando admin se disponível
- */
-async function ensureBucketExists(): Promise<boolean> {
-  try {
-    // Tentar usar admin primeiro (tem permissões para listar buckets)
-    try {
-      const { getSupabaseAdmin } = await import('@/lib/server/supabaseAdmin')
-      const supabaseAdmin = getSupabaseAdmin()
-      const { data: buckets } = await supabaseAdmin.storage.listBuckets()
-      const bucketExists = buckets?.some((b: { id: string }) => b.id === IMAGEM_BUCKET)
-      
-      if (bucketExists) {
-        return true
-      }
-    } catch (adminError) {
-      // Se não tiver service role key, continuar tentando criar
-      console.warn('⚠️ Não foi possível usar Supabase Admin para verificar bucket:', adminError)
-    }
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      console.error('Variáveis de ambiente do Supabase não configuradas para criar bucket')
-      return false
-    }
-
-    const createBucketResponse = await fetch(`${supabaseUrl}/storage/v1/bucket`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${serviceRoleKey}`,
-        'apikey': serviceRoleKey,
-      },
-      body: JSON.stringify({
-        id: IMAGEM_BUCKET,
-        name: IMAGEM_BUCKET,
-        public: true,
-        file_size_limit: 5242880, // 5MB
-        allowed_mime_types: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-      }),
-    })
-
-    if (createBucketResponse.ok) {
-      console.log(`✅ Bucket '${IMAGEM_BUCKET}' criado com sucesso!`)
-      return true
-    } else {
-      const errorText = await createBucketResponse.text()
-      console.error('Erro ao criar bucket:', errorText)
-      return false
-    }
-  } catch (error) {
-    console.error('Erro ao verificar/criar bucket:', error)
-    return false
-  }
-}
-
 function safeFileExt(filename: string): string {
   const parts = filename.split('.')
   if (parts.length < 2) return 'webp'
@@ -141,47 +83,16 @@ export async function POST(
     const arrayBuffer = await imagemFile.arrayBuffer()
     const fileBuffer = Buffer.from(arrayBuffer)
 
-    // Tentar fazer upload usando admin primeiro (tem permissões), senão usar cliente do usuário
-    let uploadError = null
-    let uploadSuccess = false
-    
-    try {
-      // Tentar com admin primeiro (tem permissões totais para storage)
-      const { getSupabaseAdmin } = await import('@/lib/server/supabaseAdmin')
-      const supabaseAdmin = getSupabaseAdmin()
-      const { error: adminUploadError } = await supabaseAdmin.storage
-        .from(IMAGEM_BUCKET)
-        .upload(objectPath, fileBuffer, {
-          contentType: imagemFile.type,
-          upsert: true,
-        })
-      
-      if (!adminUploadError) {
-        uploadSuccess = true
-      } else {
-        uploadError = adminUploadError
-        console.error('Erro ao fazer upload com admin:', adminUploadError)
-      }
-    } catch (adminError: any) {
-      // Se admin não disponível (sem service role key), tentar com cliente do usuário
-      // Isso pode funcionar se as políticas RLS do bucket permitirem
-      console.warn('⚠️ Não foi possível usar Supabase Admin para upload, tentando com cliente do usuário:', adminError?.message)
-      const { error: clientUploadError } = await supabase.storage
-        .from(IMAGEM_BUCKET)
-        .upload(objectPath, fileBuffer, {
-          contentType: imagemFile.type,
-          upsert: true,
-        })
-      
-      if (!clientUploadError) {
-        uploadSuccess = true
-      } else {
-        uploadError = clientUploadError
-        console.error('Erro ao fazer upload com cliente do usuário:', clientUploadError)
-      }
-    }
+    // Fazer upload usando cliente autenticado do usuário (RLS deve permitir)
+    // Não precisa de service role key - as políticas RLS do bucket devem permitir upload para usuários autenticados
+    const { error: uploadError } = await supabase.storage
+      .from(IMAGEM_BUCKET)
+      .upload(objectPath, fileBuffer, {
+        contentType: imagemFile.type,
+        upsert: true,
+      })
 
-    if (!uploadSuccess) {
+    if (uploadError) {
       console.error('Erro upload imagem:', uploadError)
       
       // Se o erro menciona bucket não encontrado, dar mensagem específica
@@ -189,10 +100,21 @@ export async function POST(
       if (errorMessage.includes('Bucket') || errorMessage.includes('bucket')) {
         return NextResponse.json(
           {
-            error: `Bucket '${IMAGEM_BUCKET}' não encontrado ou sem permissões. Verifique se o bucket existe e se SUPABASE_SERVICE_ROLE_KEY está configurada.`,
+            error: `Bucket '${IMAGEM_BUCKET}' não encontrado. Verifique se o bucket existe no Supabase.`,
             details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
           },
           { status: 500 }
+        )
+      }
+      
+      // Se o erro é de permissão, dar mensagem sobre políticas RLS
+      if (errorMessage.includes('permission') || errorMessage.includes('policy') || uploadError.statusCode === '403') {
+        return NextResponse.json(
+          {
+            error: 'Permissão negada para fazer upload. Verifique as políticas RLS do bucket no Supabase.',
+            details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+          },
+          { status: 403 }
         )
       }
       
