@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
         ranking = await getRanking({ type, limit: 50, accessToken: accessToken || undefined })
         if (ranking) {
           console.log(`[API /ranking] Ranking ${type} carregado: ${ranking.length} usuários`)
+          setCachedRanking(type, ranking)
         }
-        setCachedRanking(type, ranking)
       } catch (rankingError: any) {
         console.error('Erro ao buscar ranking do banco:', {
           message: rankingError?.message,
