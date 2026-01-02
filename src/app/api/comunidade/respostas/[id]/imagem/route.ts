@@ -141,23 +141,12 @@ export async function POST(
     const arrayBuffer = await imagemFile.arrayBuffer()
     const fileBuffer = Buffer.from(arrayBuffer)
 
-    // Garantir que o bucket existe (tenta usar admin se disponível)
-    const bucketExists = await ensureBucketExists()
-    if (!bucketExists) {
-      return NextResponse.json(
-        {
-          error: `Bucket '${IMAGEM_BUCKET}' não existe. Por favor, crie o bucket através do endpoint /api/comunidade/setup-bucket ou pelo painel do Supabase.`,
-        },
-        { status: 500 }
-      )
-    }
-
     // Tentar fazer upload usando admin primeiro (tem permissões), senão usar cliente do usuário
     let uploadError = null
     let uploadSuccess = false
     
     try {
-      // Tentar com admin primeiro
+      // Tentar com admin primeiro (tem permissões totais para storage)
       const { getSupabaseAdmin } = await import('@/lib/server/supabaseAdmin')
       const supabaseAdmin = getSupabaseAdmin()
       const { error: adminUploadError } = await supabaseAdmin.storage
@@ -171,10 +160,12 @@ export async function POST(
         uploadSuccess = true
       } else {
         uploadError = adminUploadError
+        console.error('Erro ao fazer upload com admin:', adminUploadError)
       }
-    } catch (adminError) {
-      // Se admin não disponível, tentar com cliente do usuário
-      console.warn('⚠️ Não foi possível usar Supabase Admin para upload, tentando com cliente do usuário')
+    } catch (adminError: any) {
+      // Se admin não disponível (sem service role key), tentar com cliente do usuário
+      // Isso pode funcionar se as políticas RLS do bucket permitirem
+      console.warn('⚠️ Não foi possível usar Supabase Admin para upload, tentando com cliente do usuário:', adminError?.message)
       const { error: clientUploadError } = await supabase.storage
         .from(IMAGEM_BUCKET)
         .upload(objectPath, fileBuffer, {
@@ -186,14 +177,29 @@ export async function POST(
         uploadSuccess = true
       } else {
         uploadError = clientUploadError
+        console.error('Erro ao fazer upload com cliente do usuário:', clientUploadError)
       }
     }
 
-    if (!uploadSuccess && uploadError) {
+    if (!uploadSuccess) {
       console.error('Erro upload imagem:', uploadError)
+      
+      // Se o erro menciona bucket não encontrado, dar mensagem específica
+      const errorMessage = uploadError?.message || 'Erro desconhecido'
+      if (errorMessage.includes('Bucket') || errorMessage.includes('bucket')) {
+        return NextResponse.json(
+          {
+            error: `Bucket '${IMAGEM_BUCKET}' não encontrado ou sem permissões. Verifique se o bucket existe e se SUPABASE_SERVICE_ROLE_KEY está configurada.`,
+            details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+          },
+          { status: 500 }
+        )
+      }
+      
       return NextResponse.json(
         {
-          error: `Falha ao enviar imagem: ${uploadError.message || 'Erro desconhecido'}`,
+          error: `Falha ao enviar imagem: ${errorMessage}`,
+          details: process.env.NODE_ENV === 'development' ? uploadError : undefined
         },
         { status: 500 }
       )
