@@ -1,6 +1,6 @@
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { XP_CONSTANTS } from '@/lib/gamification/constants'
 import { calculateLevel } from '@/lib/gamification'
+import { getSupabaseClient } from './getSupabaseClient'
 
 export type XPSource = 'aula' | 'quiz' | 'desafio' | 'comunidade' | 'hotmart'
 
@@ -22,8 +22,8 @@ export type RankingRow = {
 /**
  * Sincroniza o nível do usuário baseado no XP atual
  */
-async function syncUserLevel(userId: string) {
-  const supabase = getSupabaseAdmin()
+async function syncUserLevel(userId: string, accessToken?: string) {
+  const supabase = await getSupabaseClient(accessToken)
   
   // Buscar XP atual do usuário
   const { data: user, error: userError } = await supabase
@@ -61,8 +61,9 @@ export async function insertXpEntry(params: {
   sourceId: string
   amount: number
   description?: string
+  accessToken?: string
 }) {
-  const supabase = getSupabaseAdmin()
+  const supabase = await getSupabaseClient(params.accessToken)
   const { error } = await supabase.from('user_xp_history').insert({
     user_id: params.userId,
     source: params.source,
@@ -74,7 +75,7 @@ export async function insertXpEntry(params: {
   if (error) throw error
 
   // Atualizar nível automaticamente após inserir XP
-  await syncUserLevel(params.userId)
+  await syncUserLevel(params.userId, params.accessToken)
 }
 
 /**
@@ -85,12 +86,14 @@ export async function insertXpEntry(params: {
  * @param params.sourceId - ID único da ação na Hotmart (ex: hotmart_comment_{id}_{timestamp})
  * @param params.amount - Quantidade de XP ganho
  * @param params.description - Descrição da ação
+ * @param params.accessToken - Token de acesso opcional (para RLS)
  */
 export async function insertHotmartXpEntry(params: {
   userId: string
   sourceId: string
   amount: number
   description?: string
+  accessToken?: string
 }) {
   return insertXpEntry({
     userId: params.userId,
@@ -98,11 +101,12 @@ export async function insertHotmartXpEntry(params: {
     sourceId: params.sourceId,
     amount: params.amount,
     description: params.description ?? undefined,
+    accessToken: params.accessToken,
   })
 }
 
-export async function completarDesafio(params: { userId: string; desafioId: string }) {
-  const supabase = getSupabaseAdmin()
+export async function completarDesafio(params: { userId: string; desafioId: string; accessToken?: string }) {
+  const supabase = await getSupabaseClient(params.accessToken)
 
   const { data: existing, error: existingError } = await supabase
     .from('user_desafio_progress')
@@ -144,13 +148,14 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
     sourceId: params.desafioId,
     amount: xpDesafio,
     description: `Desafio concluído: ${desafio.titulo}`,
+    accessToken: params.accessToken,
   })
 
   return { awarded: true as const, xp: xpDesafio }
 }
 
-export async function completarQuiz(params: { userId: string; quizId: string; pontuacao: number }) {
-  const supabase = getSupabaseAdmin()
+export async function completarQuiz(params: { userId: string; quizId: string; pontuacao: number; accessToken?: string }) {
+  const supabase = await getSupabaseClient(params.accessToken)
 
   const { data: quiz, error: quizError } = await supabase
     .from('quizzes')
@@ -232,6 +237,7 @@ export async function completarQuiz(params: { userId: string; quizId: string; po
     sourceId: params.quizId,
     amount: xpGanho,
     description: `Quiz concluído: ${quiz.titulo} (${params.pontuacao}% - tentativa ${newTentativas})`,
+    accessToken: params.accessToken,
   })
 
   return { 
@@ -266,7 +272,6 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
   // Dar 1 XP ao responder (valor oficial)
   const xpResposta = XP_CONSTANTS.comunidade.resposta
   
-  // insertXpEntry usa getSupabaseAdmin que pode falhar sem service role key
   // Tentar inserir XP, mas não falhar se der erro (resposta já foi criada)
   try {
     await insertXpEntry({
@@ -275,6 +280,7 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
       sourceId: resposta.id,
       amount: xpResposta,
       description: 'Resposta criada na comunidade',
+      accessToken: params.accessToken,
     })
   } catch (xpError: any) {
     console.error('Erro ao inserir XP (resposta já criada):', xpError)

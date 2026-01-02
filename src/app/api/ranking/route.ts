@@ -21,7 +21,9 @@ export async function GET(request: NextRequest) {
       try {
         // Passar accessToken para ajudar com RLS se necessário
         ranking = await getRanking({ type, limit: 50, accessToken: accessToken || undefined })
-        console.log(`[API /ranking] Ranking ${type} carregado: ${ranking.length} usuários`)
+        if (ranking) {
+          console.log(`[API /ranking] Ranking ${type} carregado: ${ranking.length} usuários`)
+        }
         setCachedRanking(type, ranking)
       } catch (rankingError: any) {
         console.error('Erro ao buscar ranking do banco:', {

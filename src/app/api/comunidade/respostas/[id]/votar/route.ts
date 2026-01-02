@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
-import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/requestAuth'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { insertXpEntry } from '@/lib/server/gamification'
 import { XP_CONSTANTS } from '@/lib/gamification/constants'
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const userId = await requireUserIdFromBearer(request)
-    const supabase = getSupabaseAdmin()
+    const accessToken = getAccessTokenFromBearer(request)
+    const supabase = await getSupabaseClient(accessToken)
 
     const respostaId = params.id
     if (!respostaId) {
@@ -151,6 +152,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
             sourceId: respostaId,
             amount: xpNecessario,
             description: 'Resposta marcada como válida na comunidade',
+            accessToken: accessToken,
           })
 
           // O trigger do banco atualiza automaticamente xp, xp_mensal e level

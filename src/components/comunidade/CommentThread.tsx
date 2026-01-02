@@ -36,7 +36,9 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
   const { theme } = useTheme()
   const { user } = useAuth()
   const [comentarios, setComentarios] = useState<Comentario[]>([])
+  const [comentariosCount, setComentariosCount] = useState<number>(0)
   const [loading, setLoading] = useState(false)
+  const [loadingCount, setLoadingCount] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [showInput, setShowInput] = useState(false)
@@ -46,7 +48,24 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
   const [error, setError] = useState<string>('')
   const [badgesMap, setBadgesMap] = useState<Map<string, string[]>>(new Map())
 
-  // Buscar comentários
+  // Buscar contagem de comentários (inicial, sem expandir)
+  const fetchComentariosCount = async () => {
+    try {
+      setLoadingCount(true)
+      const res = await fetch(`/api/comunidade/respostas/${respostaId}/comentarios`)
+      const json = await res.json()
+
+      if (json.success && json.comentarios) {
+        setComentariosCount(json.comentarios.length)
+      }
+    } catch (e: any) {
+      console.error('Erro ao buscar contagem de comentários:', e)
+    } finally {
+      setLoadingCount(false)
+    }
+  }
+
+  // Buscar comentários completos (quando expandido)
   const fetchComentarios = async () => {
     try {
       setLoading(true)
@@ -55,6 +74,7 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
 
       if (json.success && json.comentarios) {
         setComentarios(json.comentarios)
+        setComentariosCount(json.comentarios.length)
         
         // Buscar badges dos autores
         const userIds = [...new Set(json.comentarios.map((c: Comentario) => c.autor?.id).filter(Boolean))] as string[]
@@ -74,11 +94,17 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
     }
   }
 
+  // Buscar contagem inicial ao montar o componente
+  useEffect(() => {
+    fetchComentariosCount()
+  }, [respostaId, refreshTrigger])
+
+  // Buscar comentários completos quando expandir
   useEffect(() => {
     if (expanded) {
       fetchComentarios()
     }
-  }, [expanded, respostaId, refreshTrigger])
+  }, [expanded])
 
   const submitComentario = async () => {
     if (!user?.id) {
@@ -94,6 +120,11 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
 
     setSubmitting(true)
     setError('')
+    
+    // Garantir que está expandido para ver o comentário após criar
+    if (!expanded) {
+      setExpanded(true)
+    }
 
     try {
       const token = await getAuthToken()
@@ -144,10 +175,9 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
         }
       }
 
-      // Adicionar comentário à lista e atualizar badges se necessário
+      // Recarregar comentários para ter a versão completa com badges
       if (json.success && json.comentario) {
-        // Atualizar a lista de comentários
-        setComentarios((prev) => [...prev, json.comentario])
+        await fetchComentarios()
         setComentarioTexto('')
         setComentarioImagem(null)
         setComentarioImagemResetTrigger((prev) => prev + 1) // Resetar componente de imagem
@@ -171,22 +201,48 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
     }
   }
 
-  const comentariosCount = comentarios.length
+  // Usar a contagem atualizada (do estado ou dos comentários carregados)
+  const displayCount = expanded ? comentarios.length : comentariosCount
 
   return (
     <div className="mt-2">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className={cn(
-          'flex items-center gap-2 text-xs transition-colors',
-          theme === 'dark' ? 'text-gray-400 hover:text-yellow-400' : 'text-gray-600 hover:text-yellow-600'
+      <div className="flex items-center gap-3">
+        {/* Botão para ver/comentar */}
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className={cn(
+            'flex items-center gap-2 text-xs transition-colors',
+            theme === 'dark' ? 'text-gray-400 hover:text-yellow-400' : 'text-gray-600 hover:text-yellow-600'
+          )}
+        >
+          <MessageSquare className="w-3 h-3" />
+          <span>
+            {expanded 
+              ? 'Ocultar comentários' 
+              : displayCount > 0 
+                ? `Ver ${displayCount} comentário${displayCount !== 1 ? 's' : ''}`
+                : 'Comentar'}
+          </span>
+        </button>
+
+        {/* Botão para adicionar comentário (separado, sempre visível quando não expandido) */}
+        {!expanded && canCreate && (
+          <button
+            onClick={() => {
+              setExpanded(true)
+              setShowInput(true)
+            }}
+            className={cn(
+              'flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors',
+              theme === 'dark'
+                ? 'border-white/10 text-gray-400 hover:bg-white/5 hover:text-yellow-400 hover:border-yellow-400/30'
+                : 'border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-yellow-600 hover:border-yellow-400'
+            )}
+          >
+            <span>Comentar</span>
+          </button>
         )}
-      >
-        <MessageSquare className="w-3 h-3" />
-        <span>
-          {comentariosCount > 0 ? `${comentariosCount} comentário${comentariosCount !== 1 ? 's' : ''}` : 'Comentar'}
-        </span>
-      </button>
+      </div>
 
       {expanded && (
         <div className={cn(

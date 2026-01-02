@@ -22,6 +22,20 @@ export async function requireUserIdFromBearer(request: Request): Promise<string>
   return data.user.id
 }
 
+/**
+ * Extrai o accessToken do header Authorization
+ * @returns O token de acesso ou undefined se não estiver presente
+ */
+export function getAccessTokenFromBearer(request: Request): string | undefined {
+  const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return undefined
+  }
+
+  const token = authHeader.slice('Bearer '.length).trim()
+  return token || undefined
+}
+
 
 
 
