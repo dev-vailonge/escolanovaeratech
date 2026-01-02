@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { extractMentions } from '@/lib/mentionParser'
 
 export async function GET(
@@ -8,7 +8,11 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = getSupabaseAdmin()
+    // Extrair accessToken do header para usar com getSupabaseClient
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : undefined
+    
+    const supabase = await getSupabaseClient(accessToken)
     const respostaId = params.id
 
     if (!respostaId) {
@@ -72,7 +76,12 @@ export async function POST(
 ) {
   try {
     const userId = await requireUserIdFromBearer(request)
-    const supabase = getSupabaseAdmin()
+    
+    // Extrair accessToken do header para usar com getSupabaseClient
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : undefined
+    
+    const supabase = await getSupabaseClient(accessToken)
     const respostaId = params.id
 
     if (!respostaId) {

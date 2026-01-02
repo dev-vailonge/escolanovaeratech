@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 
 const IMAGEM_BUCKET = 'comunidade-imagens'
 
@@ -19,8 +19,20 @@ async function ensureBucketExists(supabase: any): Promise<boolean> {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-    if (!supabaseUrl || !serviceRoleKey) {
+    // Em desenvolvimento, se não tiver service role key, tentar criar bucket com anon key
+    if (!supabaseUrl) {
       console.error('Variáveis de ambiente do Supabase não configuradas')
+      return false
+    }
+    
+    // Se não tiver service role key em desenvolvimento, não bloquear
+    if (!serviceRoleKey && process.env.NODE_ENV === 'development') {
+      console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY não configurado em desenvolvimento. Bucket pode não ser criado automaticamente.')
+      return false
+    }
+    
+    if (!serviceRoleKey) {
+      console.error('SUPABASE_SERVICE_ROLE_KEY não configurado')
       return false
     }
 
@@ -68,7 +80,12 @@ export async function POST(
 ) {
   try {
     const userId = await requireUserIdFromBearer(request)
-    const supabase = getSupabaseAdmin()
+    
+    // Extrair accessToken do header para usar com getSupabaseClient
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : undefined
+    
+    const supabase = await getSupabaseClient(accessToken)
     const respostaId = params.id
 
     if (!respostaId) {
@@ -130,12 +147,17 @@ export async function POST(
     // Garantir que o bucket existe
     const bucketExists = await ensureBucketExists(supabase)
     if (!bucketExists) {
-      return NextResponse.json(
-        {
-          error: `Bucket '${IMAGEM_BUCKET}' não existe e não foi possível criá-lo automaticamente.`,
-        },
-        { status: 500 }
-      )
+      // Em desenvolvimento, apenas avisar mas não bloquear
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`⚠️ Bucket '${IMAGEM_BUCKET}' não existe. Continuando em desenvolvimento...`)
+      } else {
+        return NextResponse.json(
+          {
+            error: `Bucket '${IMAGEM_BUCKET}' não existe e não foi possível criá-lo automaticamente.`,
+          },
+          { status: 500 }
+        )
+      }
     }
 
     // Fazer upload da imagem

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
 import { calculateLevel } from '@/lib/gamification'
 import { XP_CONSTANTS } from '@/lib/gamification/constants'
@@ -12,7 +12,7 @@ const XP_MELHOR_RESPOSTA = XP_CONSTANTS.comunidade.respostaCerta // 100 XP total
 
 /**
  * DELETE /api/comunidade/perguntas/[id]/delete
- * Permite que um admin delete uma pergunta e reverta todo XP relacionado
+ * Permite que admin ou criador (se não tiver respostas) delete uma pergunta e reverta todo XP relacionado
  */
 export async function DELETE(
   request: Request,
@@ -20,14 +20,19 @@ export async function DELETE(
 ) {
   try {
     const userId = await requireUserIdFromBearer(request)
-    const supabase = getSupabaseAdmin()
+    
+    // Extrair accessToken do header para usar com getSupabaseClient
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : undefined
+    
+    const supabase = await getSupabaseClient(accessToken)
     const perguntaId = params.id
 
     if (!perguntaId) {
       return NextResponse.json({ error: 'ID da pergunta inválido' }, { status: 400 })
     }
 
-    // Verificar se o usuário é admin
+    // Verificar se o usuário existe e obter role
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('role')
@@ -35,14 +40,11 @@ export async function DELETE(
       .single()
 
     if (userError || !user) {
+      console.error('Erro ao buscar usuário:', userError)
       return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
     }
 
-    if (user.role !== 'admin') {
-      return NextResponse.json({ error: 'Apenas administradores podem deletar perguntas' }, { status: 403 })
-    }
-
-    // Buscar a pergunta e suas respostas
+    // Buscar a pergunta para verificar autor
     const { data: pergunta, error: perguntaError } = await supabase
       .from('perguntas')
       .select(`
@@ -54,7 +56,16 @@ export async function DELETE(
       .single()
 
     if (perguntaError || !pergunta) {
+      console.error('Erro ao buscar pergunta:', perguntaError)
       return NextResponse.json({ error: 'Pergunta não encontrada' }, { status: 404 })
+    }
+
+    const isAdmin = user.role === 'admin'
+    const isAuthor = pergunta.autor_id === userId
+
+    // Se não é admin nem autor, negar acesso
+    if (!isAdmin && !isAuthor) {
+      return NextResponse.json({ error: 'Você não tem permissão para deletar esta pergunta' }, { status: 403 })
     }
 
     // Buscar todas as respostas da pergunta
@@ -65,7 +76,16 @@ export async function DELETE(
 
     if (respostasError) {
       console.error('Erro ao buscar respostas:', respostasError)
+      return NextResponse.json({ error: 'Erro ao verificar respostas da pergunta' }, { status: 500 })
     }
+
+    // Se é autor (não admin), só pode deletar se não tiver respostas
+    if (!isAdmin && isAuthor && respostas && respostas.length > 0) {
+      return NextResponse.json({ 
+        error: 'Não é possível deletar perguntas que já possuem respostas. Apenas administradores podem deletar perguntas com respostas.' 
+      }, { status: 403 })
+    }
+
 
     // Rastrear usuários afetados e quanto XP cada um perde
     const usuariosAfetados = new Map<string, number>()
@@ -214,10 +234,30 @@ export async function DELETE(
     })
   } catch (error: any) {
     console.error('Erro ao deletar pergunta:', error)
+    console.error('Stack trace:', error?.stack)
+    
+    // Erros de autenticação
     if (String(error?.message || '').includes('Não autenticado')) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
-    return NextResponse.json({ error: 'Erro ao deletar pergunta' }, { status: 500 })
+    
+    // Erros de permissão
+    if (String(error?.message || '').includes('permission') || String(error?.message || '').includes('RLS')) {
+      return NextResponse.json({ 
+        error: 'Erro de permissão. Verifique se você tem permissão para deletar esta pergunta.',
+        details: process.env.NODE_ENV === 'development' ? error?.message : undefined
+      }, { status: 403 })
+    }
+    
+    // Outros erros - retornar mensagem específica em dev, genérica em prod
+    const errorMessage = process.env.NODE_ENV === 'development' 
+      ? error?.message || 'Erro ao deletar pergunta'
+      : 'Erro ao deletar pergunta. Tente novamente mais tarde.'
+    
+    return NextResponse.json({ 
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+    }, { status: 500 })
   }
 }
 
