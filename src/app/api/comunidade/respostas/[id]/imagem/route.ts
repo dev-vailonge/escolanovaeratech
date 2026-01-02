@@ -4,68 +4,6 @@ import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 
 const IMAGEM_BUCKET = 'comunidade-imagens'
 
-/**
- * Tenta criar o bucket se não existir
- */
-async function ensureBucketExists(supabase: any): Promise<boolean> {
-  try {
-    const { data: buckets } = await supabase.storage.listBuckets()
-    const bucketExists = buckets?.some((b: { id: string }) => b.id === IMAGEM_BUCKET)
-
-    if (bucketExists) {
-      return true
-    }
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-    // Em desenvolvimento, se não tiver service role key, tentar criar bucket com anon key
-    if (!supabaseUrl) {
-      console.error('Variáveis de ambiente do Supabase não configuradas')
-      return false
-    }
-    
-    // Se não tiver service role key em desenvolvimento, não bloquear
-    if (!serviceRoleKey && process.env.NODE_ENV === 'development') {
-      console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY não configurado em desenvolvimento. Bucket pode não ser criado automaticamente.')
-      return false
-    }
-    
-    if (!serviceRoleKey) {
-      console.error('SUPABASE_SERVICE_ROLE_KEY não configurado')
-      return false
-    }
-
-    const createBucketResponse = await fetch(`${supabaseUrl}/storage/v1/bucket`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${serviceRoleKey}`,
-        'apikey': serviceRoleKey,
-      },
-      body: JSON.stringify({
-        id: IMAGEM_BUCKET,
-        name: IMAGEM_BUCKET,
-        public: true,
-        file_size_limit: 5242880, // 5MB
-        allowed_mime_types: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-      }),
-    })
-
-    if (createBucketResponse.ok) {
-      console.log(`✅ Bucket '${IMAGEM_BUCKET}' criado com sucesso!`)
-      return true
-    } else {
-      const errorText = await createBucketResponse.text()
-      console.error('Erro ao criar bucket:', errorText)
-      return false
-    }
-  } catch (error) {
-    console.error('Erro ao verificar/criar bucket:', error)
-    return false
-  }
-}
-
 function safeFileExt(filename: string): string {
   const parts = filename.split('.')
   if (parts.length < 2) return 'webp'
@@ -85,6 +23,7 @@ export async function POST(
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
     const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : undefined
     
+    // Usar getSupabaseClient para operações que precisam do contexto do usuário (RLS)
     const supabase = await getSupabaseClient(accessToken)
     const respostaId = params.id
 
@@ -144,23 +83,8 @@ export async function POST(
     const arrayBuffer = await imagemFile.arrayBuffer()
     const fileBuffer = Buffer.from(arrayBuffer)
 
-    // Garantir que o bucket existe
-    const bucketExists = await ensureBucketExists(supabase)
-    if (!bucketExists) {
-      // Em desenvolvimento, apenas avisar mas não bloquear
-      if (process.env.NODE_ENV === 'development') {
-        console.warn(`⚠️ Bucket '${IMAGEM_BUCKET}' não existe. Continuando em desenvolvimento...`)
-      } else {
-        return NextResponse.json(
-          {
-            error: `Bucket '${IMAGEM_BUCKET}' não existe e não foi possível criá-lo automaticamente.`,
-          },
-          { status: 500 }
-        )
-      }
-    }
-
-    // Fazer upload da imagem
+    // Fazer upload usando cliente autenticado do usuário (RLS deve permitir)
+    // Não precisa de service role key - as políticas RLS do bucket devem permitir upload para usuários autenticados
     const { error: uploadError } = await supabase.storage
       .from(IMAGEM_BUCKET)
       .upload(objectPath, fileBuffer, {
@@ -170,18 +94,44 @@ export async function POST(
 
     if (uploadError) {
       console.error('Erro upload imagem:', uploadError)
+      
+      // Se o erro menciona bucket não encontrado, dar mensagem específica
+      const errorMessage = uploadError?.message || 'Erro desconhecido'
+      if (errorMessage.includes('Bucket') || errorMessage.includes('bucket')) {
+        return NextResponse.json(
+          {
+            error: `Bucket '${IMAGEM_BUCKET}' não encontrado. Verifique se o bucket existe no Supabase.`,
+            details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+          },
+          { status: 500 }
+        )
+      }
+      
+      // Se o erro é de permissão, dar mensagem sobre políticas RLS
+      if (errorMessage.includes('permission') || errorMessage.includes('policy') || errorMessage.includes('403') || errorMessage.toLowerCase().includes('forbidden')) {
+        return NextResponse.json(
+          {
+            error: 'Permissão negada para fazer upload. Verifique as políticas RLS do bucket no Supabase.',
+            details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+          },
+          { status: 403 }
+        )
+      }
+      
       return NextResponse.json(
         {
-          error: `Falha ao enviar imagem: ${uploadError.message || 'Erro desconhecido'}`,
+          error: `Falha ao enviar imagem: ${errorMessage}`,
+          details: process.env.NODE_ENV === 'development' ? uploadError : undefined
         },
         { status: 500 }
       )
     }
 
-    const { data: publicData } = supabase.storage.from(IMAGEM_BUCKET).getPublicUrl(objectPath)
-    const imagemUrl = publicData.publicUrl
+    // Obter URL pública da imagem (funciona com qualquer cliente)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const imagemUrl = `${supabaseUrl}/storage/v1/object/public/${IMAGEM_BUCKET}/${objectPath}`
 
-    // Atualizar resposta com a URL da imagem
+    // Atualizar resposta com a URL da imagem (usar cliente do usuário para RLS)
     const { error: updateError } = await supabase
       .from('respostas')
       .update({ imagem_url: imagemUrl })
