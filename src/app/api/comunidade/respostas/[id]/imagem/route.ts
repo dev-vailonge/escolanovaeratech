@@ -5,34 +5,30 @@ import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 const IMAGEM_BUCKET = 'comunidade-imagens'
 
 /**
- * Tenta criar o bucket se não existir
+ * Tenta verificar se o bucket existe usando admin se disponível
  */
-async function ensureBucketExists(supabase: any): Promise<boolean> {
+async function ensureBucketExists(): Promise<boolean> {
   try {
-    const { data: buckets } = await supabase.storage.listBuckets()
-    const bucketExists = buckets?.some((b: { id: string }) => b.id === IMAGEM_BUCKET)
-
-    if (bucketExists) {
-      return true
+    // Tentar usar admin primeiro (tem permissões para listar buckets)
+    try {
+      const { getSupabaseAdmin } = await import('@/lib/server/supabaseAdmin')
+      const supabaseAdmin = getSupabaseAdmin()
+      const { data: buckets } = await supabaseAdmin.storage.listBuckets()
+      const bucketExists = buckets?.some((b: { id: string }) => b.id === IMAGEM_BUCKET)
+      
+      if (bucketExists) {
+        return true
+      }
+    } catch (adminError) {
+      // Se não tiver service role key, continuar tentando criar
+      console.warn('⚠️ Não foi possível usar Supabase Admin para verificar bucket:', adminError)
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-    // Em desenvolvimento, se não tiver service role key, tentar criar bucket com anon key
-    if (!supabaseUrl) {
-      console.error('Variáveis de ambiente do Supabase não configuradas')
-      return false
-    }
-    
-    // Se não tiver service role key em desenvolvimento, não bloquear
-    if (!serviceRoleKey && process.env.NODE_ENV === 'development') {
-      console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY não configurado em desenvolvimento. Bucket pode não ser criado automaticamente.')
-      return false
-    }
-    
-    if (!serviceRoleKey) {
-      console.error('SUPABASE_SERVICE_ROLE_KEY não configurado')
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('Variáveis de ambiente do Supabase não configuradas para criar bucket')
       return false
     }
 
@@ -85,6 +81,7 @@ export async function POST(
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
     const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : undefined
     
+    // Usar getSupabaseClient para operações que precisam do contexto do usuário (RLS)
     const supabase = await getSupabaseClient(accessToken)
     const respostaId = params.id
 
@@ -144,31 +141,55 @@ export async function POST(
     const arrayBuffer = await imagemFile.arrayBuffer()
     const fileBuffer = Buffer.from(arrayBuffer)
 
-    // Garantir que o bucket existe
-    const bucketExists = await ensureBucketExists(supabase)
+    // Garantir que o bucket existe (tenta usar admin se disponível)
+    const bucketExists = await ensureBucketExists()
     if (!bucketExists) {
-      // Em desenvolvimento, apenas avisar mas não bloquear
-      if (process.env.NODE_ENV === 'development') {
-        console.warn(`⚠️ Bucket '${IMAGEM_BUCKET}' não existe. Continuando em desenvolvimento...`)
+      return NextResponse.json(
+        {
+          error: `Bucket '${IMAGEM_BUCKET}' não existe. Por favor, crie o bucket através do endpoint /api/comunidade/setup-bucket ou pelo painel do Supabase.`,
+        },
+        { status: 500 }
+      )
+    }
+
+    // Tentar fazer upload usando admin primeiro (tem permissões), senão usar cliente do usuário
+    let uploadError = null
+    let uploadSuccess = false
+    
+    try {
+      // Tentar com admin primeiro
+      const { getSupabaseAdmin } = await import('@/lib/server/supabaseAdmin')
+      const supabaseAdmin = getSupabaseAdmin()
+      const { error: adminUploadError } = await supabaseAdmin.storage
+        .from(IMAGEM_BUCKET)
+        .upload(objectPath, fileBuffer, {
+          contentType: imagemFile.type,
+          upsert: true,
+        })
+      
+      if (!adminUploadError) {
+        uploadSuccess = true
       } else {
-        return NextResponse.json(
-          {
-            error: `Bucket '${IMAGEM_BUCKET}' não existe e não foi possível criá-lo automaticamente.`,
-          },
-          { status: 500 }
-        )
+        uploadError = adminUploadError
+      }
+    } catch (adminError) {
+      // Se admin não disponível, tentar com cliente do usuário
+      console.warn('⚠️ Não foi possível usar Supabase Admin para upload, tentando com cliente do usuário')
+      const { error: clientUploadError } = await supabase.storage
+        .from(IMAGEM_BUCKET)
+        .upload(objectPath, fileBuffer, {
+          contentType: imagemFile.type,
+          upsert: true,
+        })
+      
+      if (!clientUploadError) {
+        uploadSuccess = true
+      } else {
+        uploadError = clientUploadError
       }
     }
 
-    // Fazer upload da imagem
-    const { error: uploadError } = await supabase.storage
-      .from(IMAGEM_BUCKET)
-      .upload(objectPath, fileBuffer, {
-        contentType: imagemFile.type,
-        upsert: true,
-      })
-
-    if (uploadError) {
+    if (!uploadSuccess && uploadError) {
       console.error('Erro upload imagem:', uploadError)
       return NextResponse.json(
         {
@@ -178,10 +199,11 @@ export async function POST(
       )
     }
 
-    const { data: publicData } = supabase.storage.from(IMAGEM_BUCKET).getPublicUrl(objectPath)
-    const imagemUrl = publicData.publicUrl
+    // Obter URL pública da imagem (funciona com qualquer cliente)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const imagemUrl = `${supabaseUrl}/storage/v1/object/public/${IMAGEM_BUCKET}/${objectPath}`
 
-    // Atualizar resposta com a URL da imagem
+    // Atualizar resposta com a URL da imagem (usar cliente do usuário para RLS)
     const { error: updateError } = await supabase
       .from('respostas')
       .update({ imagem_url: imagemUrl })
