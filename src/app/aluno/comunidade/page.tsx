@@ -755,7 +755,7 @@ export default function ComunidadePage() {
         return
       }
 
-      const res = await fetch(`/api/comunidade/perguntas/${perguntaId}`, {
+      const res = await fetch(`/api/comunidade/perguntas/${perguntaId}/delete`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,

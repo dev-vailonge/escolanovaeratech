@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { responderComunidade } from '@/lib/server/gamification'
 import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -18,7 +18,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const userId = await requireUserIdFromBearer(request)
     console.log('👤 [API] Usuário ID:', userId)
     
-    const supabase = getSupabaseAdmin()
+    // Extrair accessToken do header para usar com getSupabaseClient
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : undefined
+    
+    const supabase = await getSupabaseClient(accessToken)
 
     // Verificar se o usuário tem acesso full
     console.log('🔍 [API] Buscando usuário no banco:', userId)
@@ -141,14 +145,37 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: 'conteudo muito curto' }, { status: 400 })
     }
 
-    const result = await responderComunidade({ userId, perguntaId, conteudo })
+    console.log('📤 [API] Chamando responderComunidade...')
+    const result = await responderComunidade({ userId, perguntaId, conteudo, accessToken })
+    console.log('✅ [API] Resposta criada com sucesso:', result.respostaId)
+    
     return NextResponse.json({ success: true, result })
   } catch (error: any) {
-    console.error('Erro ao responder comunidade:', error)
+    console.error('❌ [API] Erro ao responder comunidade:', error)
+    console.error('❌ [API] Stack trace:', error?.stack)
+    
+    // Erros de autenticação
     if (String(error?.message || '').includes('Não autenticado')) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
-    return NextResponse.json({ error: 'Erro ao responder' }, { status: 500 })
+    
+    // Erros de permissão
+    if (String(error?.message || '').includes('permission') || String(error?.message || '').includes('RLS')) {
+      return NextResponse.json({ 
+        error: 'Erro de permissão. Verifique se você tem permissão para responder esta pergunta.',
+        details: process.env.NODE_ENV === 'development' ? error?.message : undefined
+      }, { status: 403 })
+    }
+    
+    // Outros erros - retornar mensagem específica em dev, genérica em prod
+    const errorMessage = process.env.NODE_ENV === 'development' 
+      ? error?.message || 'Erro ao responder pergunta'
+      : 'Erro ao responder pergunta. Tente novamente mais tarde.'
+    
+    return NextResponse.json({ 
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+    }, { status: 500 })
   }
 }
 
