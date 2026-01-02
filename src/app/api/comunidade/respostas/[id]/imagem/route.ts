@@ -108,7 +108,7 @@ export async function POST(
       }
       
       // Se o erro é de permissão, dar mensagem sobre políticas RLS
-      if (errorMessage.includes('permission') || errorMessage.includes('policy') || uploadError.statusCode === '403') {
+      if (errorMessage.includes('permission') || errorMessage.includes('policy') || errorMessage.includes('403') || errorMessage.toLowerCase().includes('forbidden')) {
         return NextResponse.json(
           {
             error: 'Permissão negada para fazer upload. Verifique as políticas RLS do bucket no Supabase.',
