@@ -112,7 +112,7 @@ export async function DELETE(
       }
     })
 
-    // Remover entradas de XP do histórico
+    // Remover entradas de XP do histórico (não crítico se falhar - apenas logar)
     // Buscar e remover a entrada de XP da pergunta
     const { error: deleteXpPerguntaError } = await supabase
       .from('user_xp_history')
@@ -121,10 +121,11 @@ export async function DELETE(
       .eq('source_id', perguntaId) // source_id é salvo como UUID direto, sem prefixo
 
     if (deleteXpPerguntaError) {
-      console.error('Erro ao remover XP da pergunta:', deleteXpPerguntaError)
+      console.warn('⚠️ Aviso: Erro ao remover XP da pergunta do histórico (não crítico):', deleteXpPerguntaError)
+      // Não bloquear deleção por erro de XP history (pode ser RLS ou não existir)
     }
 
-    // Remover entradas de XP das respostas
+    // Remover entradas de XP das respostas (não crítico se falhar - apenas logar)
     if (respostas && respostas.length > 0) {
       const respostaIds = respostas.map((r) => r.id) // UUID direto, sem prefixo
 
@@ -136,22 +137,25 @@ export async function DELETE(
           .in('source_id', respostaIds)
 
         if (deleteXpRespostasError) {
-          console.error('Erro ao remover XP das respostas:', deleteXpRespostasError)
+          console.warn('⚠️ Aviso: Erro ao remover XP das respostas do histórico (não crítico):', deleteXpRespostasError)
+          // Não bloquear deleção por erro de XP history (pode ser RLS ou não existir)
         }
       }
     }
 
-    // Deletar votos da pergunta
+    // Deletar votos da pergunta (não crítico se falhar - apenas logar)
     const { error: deleteVotosError } = await supabase
       .from('pergunta_votos')
       .delete()
       .eq('pergunta_id', perguntaId)
 
     if (deleteVotosError) {
-      console.error('Erro ao deletar votos:', deleteVotosError)
+      console.warn('⚠️ Aviso: Erro ao deletar votos (não crítico, continuando):', deleteVotosError)
+      // Não bloquear deleção por erro de votos (pode ser RLS)
+      // Se houver constraint de foreign key, o erro virá ao tentar deletar a pergunta
     }
 
-    // Deletar respostas (incluindo comentários)
+    // Deletar respostas (incluindo comentários) - APENAS SE HOUVER respostas
     if (respostas && respostas.length > 0) {
       const { error: deleteRespostasError } = await supabase
         .from('respostas')
@@ -159,20 +163,68 @@ export async function DELETE(
         .eq('pergunta_id', perguntaId)
 
       if (deleteRespostasError) {
-        console.error('Erro ao deletar respostas:', deleteRespostasError)
-        return NextResponse.json({ error: 'Erro ao deletar respostas' }, { status: 500 })
+        console.error('❌ Erro ao deletar respostas:', deleteRespostasError)
+        console.error('❌ Detalhes do erro:', {
+          message: deleteRespostasError.message,
+          details: deleteRespostasError.details,
+          hint: deleteRespostasError.hint,
+          code: deleteRespostasError.code,
+        })
+        
+        // Se for erro de RLS, dar mensagem específica
+        if (deleteRespostasError.message?.includes('permission') || deleteRespostasError.message?.includes('policy') || deleteRespostasError.code === '42501') {
+          return NextResponse.json({ 
+            error: 'Erro de permissão ao deletar respostas. Verifique as políticas RLS no Supabase.',
+            details: process.env.NODE_ENV === 'development' ? deleteRespostasError.message : undefined
+          }, { status: 403 })
+        }
+        
+        return NextResponse.json({ 
+          error: 'Erro ao deletar respostas',
+          details: process.env.NODE_ENV === 'development' ? deleteRespostasError.message : undefined
+        }, { status: 500 })
       }
     }
 
-    // Deletar a pergunta
+    // Deletar a pergunta (operação principal)
     const { error: deletePerguntaError } = await supabase
       .from('perguntas')
       .delete()
       .eq('id', perguntaId)
 
     if (deletePerguntaError) {
-      console.error('Erro ao deletar pergunta:', deletePerguntaError)
-      return NextResponse.json({ error: 'Erro ao deletar pergunta' }, { status: 500 })
+      console.error('❌ Erro ao deletar pergunta:', deletePerguntaError)
+      console.error('❌ Detalhes do erro:', {
+        message: deletePerguntaError.message,
+        details: deletePerguntaError.details,
+        hint: deletePerguntaError.hint,
+        code: deletePerguntaError.code,
+        perguntaId,
+        userId,
+        isAdmin,
+        isAuthor,
+      })
+      
+      // Se for erro de RLS, dar mensagem específica
+      if (deletePerguntaError.message?.includes('permission') || deletePerguntaError.message?.includes('policy') || deletePerguntaError.code === '42501') {
+        return NextResponse.json({ 
+          error: 'Erro de permissão ao deletar pergunta. Verifique as políticas RLS no Supabase.',
+          details: process.env.NODE_ENV === 'development' ? deletePerguntaError.message : undefined
+        }, { status: 403 })
+      }
+      
+      // Se for erro de foreign key constraint, dar mensagem específica
+      if (deletePerguntaError.code === '23503' || deletePerguntaError.message?.includes('foreign key') || deletePerguntaError.message?.includes('constraint')) {
+        return NextResponse.json({ 
+          error: 'Não é possível deletar a pergunta. Ainda existem dados relacionados (respostas, votos, etc).',
+          details: process.env.NODE_ENV === 'development' ? deletePerguntaError.message : undefined
+        }, { status: 409 })
+      }
+      
+      return NextResponse.json({ 
+        error: 'Erro ao deletar pergunta',
+        details: process.env.NODE_ENV === 'development' ? deletePerguntaError.message : undefined
+      }, { status: 500 })
     }
 
     // Recalcular XP e nível de cada usuário afetado
