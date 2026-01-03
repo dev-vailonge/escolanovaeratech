@@ -76,6 +76,14 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const visualizacaoRegistrada = useRef(false)
 
+  // Estados para autocomplete de menções
+  const [mentionUsers, setMentionUsers] = useState<Array<{ id: string; name: string; avatar_url?: string | null }>>([])
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false)
+  const [mentionQuery, setMentionQuery] = useState('')
+  const [mentionIndex, setMentionIndex] = useState(-1)
+  const respostaTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const mentionDropdownRef = useRef<HTMLDivElement>(null)
+
   const canCreate = hasFullAccess(user)
   const currentUserId = user?.id
 
@@ -185,6 +193,116 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
       setError(e?.message || 'Erro ao curtir pergunta')
     }
   }
+
+  // Detectar @ e buscar usuários para resposta
+  const handleRespostaTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value
+    setRespostaConteudo(text)
+
+    const cursorPosition = e.target.selectionStart
+    const textBeforeCursor = text.substring(0, cursorPosition)
+    
+    // Encontrar o último @ antes do cursor
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@')
+    
+    if (lastAtIndex !== -1) {
+      // Verificar se há espaço após o @ (se sim, não é uma menção ativa)
+      const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1)
+      const hasSpace = textAfterAt.includes(' ') || textAfterAt.includes('\n')
+      
+      if (!hasSpace) {
+        const query = textAfterAt.trim()
+        setMentionQuery(query)
+        setMentionIndex(lastAtIndex)
+        return
+      }
+    }
+
+    // Se não encontrou @ válido, esconder sugestões
+    setShowMentionSuggestions(false)
+    setMentionQuery('')
+    setMentionIndex(-1)
+  }
+
+  // Selecionar usuário da lista (resposta)
+  const selectRespostaUser = (user: { id: string; name: string }) => {
+    if (mentionIndex === -1) return
+
+    const text = respostaConteudo
+    const textBeforeAt = text.substring(0, mentionIndex)
+    const textAfterCursor = text.substring(respostaTextareaRef.current?.selectionStart || text.length)
+    
+    const newText = textBeforeAt + `@${user.name} ` + textAfterCursor
+    setRespostaConteudo(newText)
+    setShowMentionSuggestions(false)
+    setMentionQuery('')
+    setMentionIndex(-1)
+
+    // Focar no textarea novamente e posicionar cursor após o nome
+    setTimeout(() => {
+      if (respostaTextareaRef.current) {
+        const newCursorPos = textBeforeAt.length + user.name.length + 2 // @nome + espaço
+        respostaTextareaRef.current.focus()
+        respostaTextareaRef.current.setSelectionRange(newCursorPos, newCursorPos)
+      }
+    }, 0)
+  }
+
+  // Buscar sugestões de usuários para resposta
+  useEffect(() => {
+    const fetchMentionSuggestions = async () => {
+      if (mentionQuery.length > 0) {
+        try {
+          const token = await getAuthToken()
+          const res = await fetch(`/api/users/search?q=${mentionQuery}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          })
+          const json = await res.json()
+          if (json.success && json.users) {
+            setMentionUsers(json.users)
+          } else {
+            setMentionUsers([])
+          }
+        } catch (e) {
+          console.error('Erro ao buscar sugestões de menção:', e)
+          setMentionUsers([])
+        }
+      } else {
+        setMentionUsers([])
+      }
+    }
+
+    const handler = setTimeout(() => {
+      if (showMentionSuggestions) {
+        fetchMentionSuggestions()
+      }
+    }, 200) // Debounce para sugestões
+
+    return () => clearTimeout(handler)
+  }, [mentionQuery, showMentionSuggestions])
+
+  // Fechar sugestões ao clicar fora (resposta)
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        mentionDropdownRef.current &&
+        !mentionDropdownRef.current.contains(event.target as Node) &&
+        respostaTextareaRef.current &&
+        !respostaTextareaRef.current.contains(event.target as Node)
+      ) {
+        setShowMentionSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  // Atualizar showMentionSuggestions quando mentionQuery mudar
+  useEffect(() => {
+    setShowMentionSuggestions(mentionQuery.length > 0)
+  }, [mentionQuery])
 
   const submitResposta = async () => {
     if (!pergunta || !user?.id) return
@@ -636,18 +754,65 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
           )}>
             Sua Resposta
           </h2>
-          <textarea
-            value={respostaConteudo}
-            onChange={(e) => setRespostaConteudo(e.target.value)}
-            placeholder="Escreva sua resposta..."
-            rows={6}
-            className={cn(
-              'w-full px-3 py-2 rounded-lg border text-sm mb-3',
-              theme === 'dark'
-                ? 'bg-black/30 border-white/10 text-white placeholder-gray-500'
-                : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+          <div className="mb-3">
+            <textarea
+              ref={respostaTextareaRef}
+              value={respostaConteudo}
+              onChange={handleRespostaTextChange}
+              placeholder="Digite @username para mencionar alguém..."
+              rows={6}
+              className={cn(
+                'w-full px-3 py-2 rounded-lg border text-sm',
+                theme === 'dark'
+                  ? 'bg-black/30 border-white/10 text-white placeholder-gray-500'
+                  : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+              )}
+            />
+            {/* Dropdown de sugestões de menções */}
+            {showMentionSuggestions && mentionUsers.length > 0 && (
+              <div
+                ref={mentionDropdownRef}
+                className={cn(
+                  'z-50 mt-1 max-h-48 overflow-y-auto rounded-lg border shadow-lg',
+                  theme === 'dark'
+                    ? 'bg-black/95 border-white/20 backdrop-blur-md'
+                    : 'bg-white border-gray-200 shadow-xl'
+                )}
+              >
+                {mentionUsers.map((user) => (
+                  <button
+                    key={user.id}
+                    type="button"
+                    onClick={() => selectRespostaUser(user)}
+                    className={cn(
+                      'w-full text-left px-3 py-2 text-xs hover:bg-opacity-50 transition-colors border-b last:border-b-0 flex items-center gap-2',
+                      theme === 'dark'
+                        ? 'hover:bg-white/10 text-white border-white/5'
+                        : 'hover:bg-yellow-50 text-gray-900 border-gray-100'
+                    )}
+                  >
+                    {user.avatar_url ? (
+                      <img
+                        src={user.avatar_url}
+                        alt={user.name}
+                        className="w-5 h-5 rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className={cn(
+                        'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0',
+                        theme === 'dark'
+                          ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-black'
+                          : 'bg-gradient-to-br from-yellow-600 to-yellow-700 text-white'
+                      )}>
+                        {user.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="truncate">{user.name}</span>
+                  </button>
+                ))}
+              </div>
             )}
-          />
+          </div>
           <div className="mb-3">
             <QuestionImageUpload
               onImageChange={setRespostaImagem}

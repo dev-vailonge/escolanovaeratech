@@ -15,12 +15,20 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: 'perguntaId inválido' }, { status: 400 })
     }
     
-    const userId = await requireUserIdFromBearer(request)
-    console.log('👤 [API] Usuário ID:', userId)
-    
-    // Extrair accessToken do header para usar com getSupabaseClient
+    // Extrair accessToken do header ANTES de chamar requireUserIdFromBearer
+    // Isso permite usar o token mesmo se a validação falhar
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
     const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : undefined
+    
+    console.log('🔑 [API] Token presente:', !!accessToken, accessToken ? `(${accessToken.substring(0, 20)}...)` : '')
+    
+    if (!accessToken) {
+      console.error('❌ [API] Token não encontrado no header Authorization')
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+    
+    const userId = await requireUserIdFromBearer(request)
+    console.log('👤 [API] Usuário ID:', userId)
     
     const supabase = await getSupabaseClient(accessToken)
 
@@ -111,7 +119,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
           return NextResponse.json({ error: 'conteudo muito curto' }, { status: 400 })
         }
 
-        const result = await responderComunidade({ userId, perguntaId, conteudo })
+        // IMPORTANTE: Passar accessToken também quando usuário é criado automaticamente
+        const result = await responderComunidade({ userId, perguntaId, conteudo, accessToken })
         return NextResponse.json({ success: true, result })
       } catch (authErr: any) {
         console.error('❌ [API] Erro ao verificar/criar usuário:', authErr)

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
 import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { extractMentions } from '@/lib/mentionParser'
 
 export async function GET(
@@ -168,7 +167,8 @@ export async function POST(
     // Criar notificações para usuários mencionados
     if (mentionedUsers.length > 0 && comentario.id) {
       try {
-        const adminSupabase = getSupabaseAdmin()
+        // Usar getSupabaseClient com accessToken (não precisa de service role key)
+        const notifSupabase = await getSupabaseClient(accessToken)
         const agora = new Date()
         const dataFim = new Date()
         dataFim.setDate(dataFim.getDate() + 7) // Notificação válida por 7 dias
@@ -180,7 +180,7 @@ export async function POST(
           // Não notificar o próprio autor
           if (mentionedUser.id === userId) continue
 
-          const { error: notifError } = await adminSupabase
+          const { error: notifError } = await notifSupabase
             .from('notificacoes')
             .insert({
               titulo: '💬 Você foi mencionado',
@@ -196,6 +196,7 @@ export async function POST(
 
           if (notifError) {
             console.error(`❌ Erro ao criar notificação para usuário ${mentionedUser.id}:`, notifError)
+            console.error('❌ Detalhes do erro:', JSON.stringify(notifError, null, 2))
           } else {
             console.log(`✅ Notificação criada para usuário ${mentionedUser.id} (${mentionedUser.name})`)
           }
@@ -203,6 +204,7 @@ export async function POST(
       } catch (notifErr: any) {
         // Não falhar a criação do comentário se notificação falhar
         console.error('❌ Erro ao criar notificações de menção:', notifErr)
+        console.error('❌ Stack trace:', notifErr?.stack)
       }
     }
 
