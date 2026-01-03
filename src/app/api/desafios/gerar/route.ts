@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
+import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/requestAuth'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { gerarDesafioComIA } from '@/lib/openai'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 
 // Tecnologias organizadas por categoria (mesma lista da página de desafios)
 const TECNOLOGIAS_VALIDAS = [
@@ -47,7 +47,9 @@ export async function POST(request: Request) {
       )
     }
 
-    const supabase = getSupabaseAdmin()
+    // Obter accessToken e criar cliente Supabase
+    const accessToken = getAccessTokenFromBearer(request)
+    const supabase = await getSupabaseClient(accessToken)
 
     // ====================================================
     // REGRA: SÓ PODE GERAR SE NÃO TIVER DESAFIO ATIVO
@@ -103,33 +105,65 @@ export async function POST(request: Request) {
     // ====================================================
     // CACHE: TENTAR REUTILIZAR DESAFIO EXISTENTE
     // ====================================================
+    // Lógica: Buscar desafios existentes e verificar se o usuário já completou
+    // Se já completou → gerar novo | Se não completou → usar existente
 
-    // Buscar IDs de desafios já atribuídos ao usuário
-    const desafiosJaAtribuidos = atribuicoes?.map(a => a.desafio_id) || []
-
-    // Buscar desafio existente que o aluno ainda não recebeu
-    let query = supabase
+    // Buscar TODOS os desafios existentes com tecnologia + nível
+    const { data: desafiosExistentes } = await supabase
       .from('desafios')
-      .select('*')
+      .select('id')
       .eq('gerado_por_ia', true)
       .eq('tecnologia', tecnologia)
       .eq('dificuldade', nivel)
-      .limit(1)
-
-    // Excluir desafios já atribuídos
-    if (desafiosJaAtribuidos.length > 0) {
-      query = query.not('id', 'in', `(${desafiosJaAtribuidos.join(',')})`)
-    }
-
-    const { data: desafioExistente } = await query.maybeSingle()
 
     let desafioFinal
+    let desafioReutilizado = null
 
-    if (desafioExistente) {
-      // ✅ ECONOMIA DE TOKENS: Reutilizar desafio existente!
-      console.log(`♻️ Reutilizando desafio existente: ${desafioExistente.id}`)
-      desafioFinal = desafioExistente
-    } else {
+    if (desafiosExistentes && desafiosExistentes.length > 0) {
+      // Verificar quais desafios o usuário já completou
+      const desafioIds = desafiosExistentes.map(d => d.id)
+      
+      // Buscar submissões aprovadas do usuário para esses desafios
+      const { data: submissoesAprovadas } = await supabase
+        .from('desafio_submissions')
+        .select('desafio_id')
+        .eq('user_id', userId)
+        .in('desafio_id', desafioIds)
+        .eq('status', 'aprovado')
+
+      const desafiosCompletadosIds = new Set(submissoesAprovadas?.map(s => s.desafio_id) || [])
+      
+      // Buscar também em user_desafio_progress (backup)
+      const { data: progressCompletos } = await supabase
+        .from('user_desafio_progress')
+        .select('desafio_id')
+        .eq('user_id', userId)
+        .eq('completo', true)
+        .in('desafio_id', desafioIds)
+
+      progressCompletos?.forEach(p => desafiosCompletadosIds.add(p.desafio_id))
+
+      // Encontrar um desafio que o usuário NÃO completou
+      const desafioNaoCompletado = desafiosExistentes.find(d => !desafiosCompletadosIds.has(d.id))
+
+      if (desafioNaoCompletado) {
+        // ✅ Usuário ainda não completou este desafio → reutilizar
+        const { data: desafioData } = await supabase
+          .from('desafios')
+          .select('*')
+          .eq('id', desafioNaoCompletado.id)
+          .single()
+
+        if (desafioData) {
+          console.log(`♻️ Reutilizando desafio existente (usuário ainda não completou): ${desafioData.id}`)
+          desafioFinal = desafioData
+          desafioReutilizado = desafioData
+        }
+      }
+    }
+
+    // Se não encontrou desafio para reutilizar (todos foram completados ou não existe nenhum)
+    if (!desafioFinal) {
       // ❌ Não há desafio disponível - gerar novo com OpenAI
       console.log(`🤖 Gerando novo desafio com OpenAI: ${tecnologia} / ${nivel}`)
       
@@ -190,7 +224,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       desafio: desafioFinal,
-      reutilizado: !!desafioExistente // Indica se foi reutilizado ou gerado novo
+      reutilizado: !!desafioReutilizado // Indica se foi reutilizado ou gerado novo
     })
 
   } catch (error: any) {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/requestAuth'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { validateGitHubRepo } from '@/lib/github'
 import { notificarAdminsNovaSubmissao } from '@/lib/server/desafioNotifications'
 
@@ -40,7 +40,9 @@ export async function POST(
       )
     }
 
-    const supabase = getSupabaseAdmin()
+    // Obter accessToken e criar cliente Supabase
+    const accessToken = getAccessTokenFromBearer(request)
+    const supabase = await getSupabaseClient(accessToken)
 
     // Verificar se o desafio existe
     const { data: desafio, error: desafioError } = await supabase
