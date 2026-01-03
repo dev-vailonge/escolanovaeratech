@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = getSupabaseAdmin()
+    // Extrair accessToken se disponível (não é obrigatório para visualização)
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : undefined
+    
+    const supabase = await getSupabaseClient(accessToken)
     const perguntaId = params.id
 
     if (!perguntaId) {
