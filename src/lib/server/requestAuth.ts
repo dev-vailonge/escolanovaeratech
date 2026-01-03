@@ -4,21 +4,40 @@ import { serverConfig } from '@/lib/server-config'
 export async function requireUserIdFromBearer(request: Request): Promise<string> {
   const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.error('❌ [requireUserIdFromBearer] Header Authorization não encontrado ou formato inválido')
     throw new Error('Não autenticado')
   }
 
   const token = authHeader.slice('Bearer '.length).trim()
-  if (!token) throw new Error('Não autenticado')
+  if (!token) {
+    console.error('❌ [requireUserIdFromBearer] Token vazio após extrair do header')
+    throw new Error('Não autenticado')
+  }
+
+  console.log('🔍 [requireUserIdFromBearer] Validando token...', token.substring(0, 20) + '...')
 
   const supabase = createClient(serverConfig.supabase.url, serverConfig.supabase.anonKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   })
 
   const { data, error } = await supabase.auth.getUser(token)
-  if (error || !data?.user?.id) {
+  
+  if (error) {
+    console.error('❌ [requireUserIdFromBearer] Erro ao validar token:', error)
+    console.error('❌ [requireUserIdFromBearer] Detalhes do erro:', {
+      message: error.message,
+      status: error.status,
+      name: error.name
+    })
+    throw new Error('Não autenticado')
+  }
+  
+  if (!data?.user?.id) {
+    console.error('❌ [requireUserIdFromBearer] Token válido mas sem user.id:', data)
     throw new Error('Não autenticado')
   }
 
+  console.log('✅ [requireUserIdFromBearer] Token válido para usuário:', data.user.id)
   return data.user.id
 }
 
