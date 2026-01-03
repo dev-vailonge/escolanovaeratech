@@ -42,6 +42,7 @@ export default function DesafiosPage() {
   // Estados
   const [activeTab, setActiveTab] = useState<'gerar' | 'meus'>('gerar')
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false) // Loading sem bloquear UI
   const [meusDesafios, setMeusDesafios] = useState<MeuDesafio[]>([])
   const [error, setError] = useState<string>('')
   const [success, setSuccess] = useState<string>('')
@@ -65,14 +66,19 @@ export default function DesafiosPage() {
   const [isDesistindo, setIsDesistindo] = useState(false)
 
   // Carregar desafios do usuário
-  const loadMeusDesafios = useCallback(async () => {
+  const loadMeusDesafios = useCallback(async (showFullLoading = false) => {
     if (!authUser?.id) {
       setLoading(false)
       return
     }
 
     try {
-      setLoading(true)
+      // Usar loading completo apenas no primeiro carregamento
+      if (showFullLoading) {
+        setLoading(true)
+      } else {
+        setRefreshing(true)
+      }
       console.log('🔍 [loadMeusDesafios] Carregando desafios para usuário:', authUser.id)
 
       // Buscar atribuições do usuário
@@ -152,11 +158,12 @@ export default function DesafiosPage() {
       console.error('Erro ao carregar meus desafios:', err)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }, [authUser?.id])
 
   useEffect(() => {
-    loadMeusDesafios()
+    loadMeusDesafios(true) // Primeiro carregamento com loading completo
   }, [loadMeusDesafios])
 
   // Verificar se pode gerar novo desafio
@@ -221,15 +228,17 @@ export default function DesafiosPage() {
         throw new Error(json?.error || 'Erro ao gerar desafio')
       }
 
+      // Fechar modal e mostrar feedback imediatamente
       setShowSelectionModal(false)
-      setSuccess('🎯 Desafio gerado com sucesso! Confira na aba "Meus Desafios".')
-      
-      // Aguardar um pouco para garantir que a transação foi commitada
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // Recarregar desafios
-      await loadMeusDesafios()
+      setSuccess('🎯 Desafio gerado com sucesso!')
       setActiveTab('meus')
+      
+      // Recarregar desafios em background (sem bloquear UI)
+      loadMeusDesafios(false).catch(err => {
+        console.error('Erro ao recarregar desafios:', err)
+        // Em caso de erro, tentar novamente após um delay
+        setTimeout(() => loadMeusDesafios(false), 1000)
+      })
     } catch (e: any) {
       setSelectionError(e?.message || 'Erro ao gerar desafio')
     } finally {
@@ -283,11 +292,23 @@ export default function DesafiosPage() {
         throw new Error(json?.error || 'Erro ao submeter')
       }
 
+      // Fechar modal e mostrar feedback imediatamente
       setSuccess('✅ Solução enviada! Aguarde a aprovação do admin.')
       setShowSubmitModal(false)
       setGithubUrl('')
+      
+      // Update otimista: marcar desafio como aguardando aprovação
+      if (desafioParaSubmeter) {
+        setMeusDesafios(prev => prev.map(d => 
+          d.id === desafioParaSubmeter.id 
+            ? { ...d, status: 'aguardando_aprovacao' as const }
+            : d
+        ))
+      }
       setDesafioParaSubmeter(null)
-      await loadMeusDesafios()
+      
+      // Recarregar em background para garantir sincronização
+      loadMeusDesafios(false).catch(err => console.error('Erro ao recarregar:', err))
     } catch (e: any) {
       setError(e?.message || 'Erro ao submeter')
     } finally {
@@ -350,10 +371,22 @@ export default function DesafiosPage() {
         throw new Error(json?.error || 'Erro ao desistir')
       }
 
+      // Fechar modal e mostrar feedback imediatamente
       setSuccess('⚠️ Você desistiu do desafio e perdeu 20 XP.')
       setShowDesistirModal(false)
+      
+      // Update otimista: marcar desafio como desistiu
+      if (desafioParaDesistir) {
+        setMeusDesafios(prev => prev.map(d => 
+          d.id === desafioParaDesistir.id 
+            ? { ...d, status: 'desistiu' as const }
+            : d
+        ))
+      }
       setDesafioParaDesistir(null)
-      await loadMeusDesafios()
+      
+      // Recarregar em background para garantir sincronização
+      loadMeusDesafios(false).catch(err => console.error('Erro ao recarregar:', err))
     } catch (e: any) {
       setError(e?.message || 'Erro ao desistir')
     } finally {
@@ -456,6 +489,17 @@ export default function DesafiosPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      {/* Indicador de refresh sutil (não bloqueia UI) */}
+      {refreshing && (
+        <div className={cn(
+          "flex items-center justify-center gap-2 text-sm py-2",
+          theme === 'dark' ? "text-gray-400" : "text-gray-600"
+        )}>
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span>Atualizando...</span>
+        </div>
+      )}
+      
       {/* Modal de Seleção de Tecnologia e Nível */}
       <Modal 
         isOpen={showSelectionModal} 
