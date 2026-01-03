@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
 import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
+import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { extractMentions } from '@/lib/mentionParser'
 
 export async function GET(
@@ -149,6 +150,47 @@ export async function POST(
       .select('id, name, level, avatar_url')
       .eq('id', userId)
       .single()
+
+    // Criar notificações para usuários mencionados
+    if (mentionedUsers.length > 0 && comentario.id) {
+      try {
+        const adminSupabase = getSupabaseAdmin()
+        const agora = new Date()
+        const dataFim = new Date()
+        dataFim.setDate(dataFim.getDate() + 7) // Notificação válida por 7 dias
+
+        const autorNome = autor?.name || 'Alguém'
+        const actionUrl = `/aluno/comunidade/pergunta/${respostaPai.pergunta_id}`
+
+        for (const mentionedUser of mentionedUsers) {
+          // Não notificar o próprio autor
+          if (mentionedUser.id === userId) continue
+
+          const { error: notifError } = await adminSupabase
+            .from('notificacoes')
+            .insert({
+              titulo: '💬 Você foi mencionado',
+              mensagem: `${autorNome} mencionou você em um comentário.`,
+              tipo: 'info',
+              data_inicio: agora.toISOString(),
+              data_fim: dataFim.toISOString(),
+              publico_alvo: 'todos',
+              target_user_id: mentionedUser.id,
+              action_url: actionUrl,
+              created_by: null,
+            })
+
+          if (notifError) {
+            console.error(`❌ Erro ao criar notificação para usuário ${mentionedUser.id}:`, notifError)
+          } else {
+            console.log(`✅ Notificação criada para usuário ${mentionedUser.id} (${mentionedUser.name})`)
+          }
+        }
+      } catch (notifErr: any) {
+        // Não falhar a criação do comentário se notificação falhar
+        console.error('❌ Erro ao criar notificações de menção:', notifErr)
+      }
+    }
 
     const comentarioFormatado = {
       id: comentario.id,
