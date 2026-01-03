@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { completarQuiz } from '@/lib/server/gamification'
-import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
+import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/requestAuth'
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const userId = await requireUserIdFromBearer(request)
+    const accessToken = getAccessTokenFromBearer(request)
 
     const quizId = params.id
     if (!quizId) {
@@ -18,7 +19,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: 'pontuacao inválida (0-100)' }, { status: 400 })
     }
 
-    const result = await completarQuiz({ userId, quizId, pontuacao })
+    const result = await completarQuiz({ userId, quizId, pontuacao, accessToken })
     return NextResponse.json({ success: true, result })
   } catch (error: any) {
     console.error('Erro ao completar quiz:', error)

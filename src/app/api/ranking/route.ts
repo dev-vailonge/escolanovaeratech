@@ -21,8 +21,10 @@ export async function GET(request: NextRequest) {
       try {
         // Passar accessToken para ajudar com RLS se necessário
         ranking = await getRanking({ type, limit: 50, accessToken: accessToken || undefined })
-        console.log(`[API /ranking] Ranking ${type} carregado: ${ranking.length} usuários`)
-        setCachedRanking(type, ranking)
+        if (ranking) {
+          console.log(`[API /ranking] Ranking ${type} carregado: ${ranking.length} usuários`)
+          setCachedRanking(type, ranking)
+        }
       } catch (rankingError: any) {
         console.error('Erro ao buscar ranking do banco:', {
           message: rankingError?.message,
@@ -39,7 +41,7 @@ export async function GET(request: NextRequest) {
       console.log(`[API /ranking] Usando cache para ranking ${type}: ${ranking.length} usuários`)
     }
 
-    const currentUser = ranking.find((r: any) => r.id === userId)
+    const currentUser = ranking?.find((r: any) => r.id === userId)
 
     const response = NextResponse.json({
       success: true,

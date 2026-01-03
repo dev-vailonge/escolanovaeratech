@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
-import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
+import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/requestAuth'
+import { insertXpEntry } from '@/lib/server/gamification'
 
 export async function POST(request: NextRequest) {
   try {
     const userId = await requireUserIdFromBearer(request)
+    const accessToken = getAccessTokenFromBearer(request)
     const body = await request.json()
     const { amount, source, sourceId, description } = body
 
@@ -23,29 +24,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabaseAdmin = getSupabaseAdmin()
+    // Usar insertXpEntry que já gerencia tudo (histórico, sincronização de nível, etc)
+    await insertXpEntry({
+      userId,
+      source: source as 'aula' | 'quiz' | 'desafio' | 'comunidade' | 'hotmart',
+      sourceId: sourceId || '',
+      amount,
+      description: description || undefined,
+      accessToken,
+    })
 
-    const { data, error } = await supabaseAdmin
-      .from('user_xp_history')
-      .insert({
-        user_id: userId,
-        amount,
-        source,
-        source_id: sourceId || null,
-        description: description || null,
-      })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Erro ao adicionar XP:', error)
-      return NextResponse.json(
-        { error: error.message || 'Erro ao adicionar XP' },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json({ success: true, data })
+    return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('Erro na API de adicionar XP:', error)
     if (error.message?.includes('Não autenticado')) {
@@ -55,7 +44,7 @@ export async function POST(request: NextRequest) {
       )
     }
     return NextResponse.json(
-      { error: 'Erro ao adicionar XP' },
+      { error: error.message || 'Erro ao adicionar XP' },
       { status: 500 }
     )
   }
