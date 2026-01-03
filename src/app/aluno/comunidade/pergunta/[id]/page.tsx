@@ -589,7 +589,8 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
                   )}
                 >
                   <Folder className="w-3.5 h-3.5" />
-                  {pergunta.categoria}
+                  <span>Categoria:</span>
+                  <span>{pergunta.categoria}</span>
                 </span>
               </div>
             )}

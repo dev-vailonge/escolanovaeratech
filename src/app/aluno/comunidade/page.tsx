@@ -1656,7 +1656,8 @@ export default function ComunidadePage() {
                           )}
                         >
                           <Folder className="w-3.5 h-3.5" />
-                          {pergunta.categoria}
+                          <span>Categoria:</span>
+                          <span>{pergunta.categoria}</span>
                         </span>
                       </div>
                     )}
