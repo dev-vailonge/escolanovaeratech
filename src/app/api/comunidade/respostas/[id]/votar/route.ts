@@ -138,19 +138,32 @@ export async function POST(request: Request, { params }: { params: { id: string 
       // Calcular XP total já dado para esta resposta
       const xpTotalJaDado = (todosXp || []).reduce((sum, entry) => sum + (entry.amount || 0), 0)
       
-      // Quando marcada como certa, o total deve ser 100 XP
-      // Se já tem menos que 100, dar a diferença
-      const xpNecessario = XP_CONSTANTS.comunidade.respostaCerta - xpTotalJaDado
+      // Verificar se já foi dado XP por "resposta marcada como certa" (100 XP)
+      // Procurar por entrada com descrição que indica "marcada como certa"
+      const { data: xpJaDadoMarcadaCerta } = await supabase
+        .from('user_xp_history')
+        .select('id, amount')
+        .eq('user_id', resposta.autor_id)
+        .eq('source', 'comunidade')
+        .eq('source_id', respostaId)
+        .ilike('description', '%marcada como certa%')
+        .maybeSingle()
       
-      if (xpNecessario > 0) {
-        console.log(`✅ [API] Dando ${xpNecessario} XP ao autor da resposta (marcada como válida). Total: ${xpTotalJaDado + xpNecessario} XP`)
+      // Se já foi dado XP por "marcada como certa", não dar novamente
+      if (xpJaDadoMarcadaCerta) {
+        console.log('⚠️ [API] XP por resposta marcada como certa já foi dado anteriormente. Não dando novamente.')
+        console.log('📝 [API] XP original foi dado em:', xpJaDadoMarcadaCerta.id)
+      } else {
+        // Dar 100 XP quando marcada como certa (além do 1 XP da criação da resposta)
+        const xpMarcadaCerta = XP_CONSTANTS.comunidade.respostaCerta
+        console.log(`✅ [API] Dando ${xpMarcadaCerta} XP ao autor da resposta (marcada como certa). Total: ${xpTotalJaDado + xpMarcadaCerta} XP`)
         
         try {
           await insertXpEntry({
             userId: resposta.autor_id,
             source: 'comunidade',
             sourceId: respostaId,
-            amount: xpNecessario,
+            amount: xpMarcadaCerta,
             description: 'Resposta marcada como certa na comunidade',
             accessToken: accessToken,
           })
@@ -161,14 +174,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
         } catch (xpInsertError: any) {
           console.error('❌ [API] Erro ao inserir XP:', xpInsertError)
           // Não falhar a operação se der erro ao inserir XP, apenas logar
-        }
-      } else {
-        console.log('⚠️ [API] XP já foi dado para esta resposta anteriormente. Não dando novamente.')
-        if (existingXp) {
-          console.log('📝 [API] XP original foi dado em:', existingXp.created_at)
-        }
-        if (xpCount && xpCount > 0) {
-          console.log(`⚠️ [API] Encontrados ${xpCount} registro(s) de XP para esta resposta`)
         }
       }
 
@@ -181,7 +186,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         .eq('source_id', respostaId)
       
       const xpTotalDado = (xpFinal || []).reduce((sum, entry) => sum + (entry.amount || 0), 0)
-      const xpFoiDado = xpNecessario > 0
+      const xpFoiDado = !xpJaDadoMarcadaCerta
       
       return NextResponse.json({
         success: true,
@@ -189,7 +194,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         xp: xpTotalDado,
         xpFoiDado,
         mensagem: xpFoiDado 
-          ? `Resposta marcada como certa! O autor ganhou ${xpNecessario} XP adicional (total: ${xpTotalDado} XP).`
+          ? `Resposta marcada como certa! O autor ganhou ${XP_CONSTANTS.comunidade.respostaCerta} XP (total: ${xpTotalDado} XP).`
           : `Resposta marcada como certa! O autor já tinha ${xpTotalDado} XP.`
       })
     }

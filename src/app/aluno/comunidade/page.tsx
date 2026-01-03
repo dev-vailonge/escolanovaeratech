@@ -891,10 +891,20 @@ export default function ComunidadePage() {
     }
   }, [filteredPerguntas])
 
-  // Resolvidas = perguntas que têm uma resposta marcada como certa (melhorRespostaId)
+  // Resolvidas = perguntas que têm uma resposta marcada como certa
+  // Verificar tanto pelo campo resolvida quanto pelo melhorRespostaId
+  const perguntasResolvidas = filteredPerguntas.filter(p => {
+    const temMelhorResposta = p.melhorRespostaId !== null && p.melhorRespostaId !== undefined && p.melhorRespostaId !== ''
+    const estaResolvida = p.resolvida === true
+    return temMelhorResposta || estaResolvida
+  }).length
+  
   // Abertas = perguntas que não têm resposta marcada como certa
-  const perguntasResolvidas = filteredPerguntas.filter(p => p.melhorRespostaId !== null && p.melhorRespostaId !== undefined).length
-  const perguntasAbertas = filteredPerguntas.filter(p => !p.melhorRespostaId || p.melhorRespostaId === null).length
+  const perguntasAbertas = filteredPerguntas.filter(p => {
+    const temMelhorResposta = p.melhorRespostaId !== null && p.melhorRespostaId !== undefined && p.melhorRespostaId !== ''
+    const estaResolvida = p.resolvida === true
+    return !temMelhorResposta && !estaResolvida
+  }).length
 
   if (loading) {
     return (
@@ -1539,12 +1549,14 @@ export default function ComunidadePage() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2 md:gap-4">
-        <div className={cn(
-          "backdrop-blur-md border rounded-xl p-3 md:p-4 transition-colors duration-300",
-          theme === 'dark'
-            ? "bg-black/20 border-white/10"
-            : "bg-white border-yellow-400/90 shadow-md"
-        )}>
+        <div
+          className={cn(
+            "backdrop-blur-md border rounded-xl p-3 md:p-4",
+            theme === 'dark'
+              ? "bg-black/20 border-white/10"
+              : "bg-white border-yellow-400/90 shadow-md"
+          )}
+        >
           <div className="flex flex-col md:flex-row items-center md:items-center gap-1 md:gap-3">
             <MessageSquare className="w-4 h-4 md:w-5 md:h-5 text-blue-500 flex-shrink-0" />
             <div className="text-center md:text-left">
@@ -1563,12 +1575,14 @@ export default function ComunidadePage() {
             </div>
           </div>
         </div>
-        <div className={cn(
-          "backdrop-blur-md border rounded-xl p-3 md:p-4 transition-colors duration-300",
-          theme === 'dark'
-            ? "bg-black/20 border-white/10"
-            : "bg-white border-yellow-400/90 shadow-md"
-        )}>
+        <div
+          className={cn(
+            "backdrop-blur-md border rounded-xl p-3 md:p-4",
+            theme === 'dark'
+              ? "bg-black/20 border-white/10"
+              : "bg-white border-yellow-400/90 shadow-md"
+          )}
+        >
           <div className="flex flex-col md:flex-row items-center md:items-center gap-1 md:gap-3">
             <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-500 flex-shrink-0" />
             <div className="text-center md:text-left">
@@ -1587,12 +1601,14 @@ export default function ComunidadePage() {
             </div>
           </div>
         </div>
-        <div className={cn(
-          "backdrop-blur-md border rounded-xl p-3 md:p-4 transition-colors duration-300",
-          theme === 'dark'
-            ? "bg-black/20 border-white/10"
-            : "bg-white border-yellow-400/90 shadow-md"
-        )}>
+        <div
+          className={cn(
+            "backdrop-blur-md border rounded-xl p-3 md:p-4",
+            theme === 'dark'
+              ? "bg-black/20 border-white/10"
+              : "bg-white border-yellow-400/90 shadow-md"
+          )}
+        >
           <div className="flex flex-col md:flex-row items-center md:items-center gap-1 md:gap-3">
             <MessageSquare className={cn(
               "w-4 h-4 md:w-5 md:h-5 flex-shrink-0",
@@ -1998,11 +2014,19 @@ export default function ComunidadePage() {
 
                     <div className="flex items-center gap-2">
                       <button
-                        className="btn-primary flex items-center justify-center gap-2"
+                        className={cn(
+                          "flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors",
+                          pergunta.resolvida
+                            ? theme === 'dark'
+                              ? "bg-green-500/20 border-2 border-green-500 text-green-400 hover:bg-green-500/30"
+                              : "bg-green-50 border-2 border-green-500 text-green-700 hover:bg-green-100"
+                            : "btn-primary"
+                        )}
                         onClick={() => router.push(`/aluno/comunidade/pergunta/${pergunta.id}`)}
+                        title={pergunta.resolvida ? "Ver pergunta resolvida" : "Ver e responder pergunta"}
                       >
                         <MessageSquare className="w-4 h-4" />
-                        <span>Contribuir</span>
+                        <span>{pergunta.resolvida ? "Resolvida" : "Contribuir"}</span>
                       </button>
                   </div>
 
