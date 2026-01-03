@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, ThumbsUp, CheckCircle2, Eye, MessageSquare, Tag, Send, Trash2 } from 'lucide-react'
+import { ArrowLeft, ThumbsUp, CheckCircle2, Eye, MessageSquare, Tag, Send, Trash2, Folder } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
@@ -578,22 +578,39 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              {pergunta.tags.map((tag, idx) => (
+            {pergunta.categoria && (
+              <div className="mb-3">
                 <span
-                  key={idx}
                   className={cn(
-                    'flex items-center gap-1 px-2 py-1 text-xs rounded border',
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full',
                     theme === 'dark'
-                      ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                      : 'bg-blue-100 text-blue-700 border-blue-300'
+                      ? 'bg-yellow-500/30 text-yellow-300 border border-yellow-500/50'
+                      : 'bg-yellow-500/10 text-yellow-700 border border-yellow-500/30'
                   )}
                 >
-                  <Tag className="w-3 h-3" />
-                  {tag}
+                  <Folder className="w-3.5 h-3.5" />
+                  {pergunta.categoria}
                 </span>
-              ))}
-            </div>
+              </div>
+            )}
+            {pergunta.tags.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap mb-4">
+                {pergunta.tags.map((tag, idx) => (
+                  <span
+                    key={idx}
+                    className={cn(
+                      'inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded border',
+                      theme === 'dark'
+                        ? 'bg-transparent text-blue-400 border-blue-500/40'
+                        : 'bg-transparent text-blue-600 border-blue-300'
+                    )}
+                  >
+                    <Tag className="w-3 h-3" />
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
