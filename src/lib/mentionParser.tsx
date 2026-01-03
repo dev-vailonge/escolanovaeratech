@@ -7,20 +7,22 @@ import React from 'react'
 /**
  * Extrai menções do formato @username de um texto
  * Suporta nomes compostos (ex: @Beto Imlau)
+ * Para no primeiro espaço após o nome ou pontuação
  * @param text Texto para analisar
  * @returns Array de usernames mencionados (sem o @)
  */
 export function extractMentions(text: string): string[] {
-  // Regex que captura @ seguido de uma ou mais palavras (separadas por espaços)
-  // Para na primeira pontuação, quebra de linha, ou fim do texto
+  // Regex que captura @ seguido de uma ou mais palavras (separadas por um único espaço)
+  // Para no primeiro espaço duplo, pontuação, quebra de linha, ou fim do texto
   // Exemplos: @Beto, @Beto Imlau, @João Silva
-  const mentionRegex = /@([\w\u00C0-\u017F]+(?:\s+[\w\u00C0-\u017F]+)*)/g
+  // NÃO captura: @Beto  olha (dois espaços), @Beto, olha (vírgula)
+  const mentionRegex = /@([\w\u00C0-\u017F]+(?:\s[\w\u00C0-\u017F]+)*?)(?=\s{2,}|\s*[^\w\s\u00C0-\u017F]|$)/g
   const matches = text.matchAll(mentionRegex)
   const mentions: string[] = []
   const seen = new Set<string>()
 
   for (const match of matches) {
-    // Pegar o nome completo (pode ter espaços)
+    // Pegar o nome completo (pode ter espaços, mas sem espaços extras no final)
     const username = match[1].trim()
     const usernameLower = username.toLowerCase()
     
