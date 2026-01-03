@@ -111,7 +111,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
           return NextResponse.json({ error: 'conteudo muito curto' }, { status: 400 })
         }
 
-        const result = await responderComunidade({ userId, perguntaId, conteudo })
+        // IMPORTANTE: Passar accessToken também quando usuário é criado automaticamente
+        const result = await responderComunidade({ userId, perguntaId, conteudo, accessToken })
         return NextResponse.json({ success: true, result })
       } catch (authErr: any) {
         console.error('❌ [API] Erro ao verificar/criar usuário:', authErr)
