@@ -322,7 +322,7 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
   return (
     <div className="mt-2">
       <div className="flex items-center gap-3">
-        {/* Botão para ver/comentar */}
+        {/* Botão para ver/comentar - sempre visível para permitir visualização */}
         <button
           onClick={() => setExpanded(!expanded)}
           className={cn(
@@ -336,7 +336,9 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
               ? 'Ocultar comentários' 
               : displayCount > 0 
                 ? `Ver ${displayCount} comentário${displayCount !== 1 ? 's' : ''}`
-                : 'Comentar'}
+                : canCreate
+                  ? 'Comentar'
+                  : 'Ver comentários'}
           </span>
         </button>
 

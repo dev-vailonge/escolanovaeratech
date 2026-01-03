@@ -184,6 +184,7 @@ export async function GET(request: Request) {
 
     const perguntasComRespostas = perguntasFiltradas?.map((p) => ({
       ...p,
+      melhorRespostaId: p.melhor_resposta_id, // Mapear snake_case para camelCase
       respostas: countMapTotal.get(p.id) || 0, // Contagem total (respostas + comentários) para exibição
       curtida: votosMap.get(p.id) || false,
       autor: autorMap.get(p.autor_id) || {
@@ -212,6 +213,7 @@ export async function POST(request: Request) {
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
     const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : undefined
     
+    // Usar getSupabaseClient com accessToken para que RLS funcione corretamente
     const supabase = await getSupabaseClient(accessToken)
 
     // Verificar se o usuário tem acesso full
@@ -309,6 +311,7 @@ export async function POST(request: Request) {
         sourceId: pergunta.id,
         amount: XP_CONSTANTS.comunidade.pergunta,
         description: `Pergunta criada: ${titulo}`,
+        accessToken: accessToken,
       })
       console.log(`✅ [API] ${XP_CONSTANTS.comunidade.pergunta} XP dado ao criar pergunta`)
     } catch (xpError: any) {

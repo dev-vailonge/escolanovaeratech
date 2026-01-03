@@ -146,6 +146,25 @@ export async function POST(request: Request, { params }: { params: { id: string 
       )
     }
 
+    // Verificar se a pergunta já está resolvida (tem melhor resposta marcada)
+    const { data: pergunta, error: perguntaError } = await supabase
+      .from('perguntas')
+      .select('id, resolvida, melhor_resposta_id')
+      .eq('id', perguntaId)
+      .single()
+
+    if (perguntaError) {
+      console.error('❌ [API] Erro ao buscar pergunta:', perguntaError)
+      return NextResponse.json({ error: 'Pergunta não encontrada' }, { status: 404 })
+    }
+
+    if (pergunta?.resolvida === true) {
+      return NextResponse.json(
+        { error: 'Esta pergunta já foi marcada como resolvida. Não é possível adicionar novas respostas ou comentários.' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json().catch(() => ({}))
     console.log('📝 [API] Conteúdo da resposta:', body?.conteudo?.substring(0, 50) + '...')
     const conteudo = String(body?.conteudo || '').trim()

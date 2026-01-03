@@ -754,8 +754,34 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
+      {/* Mensagem quando pergunta está resolvida */}
+      {pergunta.resolvida && (
+        <div className={cn(
+          'backdrop-blur-md border rounded-xl p-4 md:p-6',
+          theme === 'dark'
+            ? 'bg-green-500/10 border-green-500/30'
+            : 'bg-green-50 border-green-400/90 shadow-md'
+        )}>
+          <div className="flex items-center gap-2 mb-2">
+            <CheckCircle2 className="w-5 h-5 text-green-500" />
+            <h2 className={cn(
+              'text-lg font-bold',
+              theme === 'dark' ? 'text-green-300' : 'text-green-700'
+            )}>
+              Pergunta Resolvida
+            </h2>
+          </div>
+          <p className={cn(
+            'text-sm',
+            theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+          )}>
+            Esta pergunta já foi marcada como resolvida. Não é possível adicionar novas respostas ou comentários.
+          </p>
+        </div>
+      )}
+
       {/* Formulário de Resposta */}
-      {canCreate && (
+      {canCreate && !pergunta.resolvida && (
         <div className={cn(
           'backdrop-blur-md border rounded-xl p-4 md:p-6',
           theme === 'dark'
@@ -970,7 +996,7 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
                         {formatDateTime(resposta.dataCriacao)}
                       </span>
                     </div>
-                    {isOwner && !resposta.melhorResposta && canCreate && (
+                    {isOwner && !resposta.melhorResposta && canCreate && !pergunta.resolvida && (
                       <button
                         className={cn(
                           'px-2 py-1 text-xs rounded border flex items-center gap-1',
@@ -1030,7 +1056,7 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
                   <CommentThread
                     respostaId={resposta.id}
                     perguntaId={pergunta.id}
-                    canCreate={canCreate}
+                    canCreate={canCreate && !pergunta.resolvida}
                     refreshTrigger={refreshTrigger}
                   />
                 </div>
