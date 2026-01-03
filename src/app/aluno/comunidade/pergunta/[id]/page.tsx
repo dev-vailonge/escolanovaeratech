@@ -759,10 +759,21 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
                             ? 'border-yellow-400/50 text-yellow-400 hover:bg-yellow-400/10'
                             : 'border-yellow-500 text-yellow-600 hover:bg-yellow-50'
                         )}
-                        onClick={() => votarResposta(resposta.id)}
+                        onClick={() => {
+                          if (window.confirm(
+                            '⚠️ ATENÇÃO: Esta ação não pode ser desfeita!\n\n' +
+                            'Ao marcar esta resposta como certa:\n' +
+                            '• Apenas uma resposta pode ser marcada como certa por pergunta\n' +
+                            '• O autor desta resposta receberá XP\n' +
+                            '• Esta ação não poderá ser revertida\n\n' +
+                            'Deseja continuar?'
+                          )) {
+                            votarResposta(resposta.id)
+                          }
+                        }}
                       >
                         <ThumbsUp className="w-3 h-3" />
-                        Marcar como válida
+                        Marcar como resposta certa
                       </button>
                     )}
                     {isOwner && resposta.melhorResposta && (
@@ -773,7 +784,7 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
                           : 'border-green-300 text-green-700 bg-green-50'
                       )}>
                         <CheckCircle2 className="w-3 h-3" />
-                        Resposta válida
+                        Resposta certa
                       </span>
                     )}
                   </div>
