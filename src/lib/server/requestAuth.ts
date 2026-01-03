@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js'
 import { serverConfig } from '@/lib/server-config'
 
 export async function requireUserIdFromBearer(request: Request): Promise<string> {
@@ -76,9 +75,3 @@ export function getAccessTokenFromBearer(request: Request): string | undefined {
   const token = authHeader.slice('Bearer '.length).trim()
   return token || undefined
 }
-
-
-
-
-
-

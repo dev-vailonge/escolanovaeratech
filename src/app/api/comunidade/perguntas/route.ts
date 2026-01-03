@@ -3,7 +3,6 @@ import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
 import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { insertXpEntry } from '@/lib/server/gamification'
 import { XP_CONSTANTS } from '@/lib/gamification/constants'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 
 export async function GET(request: Request) {
   try {
@@ -29,6 +28,7 @@ export async function GET(request: Request) {
     const categoria = searchParams.get('categoria')
     const resolvida = searchParams.get('resolvida')
     const search = searchParams.get('search')
+    const order = searchParams.get('order') || 'mais_nova' // 'mais_nova' ou 'mais_antiga'
 
     let query = supabase
       .from('perguntas')
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
         created_at,
         updated_at
       `)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: order === 'mais_antiga' })
 
     if (autorId) {
       query = query.eq('autor_id', autorId)
@@ -184,6 +184,7 @@ export async function GET(request: Request) {
 
     const perguntasComRespostas = perguntasFiltradas?.map((p) => ({
       ...p,
+      melhorRespostaId: p.melhor_resposta_id, // Mapear snake_case para camelCase
       respostas: countMapTotal.get(p.id) || 0, // Contagem total (respostas + comentários) para exibição
       curtida: votosMap.get(p.id) || false,
       autor: autorMap.get(p.autor_id) || {
@@ -208,16 +209,12 @@ export async function POST(request: Request) {
     const userId = await requireUserIdFromBearer(request)
     console.log('✅ [API] Usuário autenticado:', userId)
     
-    // Para POST, sempre tentar usar admin primeiro (precisa de permissões de escrita)
-    let supabase
-    try {
-      supabase = getSupabaseAdmin()
-    } catch (adminError) {
-      // Se não tiver service role key, usar helper com fallback
-      const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
-      const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : null
-      supabase = await getSupabaseClient(accessToken || undefined)
-    }
+    // Extrair accessToken do header para usar com getSupabaseClient
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : undefined
+    
+    // Usar getSupabaseClient com accessToken para que RLS funcione corretamente
+    const supabase = await getSupabaseClient(accessToken)
 
     // Verificar se o usuário tem acesso full
     console.log('🔍 [API] Verificando acesso do usuário...')
@@ -314,6 +311,7 @@ export async function POST(request: Request) {
         sourceId: pergunta.id,
         amount: XP_CONSTANTS.comunidade.pergunta,
         description: `Pergunta criada: ${titulo}`,
+        accessToken: accessToken,
       })
       console.log(`✅ [API] ${XP_CONSTANTS.comunidade.pergunta} XP dado ao criar pergunta`)
     } catch (xpError: any) {

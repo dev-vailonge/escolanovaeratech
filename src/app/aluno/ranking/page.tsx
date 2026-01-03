@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Trophy, TrendingUp, HelpCircle, MessageSquare, CheckCircle, Target, FileText, Award, Lock, RefreshCw } from 'lucide-react'
+import { Trophy, TrendingUp, HelpCircle, MessageSquare, CheckCircle, Target, FileText, Award, Lock, RefreshCw, Crown } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/AuthContext'
 import { supabase } from '@/lib/supabase'
 import Modal from '@/components/ui/Modal'
 import { calculateLevel, getLevelBorderColor, getLevelRequirements, getLevelCategory } from '@/lib/gamification'
+import BadgeDisplay from '@/components/comunidade/BadgeDisplay'
 
 type RankingType = 'mensal' | 'geral'
 
@@ -689,6 +690,55 @@ export default function RankingPage() {
                   </div>
                 )
               })}
+            </div>
+          </div>
+
+          {/* Seção Top Member */}
+          <div>
+            <div className="flex items-center gap-2 mb-2 md:mb-3">
+              <Crown className={cn(
+                "w-4 h-4 md:w-5 md:h-5 flex-shrink-0",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )} />
+              <h3 className={cn(
+                "text-base md:text-lg font-bold",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                Top Member
+              </h3>
+            </div>
+            <div className={cn(
+              "p-3 md:p-4 rounded-lg border",
+              theme === 'dark' 
+                ? "bg-black/30 border-white/10" 
+                : "bg-gray-50 border-gray-200"
+            )}>
+              <div className="flex items-start gap-3 mb-3">
+                <BadgeDisplay badgeType="top_member" className="flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className={cn(
+                    "text-xs md:text-sm mb-2 leading-relaxed",
+                    theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                  )}>
+                    Ganhe o badge <strong>Top Member</strong> sendo o usuário com mais curtidas nas suas perguntas na comunidade.
+                  </p>
+                  <div className={cn(
+                    "text-xs leading-relaxed space-y-1",
+                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                  )}>
+                    <p>
+                      <strong>Requisitos:</strong>
+                    </p>
+                    <ul className="list-disc list-inside space-y-0.5 ml-2">
+                      <li>Ter pelo menos 50 curtidas totais nas suas perguntas</li>
+                      <li>Ser o usuário com mais curtidas (ranking #1)</li>
+                    </ul>
+                    <p className="mt-2 italic">
+                      Nota: Curtir perguntas não dá XP, mas aumenta sua reputação na comunidade!
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
