@@ -97,7 +97,8 @@ export default function ComunidadePage() {
   const [perguntaImagemUrlAtual, setPerguntaImagemUrlAtual] = useState<string | null>(null)
   const [showExemplos, setShowExemplos] = useState(false)
   const [badgesMap, setBadgesMap] = useState<Map<string, string[]>>(new Map())
-  const [categoriasDisponiveis, setCategoriasDisponiveis] = useState<string[]>([])
+  const categoriasPadrao = ['Android', 'iOS', 'Frontend', 'Backend', 'Análise de Dados']
+  const [categoriasDisponiveis, setCategoriasDisponiveis] = useState<string[]>(categoriasPadrao)
   
   const router = useRouter()
   
@@ -136,8 +137,8 @@ export default function ComunidadePage() {
       if (json.success && json.perguntas) {
         setPerguntas(json.perguntas)
         
-        // Extrair categorias únicas das perguntas
-        const categoriasUnicas = new Set<string>()
+        // Extrair categorias únicas das perguntas (incluindo customizadas)
+        const categoriasUnicas = new Set<string>(categoriasPadrao) // Começar com categorias padrão
         json.perguntas.forEach((p: Pergunta) => {
           if (p.categoria && p.categoria.trim()) {
             categoriasUnicas.add(p.categoria.trim())
@@ -145,9 +146,8 @@ export default function ComunidadePage() {
         })
         
         // Ordenar categorias: padrão primeiro, depois customizadas
-        const categoriasPadrao = ['Android', 'iOS', 'Frontend', 'Backend', 'Análise de Dados']
         const categoriasOrdenadas = [
-          ...categoriasPadrao.filter(c => categoriasUnicas.has(c)),
+          ...categoriasPadrao, // Sempre incluir todas as padrão
           ...Array.from(categoriasUnicas).filter(c => !categoriasPadrao.includes(c)).sort()
         ]
         
