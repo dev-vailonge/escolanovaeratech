@@ -13,6 +13,7 @@ import { getAuthToken } from '@/lib/getAuthToken'
 import QuestionImageUpload from '@/components/comunidade/QuestionImageUpload'
 import BadgeDisplay from '@/components/comunidade/BadgeDisplay'
 import { getUserBadges } from '@/lib/badges'
+import { CURSOS } from '@/lib/constants/cursos'
 
 type FilterOwner = 'all' | 'mine'
 type FilterStatus = 'all' | 'answered' | 'unanswered'
