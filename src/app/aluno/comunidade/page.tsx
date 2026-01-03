@@ -886,8 +886,10 @@ export default function ComunidadePage() {
     }
   }, [filteredPerguntas])
 
-  const perguntasResolvidas = filteredPerguntas.filter(p => p.resolvida).length
-  const perguntasAbertas = filteredPerguntas.filter(p => !p.resolvida).length
+  // Resolvidas = perguntas que têm pelo menos uma resposta
+  // Abertas = perguntas que não têm respostas
+  const perguntasResolvidas = filteredPerguntas.filter(p => p.respostas > 0).length
+  const perguntasAbertas = filteredPerguntas.filter(p => p.respostas === 0).length
 
   if (loading) {
     return (
