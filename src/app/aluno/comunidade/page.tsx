@@ -1662,7 +1662,13 @@ export default function ComunidadePage() {
                       </div>
                     )}
                     {pergunta.tags.length > 0 && (
-                      <div className="flex items-center gap-1.5 flex-wrap mb-3">
+                      <div className="flex items-center gap-2 flex-wrap mb-3">
+                        <span className={cn(
+                          "text-xs font-medium",
+                          theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                        )}>
+                          Tags:
+                        </span>
                         {pergunta.tags.map((tag, idx) => (
                           <span
                             key={idx}
