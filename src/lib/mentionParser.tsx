@@ -13,10 +13,15 @@ import React from 'react'
  */
 export function extractMentions(text: string): string[] {
   // Regex que captura @ seguido de uma ou mais palavras (separadas por um único espaço)
-  // Para no primeiro espaço duplo, pontuação, quebra de linha, ou fim do texto
+  // Para no primeiro espaço duplo, espaço seguido de não-palavra, pontuação, ou fim do texto
   // Exemplos: @Beto, @Beto Imlau, @João Silva
-  // NÃO captura: @Beto  olha (dois espaços), @Beto, olha (vírgula)
-  const mentionRegex = /@([\w\u00C0-\u017F]+(?:\s[\w\u00C0-\u017F]+)*?)(?=\s{2,}|\s*[^\w\s\u00C0-\u017F]|$)/g
+  // NÃO captura: @Beto  olha (dois espaços), @Beto, olha (vírgula), @Beto Imlau muito (espaço + palavra comum)
+  // Lookahead: (?=\s+(?![a-zA-Z\u00C0-\u017F])|\s{2,}|[^\w\s\u00C0-\u017F]|$)
+  // - \s+(?![a-zA-Z\u00C0-\u017F]): espaço seguido de não-letra (para, mas não em "Beto Imlau muito")
+  // - \s{2,}: dois ou mais espaços
+  // - [^\w\s\u00C0-\u017F]: pontuação
+  // - $: fim da string
+  const mentionRegex = /@([\w\u00C0-\u017F]+(?:\s[\w\u00C0-\u017F]+)*?)(?=\s{2,}|[^\w\s\u00C0-\u017F]|$)/g
   const matches = text.matchAll(mentionRegex)
   const mentions: string[] = []
   const seen = new Set<string>()
@@ -75,7 +80,7 @@ export function formatMentions(
 ): React.ReactNode {
   const parts: React.ReactNode[] = []
   // Mesma regex do extractMentions para consistência
-  const mentionRegex = /@([\w\u00C0-\u017F]+(?:\s+[\w\u00C0-\u017F]+)*)/g
+  const mentionRegex = /@([\w\u00C0-\u017F]+(?:\s[\w\u00C0-\u017F]+)*?)(?=\s{2,}|[^\w\s\u00C0-\u017F]|$)/g
   let lastIndex = 0
   let match
 
