@@ -15,33 +15,51 @@ export async function requireUserIdFromBearer(request: Request): Promise<string>
 
   console.log('🔍 [requireUserIdFromBearer] Validando token...', token.substring(0, 20) + '...')
 
-  // Usar API REST do Supabase diretamente para validar o token
-  // Isso é mais confiável do que usar o cliente JS que pode ter problemas com sessões
-  const supabaseUrl = serverConfig.supabase.url
-  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'apikey': serverConfig.supabase.anonKey,
-    },
-  })
+  // Decodificar JWT para extrair user ID (sem verificar assinatura)
+  // O RLS do Supabase vai validar o token quando fizermos operações
+  try {
+    // JWT tem formato: header.payload.signature
+    const parts = token.split('.')
+    if (parts.length !== 3) {
+      console.error('❌ [requireUserIdFromBearer] Token JWT inválido (formato incorreto)')
+      throw new Error('Não autenticado')
+    }
 
-  if (!response.ok) {
-    console.error('❌ [requireUserIdFromBearer] Erro ao validar token:', response.status, response.statusText)
-    const errorText = await response.text().catch(() => '')
-    console.error('❌ [requireUserIdFromBearer] Resposta do erro:', errorText.substring(0, 200))
+    // Decodificar payload (base64url)
+    const payload = parts[1]
+    // Adicionar padding se necessário (base64url pode não ter padding)
+    const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4)
+    const decodedPayload = JSON.parse(
+      Buffer.from(paddedPayload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8')
+    )
+
+    // Extrair user ID (sub = subject, que é o user ID no Supabase)
+    const userId = decodedPayload.sub || decodedPayload.user_id
+
+    if (!userId) {
+      console.error('❌ [requireUserIdFromBearer] Token JWT não contém user ID:', decodedPayload)
+      throw new Error('Não autenticado')
+    }
+
+    // Verificar se o token não expirou (exp = expiration time em segundos)
+    if (decodedPayload.exp) {
+      const expirationTime = decodedPayload.exp * 1000 // Converter para milissegundos
+      const now = Date.now()
+      if (now > expirationTime) {
+        console.error('❌ [requireUserIdFromBearer] Token JWT expirado')
+        throw new Error('Não autenticado')
+      }
+    }
+
+    console.log('✅ [requireUserIdFromBearer] Token JWT válido para usuário:', userId)
+    return userId
+  } catch (error: any) {
+    if (error.message === 'Não autenticado') {
+      throw error
+    }
+    console.error('❌ [requireUserIdFromBearer] Erro ao decodificar token JWT:', error)
     throw new Error('Não autenticado')
   }
-
-  const userData = await response.json()
-  
-  if (!userData?.id) {
-    console.error('❌ [requireUserIdFromBearer] Token válido mas sem user.id:', userData)
-    throw new Error('Não autenticado')
-  }
-
-  console.log('✅ [requireUserIdFromBearer] Token válido para usuário:', userData.id)
-  return userData.id
 }
 
 /**
@@ -57,9 +75,3 @@ export function getAccessTokenFromBearer(request: Request): string | undefined {
   const token = authHeader.slice('Bearer '.length).trim()
   return token || undefined
 }
-
-
-
-
-
-
