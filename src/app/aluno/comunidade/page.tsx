@@ -1,10 +1,6 @@
 'use client'
 
-<<<<<<< Updated upstream
-import { MessageSquare, ThumbsUp, Eye, CheckCircle2, Tag, Search, Plus, Filter, Edit, Trash2, RefreshCw, ChevronDown, ChevronUp, Folder, Clock } from 'lucide-react'
-=======
-import { MessageSquare, ThumbsUp, Eye, CheckCircle2, Tag, Search, Plus, Filter, Edit, Trash2, RefreshCw, ChevronDown, ChevronUp, Folder, HelpCircle, Crown } from 'lucide-react'
->>>>>>> Stashed changes
+import { MessageSquare, ThumbsUp, Eye, CheckCircle2, Tag, Search, Plus, Filter, Edit, Trash2, RefreshCw, ChevronDown, ChevronUp, Folder, Clock, HelpCircle, Crown } from 'lucide-react'
 import { useState, useMemo, useRef, useLayoutEffect, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '@/lib/ThemeContext'
