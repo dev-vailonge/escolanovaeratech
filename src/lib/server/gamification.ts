@@ -1,6 +1,7 @@
 import { XP_CONSTANTS } from '@/lib/gamification/constants'
 import { calculateLevel } from '@/lib/gamification'
 import { getSupabaseClient } from './getSupabaseClient'
+import { getSupabaseAdmin } from './supabaseAdmin'
 
 export type XPSource = 'aula' | 'quiz' | 'desafio' | 'comunidade' | 'hotmart'
 
