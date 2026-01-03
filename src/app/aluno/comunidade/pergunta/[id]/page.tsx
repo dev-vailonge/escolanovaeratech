@@ -1001,7 +1001,8 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
                 </div>
               </div>
             </div>
-          ))
+            ))
+          })()
         )}
       </div>
     </div>
