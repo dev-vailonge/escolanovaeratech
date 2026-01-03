@@ -72,7 +72,8 @@ export function formatMentions(
   users: Array<{ id: string; name: string }>
 ): React.ReactNode {
   const parts: React.ReactNode[] = []
-  const mentionRegex = /@(\w+)/g
+  // Mesma regex do extractMentions para consistência
+  const mentionRegex = /@([\w\u00C0-\u017F]+(?:\s+[\w\u00C0-\u017F]+)*)/g
   let lastIndex = 0
   let match
 
@@ -84,7 +85,7 @@ export function formatMentions(
       parts.push(text.substring(lastIndex, match.index))
     }
 
-    const username = match[1]
+    const username = match[1].trim()
     const user = userMap.get(username.toLowerCase())
 
     if (user) {
