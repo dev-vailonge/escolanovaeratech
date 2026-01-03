@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 
 export async function GET(request: Request) {
   try {
-    const supabase = getSupabaseAdmin()
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : undefined
+    
+    const supabase = await getSupabaseClient(accessToken)
     const url = new URL(request.url)
     const userId = url.searchParams.get('userId')
 
@@ -69,7 +72,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: true, badges })
   } catch (error: any) {
     console.error('Erro ao buscar badges:', error)
-    return NextResponse.json({ error: 'Erro ao buscar badges' }, { status: 500 })
+    console.error('Stack trace:', error?.stack)
+    // Se for erro de RLS ou permissão, retornar array vazio em vez de erro 500
+    // Isso permite que a página carregue mesmo sem badges
+    if (String(error?.message || '').includes('permission') || String(error?.message || '').includes('RLS')) {
+      console.warn('⚠️ Erro de RLS ao buscar badges, retornando array vazio')
+      return NextResponse.json({ success: true, badges: [] })
+    }
+    const errorMessage = process.env.NODE_ENV === 'development' 
+      ? error?.message || 'Erro ao buscar badges'
+      : 'Erro ao buscar badges'
+    return NextResponse.json({ 
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+    }, { status: 500 })
   }
 }
 
