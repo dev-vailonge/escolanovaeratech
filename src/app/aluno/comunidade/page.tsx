@@ -17,7 +17,7 @@ import { CURSOS } from '@/lib/constants/cursos'
 
 type FilterOwner = 'all' | 'mine'
 type FilterStatus = 'all' | 'answered' | 'unanswered'
-type FilterTechnology = 'all' | 'HTML' | 'CSS' | 'JavaScript' | 'React' | 'Android' | 'Web Development'
+type FilterTechnology = 'all' | string
 
 interface Pergunta {
   id: string
@@ -97,6 +97,8 @@ export default function ComunidadePage() {
   const [perguntaImagemUrlAtual, setPerguntaImagemUrlAtual] = useState<string | null>(null)
   const [showExemplos, setShowExemplos] = useState(false)
   const [badgesMap, setBadgesMap] = useState<Map<string, string[]>>(new Map())
+  const categoriasPadrao = ['Android', 'iOS', 'Frontend', 'Backend', 'Análise de Dados']
+  const [categoriasDisponiveis, setCategoriasDisponiveis] = useState<string[]>(categoriasPadrao)
   
   const router = useRouter()
   
@@ -134,6 +136,22 @@ export default function ComunidadePage() {
 
       if (json.success && json.perguntas) {
         setPerguntas(json.perguntas)
+        
+        // Extrair categorias únicas das perguntas (incluindo customizadas)
+        const categoriasUnicas = new Set<string>(categoriasPadrao) // Começar com categorias padrão
+        json.perguntas.forEach((p: Pergunta) => {
+          if (p.categoria && p.categoria.trim()) {
+            categoriasUnicas.add(p.categoria.trim())
+          }
+        })
+        
+        // Ordenar categorias: padrão primeiro, depois customizadas
+        const categoriasOrdenadas = [
+          ...categoriasPadrao, // Sempre incluir todas as padrão
+          ...Array.from(categoriasUnicas).filter(c => !categoriasPadrao.includes(c)).sort()
+        ]
+        
+        setCategoriasDisponiveis(categoriasOrdenadas)
       }
     } catch (e: any) {
       console.error('Erro ao buscar perguntas:', e)
@@ -782,16 +800,10 @@ export default function ComunidadePage() {
   // Função utilitária para filtrar perguntas (filtros adicionais no frontend)
   const filteredPerguntas = useMemo(() => {
     return perguntas.filter((pergunta) => {
-      // Filtro por tecnologia (tags)
+      // Filtro por categoria
       if (filterTechnology !== 'all') {
-        const techLower = filterTechnology.toLowerCase()
-        const categoriaMatch = pergunta.categoria?.toLowerCase().includes(techLower)
-        const tagsMatch = pergunta.tags.some(tag => 
-          tag.toLowerCase().includes(techLower) ||
-          (techLower === 'javascript' && tag.toLowerCase().includes('js'))
-        )
-        
-        if (!categoriaMatch && !tagsMatch) {
+        const categoriaMatch = pergunta.categoria === filterTechnology
+        if (!categoriaMatch) {
           return false
         }
       }
@@ -1409,12 +1421,12 @@ export default function ComunidadePage() {
           />
         </div>
 
-        {/* Filtro por Tecnologia */}
+        {/* Filtro por Categoria */}
         <select
           value={filterTechnology}
           onChange={(e) => {
             scrollPositionRef.current = window.scrollY
-            setFilterTechnology(e.target.value as FilterTechnology)
+            setFilterTechnology(e.target.value)
           }}
           className={cn(
             "px-3 md:px-4 py-2 text-sm md:text-base backdrop-blur-md border rounded-lg focus:outline-none transition-colors duration-300",
@@ -1423,13 +1435,12 @@ export default function ComunidadePage() {
               : "bg-white border-yellow-400/90 text-gray-900 focus:border-yellow-500 shadow-sm"
           )}
         >
-          <option value="all">Todas as tecnologias</option>
-          <option value="HTML">HTML</option>
-          <option value="CSS">CSS</option>
-          <option value="JavaScript">JavaScript</option>
-          <option value="React">React</option>
-          <option value="Android">Android</option>
-          <option value="Web Development">Web Development</option>
+          <option value="all">Todas as categorias</option>
+          {categoriasDisponiveis.map((categoria) => (
+            <option key={categoria} value={categoria}>
+              {categoria}
+            </option>
+          ))}
         </select>
 
         {/* Filtro por Owner */}
@@ -1662,7 +1673,13 @@ export default function ComunidadePage() {
                       </div>
                     )}
                     {pergunta.tags.length > 0 && (
-                      <div className="flex items-center gap-1.5 flex-wrap mb-3">
+                      <div className="flex items-center gap-2 flex-wrap mb-3">
+                        <span className={cn(
+                          "text-xs font-medium",
+                          theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                        )}>
+                          Tags:
+                        </span>
                         {pergunta.tags.map((tag, idx) => (
                           <span
                             key={idx}

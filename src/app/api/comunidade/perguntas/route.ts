@@ -57,9 +57,8 @@ export async function GET(request: Request) {
       query = query.eq('categoria', categoria)
     }
 
-    if (resolvida !== null) {
-      query = query.eq('resolvida', resolvida === 'true')
-    }
+    // Não filtrar por resolvida aqui - vamos filtrar depois baseado na contagem de respostas
+    // O parâmetro 'resolvida' será usado para filtrar por "tem respostas" ou "não tem respostas"
 
     if (search) {
       query = query.or(`titulo.ilike.%${search}%,descricao.ilike.%${search}%`)
@@ -97,20 +96,44 @@ export async function GET(request: Request) {
 
     console.log(`[API /comunidade/perguntas] Perguntas encontradas: ${perguntas?.length || 0}`)
 
-    // Buscar contagem de respostas para cada pergunta
     const perguntaIds = perguntas?.map((p) => p.id) || []
-    const { data: respostasCount } = await supabase
+    
+    // Buscar contagem de respostas diretas (para filtro de status)
+    const { data: respostasDiretas } = await supabase
       .from('respostas')
       .select('pergunta_id')
       .in('pergunta_id', perguntaIds.length > 0 ? perguntaIds : ['00000000-0000-0000-0000-000000000000'])
+      .is('resposta_pai_id', null) // Apenas respostas diretas, não comentários
 
-    const countMap = new Map<string, number>()
-    respostasCount?.forEach((r) => {
-      countMap.set(r.pergunta_id, (countMap.get(r.pergunta_id) || 0) + 1)
+    const countMapDiretas = new Map<string, number>()
+    respostasDiretas?.forEach((r) => {
+      countMapDiretas.set(r.pergunta_id, (countMapDiretas.get(r.pergunta_id) || 0) + 1)
     })
 
+    // Buscar contagem total de respostas (incluindo comentários) para exibição
+    const { data: todasRespostas } = await supabase
+      .from('respostas')
+      .select('pergunta_id')
+      .in('pergunta_id', perguntaIds.length > 0 ? perguntaIds : ['00000000-0000-0000-0000-000000000000'])
+      // Sem filtro de resposta_pai_id - inclui todas as respostas e comentários
+
+    const countMapTotal = new Map<string, number>()
+    todasRespostas?.forEach((r) => {
+      countMapTotal.set(r.pergunta_id, (countMapTotal.get(r.pergunta_id) || 0) + 1)
+    })
+
+    // Aplicar filtro de status baseado em contagem de respostas diretas
+    let perguntasFiltradas = perguntas || []
+    if (resolvida !== null && resolvida !== undefined) {
+      const temRespostas = resolvida === 'true'
+      perguntasFiltradas = perguntas?.filter((p) => {
+        const numRespostasDiretas = countMapDiretas.get(p.id) || 0
+        return temRespostas ? numRespostasDiretas > 0 : numRespostasDiretas === 0
+      }) || []
+    }
+
     // Buscar dados dos autores
-    const autorIds = [...new Set(perguntas?.map((p) => p.autor_id) || [])]
+    const autorIds = [...new Set(perguntasFiltradas?.map((p) => p.autor_id) || [])]
     const { data: autores } = await supabase
       .from('users')
       .select('id, name, level, avatar_url')
@@ -127,22 +150,23 @@ export async function GET(request: Request) {
     })
 
     // Buscar votos do usuário atual (se autenticado)
+    const perguntaIdsFiltradas = perguntasFiltradas?.map((p) => p.id) || []
     const votosMap = new Map<string, boolean>()
-    if (currentUserId && perguntaIds.length > 0) {
+    if (currentUserId && perguntaIdsFiltradas.length > 0) {
       const { data: votos } = await supabase
         .from('pergunta_votos')
         .select('pergunta_id')
         .eq('user_id', currentUserId)
-        .in('pergunta_id', perguntaIds)
+        .in('pergunta_id', perguntaIdsFiltradas)
 
       votos?.forEach((v) => {
         votosMap.set(v.pergunta_id, true)
       })
     }
 
-    const perguntasComRespostas = perguntas?.map((p) => ({
+    const perguntasComRespostas = perguntasFiltradas?.map((p) => ({
       ...p,
-      respostas: countMap.get(p.id) || 0,
+      respostas: countMapTotal.get(p.id) || 0, // Contagem total (respostas + comentários) para exibição
       curtida: votosMap.get(p.id) || false,
       autor: autorMap.get(p.autor_id) || {
         id: p.autor_id,
