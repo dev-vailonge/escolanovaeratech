@@ -3,7 +3,6 @@ import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
 import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { insertXpEntry } from '@/lib/server/gamification'
 import { XP_CONSTANTS } from '@/lib/gamification/constants'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 
 export async function GET(request: Request) {
   try {
@@ -209,16 +208,11 @@ export async function POST(request: Request) {
     const userId = await requireUserIdFromBearer(request)
     console.log('✅ [API] Usuário autenticado:', userId)
     
-    // Para POST, sempre tentar usar admin primeiro (precisa de permissões de escrita)
-    let supabase
-    try {
-      supabase = getSupabaseAdmin()
-    } catch (adminError) {
-      // Se não tiver service role key, usar helper com fallback
-      const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
-      const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : null
-      supabase = await getSupabaseClient(accessToken || undefined)
-    }
+    // Extrair accessToken do header para usar com getSupabaseClient
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : undefined
+    
+    const supabase = await getSupabaseClient(accessToken)
 
     // Verificar se o usuário tem acesso full
     console.log('🔍 [API] Verificando acesso do usuário...')
