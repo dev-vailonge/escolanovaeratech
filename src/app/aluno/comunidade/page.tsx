@@ -67,12 +67,20 @@ export default function ComunidadePage() {
 
   // Estados de filtro
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('') // Query com debounce para busca
   const [filterOwner, setFilterOwner] = useState<FilterOwner>('all')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [filterTechnology, setFilterTechnology] = useState<FilterTechnology>('all')
   
+  // Estados para autocomplete
+  const [sugestoes, setSugestoes] = useState<string[]>([])
+  const [showSugestoes, setShowSugestoes] = useState(false)
+  const [searchFocused, setSearchFocused] = useState(false)
+  
   // Ref para preservar a posição do scroll
   const scrollPositionRef = useRef<number>(0)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const sugestoesRef = useRef<HTMLDivElement>(null)
 
   const currentUserId = user?.id
 
@@ -125,8 +133,8 @@ export default function ComunidadePage() {
       if (filterTechnology !== 'all') {
         params.append('categoria', filterTechnology)
       }
-      if (searchQuery.trim()) {
-        params.append('search', searchQuery.trim())
+      if (debouncedSearchQuery.trim()) {
+        params.append('search', debouncedSearchQuery.trim())
       }
 
       const res = await fetch(`/api/comunidade/perguntas?${params.toString()}`, {
@@ -182,9 +190,68 @@ export default function ComunidadePage() {
     }
   }
 
+  // Debounce da busca principal
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 500) // 500ms de delay antes de executar a busca
+
+    return () => clearTimeout(timeoutId)
+  }, [searchQuery])
+
   useEffect(() => {
     fetchPerguntas()
-  }, [filterOwner, filterStatus, filterTechnology, searchQuery, currentUserId])
+  }, [filterOwner, filterStatus, filterTechnology, debouncedSearchQuery, currentUserId])
+
+  // Buscar sugestões
+  useEffect(() => {
+    const fetchSugestoes = async () => {
+      try {
+        const token = await getAuthToken()
+        const params = new URLSearchParams()
+        if (searchQuery.trim()) {
+          params.append('q', searchQuery.trim())
+        }
+
+        const res = await fetch(`/api/comunidade/sugestoes?${params.toString()}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+        const json = await res.json()
+
+        if (json.success && json.sugestoes) {
+          setSugestoes(json.sugestoes)
+        }
+      } catch (e) {
+        console.error('Erro ao buscar sugestões:', e)
+      }
+    }
+
+    // Debounce para não buscar a cada tecla
+    const timeoutId = setTimeout(() => {
+      if (searchFocused) {
+        fetchSugestoes()
+      }
+    }, 300)
+
+    return () => clearTimeout(timeoutId)
+  }, [searchQuery, searchFocused])
+
+  // Fechar sugestões ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        searchInputRef.current &&
+        !searchInputRef.current.contains(event.target as Node) &&
+        sugestoesRef.current &&
+        !sugestoesRef.current.contains(event.target as Node)
+      ) {
+        setShowSugestoes(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   // Função para atualizar a página
   const handleRefresh = async () => {
@@ -1401,16 +1468,27 @@ export default function ComunidadePage() {
         {/* Campo de Busca */}
         <div className="flex-1 relative">
           <Search className={cn(
-            "absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 md:w-5 md:h-5",
+            "absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 z-10",
             theme === 'dark' ? "text-gray-400" : "text-gray-500"
           )} />
           <input
+            ref={searchInputRef}
             type="text"
-            placeholder="Buscar perguntas..."
+            placeholder="Buscar perguntas, tags, categorias..."
             value={searchQuery}
             onChange={(e) => {
               scrollPositionRef.current = window.scrollY
               setSearchQuery(e.target.value)
+              setShowSugestoes(true)
+            }}
+            onFocus={() => {
+              setSearchFocused(true)
+              setShowSugestoes(true)
+            }}
+            onBlur={() => {
+              setSearchFocused(false)
+              // Delay para permitir clique nas sugestões
+              setTimeout(() => setShowSugestoes(false), 200)
             }}
             className={cn(
               "w-full pl-9 md:pl-10 pr-4 py-2 text-sm md:text-base backdrop-blur-md border rounded-lg focus:outline-none transition-colors duration-300",
@@ -1419,6 +1497,44 @@ export default function ComunidadePage() {
                 : "bg-white border-yellow-400/90 text-gray-900 placeholder-gray-400 focus:border-yellow-500 shadow-sm"
             )}
           />
+          {/* Dropdown de Sugestões */}
+          {showSugestoes && sugestoes.length > 0 && (
+            <div
+              ref={sugestoesRef}
+              className={cn(
+                "absolute top-full left-0 right-0 mt-1 z-50 rounded-lg border shadow-lg max-h-60 overflow-y-auto",
+                theme === 'dark'
+                  ? "bg-black/95 border-white/20 backdrop-blur-md"
+                  : "bg-white border-gray-200 shadow-xl"
+              )}
+            >
+              {sugestoes.map((sugestao, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery(sugestao)
+                    setShowSugestoes(false)
+                    searchInputRef.current?.blur()
+                  }}
+                  className={cn(
+                    "w-full text-left px-4 py-2.5 text-sm hover:bg-opacity-50 transition-colors border-b last:border-b-0",
+                    theme === 'dark'
+                      ? "hover:bg-white/10 text-white border-white/5"
+                      : "hover:bg-yellow-50 text-gray-900 border-gray-100"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <Search className={cn(
+                      "w-4 h-4 flex-shrink-0",
+                      theme === 'dark' ? "text-gray-400" : "text-gray-500"
+                    )} />
+                    <span className="truncate">{sugestao}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Filtro por Categoria */}
