@@ -110,16 +110,30 @@ export async function POST(
     // Extrair e validar menções
     const mentions = extractMentions(conteudo)
     const userMentions: string[] = []
+    const mentionedUsers: Array<{ id: string; name: string }> = []
 
     if (mentions.length > 0) {
-      // Buscar usuários mencionados
-      const { data: users } = await supabase
+      // Buscar usuários mencionados (case-insensitive)
+      // Criar query com OR para buscar cada menção
+      let query = supabase
         .from('users')
         .select('id, name')
-        .in('name', mentions.map((m) => m.toLowerCase()))
+      
+      const conditions = mentions.map((m) => `name.ilike.%${m}%`).join(',')
+      if (conditions) {
+        query = query.or(conditions)
+      }
+      
+      const { data: users } = await query
 
       if (users) {
-        userMentions.push(...users.map((u) => u.id))
+        // Filtrar para pegar apenas matches exatos (ignorando case)
+        const mentionSet = new Set(mentions.map(m => m.toLowerCase()))
+        const matchedUsers = users.filter(u => 
+          mentionSet.has(u.name.toLowerCase())
+        )
+        userMentions.push(...matchedUsers.map((u) => u.id))
+        mentionedUsers.push(...matchedUsers)
       }
     }
 
