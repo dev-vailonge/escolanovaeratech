@@ -445,7 +445,7 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
                   Adicionar comentário
                 </button>
               ) : (
-                <div className="space-y-2 relative">
+                <div className="space-y-2">
                   <textarea
                     ref={textareaRef}
                     value={comentarioTexto}
@@ -464,12 +464,11 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
                     <div
                       ref={mentionDropdownRef}
                       className={cn(
-                        'absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border shadow-lg',
+                        'z-50 max-h-48 overflow-y-auto rounded-lg border shadow-lg',
                         theme === 'dark'
                           ? 'bg-black/95 border-white/20 backdrop-blur-md'
                           : 'bg-white border-gray-200 shadow-xl'
                       )}
-                      style={{ top: '100%' }}
                     >
                       {mentionUsers.map((user) => (
                         <button
