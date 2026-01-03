@@ -194,6 +194,116 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
     }
   }
 
+  // Detectar @ e buscar usuários para resposta
+  const handleRespostaTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value
+    setRespostaConteudo(text)
+
+    const cursorPosition = e.target.selectionStart
+    const textBeforeCursor = text.substring(0, cursorPosition)
+    
+    // Encontrar o último @ antes do cursor
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@')
+    
+    if (lastAtIndex !== -1) {
+      // Verificar se há espaço após o @ (se sim, não é uma menção ativa)
+      const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1)
+      const hasSpace = textAfterAt.includes(' ') || textAfterAt.includes('\n')
+      
+      if (!hasSpace) {
+        const query = textAfterAt.trim()
+        setMentionQuery(query)
+        setMentionIndex(lastAtIndex)
+        return
+      }
+    }
+
+    // Se não encontrou @ válido, esconder sugestões
+    setShowMentionSuggestions(false)
+    setMentionQuery('')
+    setMentionIndex(-1)
+  }
+
+  // Selecionar usuário da lista (resposta)
+  const selectRespostaUser = (user: { id: string; name: string }) => {
+    if (mentionIndex === -1) return
+
+    const text = respostaConteudo
+    const textBeforeAt = text.substring(0, mentionIndex)
+    const textAfterCursor = text.substring(respostaTextareaRef.current?.selectionStart || text.length)
+    
+    const newText = textBeforeAt + `@${user.name} ` + textAfterCursor
+    setRespostaConteudo(newText)
+    setShowMentionSuggestions(false)
+    setMentionQuery('')
+    setMentionIndex(-1)
+
+    // Focar no textarea novamente e posicionar cursor após o nome
+    setTimeout(() => {
+      if (respostaTextareaRef.current) {
+        const newCursorPos = textBeforeAt.length + user.name.length + 2 // @nome + espaço
+        respostaTextareaRef.current.focus()
+        respostaTextareaRef.current.setSelectionRange(newCursorPos, newCursorPos)
+      }
+    }, 0)
+  }
+
+  // Buscar sugestões de usuários para resposta
+  useEffect(() => {
+    const fetchMentionSuggestions = async () => {
+      if (mentionQuery.length > 0) {
+        try {
+          const token = await getAuthToken()
+          const res = await fetch(`/api/users/search?q=${mentionQuery}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          })
+          const json = await res.json()
+          if (json.success && json.users) {
+            setMentionUsers(json.users)
+          } else {
+            setMentionUsers([])
+          }
+        } catch (e) {
+          console.error('Erro ao buscar sugestões de menção:', e)
+          setMentionUsers([])
+        }
+      } else {
+        setMentionUsers([])
+      }
+    }
+
+    const handler = setTimeout(() => {
+      if (showMentionSuggestions) {
+        fetchMentionSuggestions()
+      }
+    }, 200) // Debounce para sugestões
+
+    return () => clearTimeout(handler)
+  }, [mentionQuery, showMentionSuggestions])
+
+  // Fechar sugestões ao clicar fora (resposta)
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        mentionDropdownRef.current &&
+        !mentionDropdownRef.current.contains(event.target as Node) &&
+        respostaTextareaRef.current &&
+        !respostaTextareaRef.current.contains(event.target as Node)
+      ) {
+        setShowMentionSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  // Atualizar showMentionSuggestions quando mentionQuery mudar
+  useEffect(() => {
+    setShowMentionSuggestions(mentionQuery.length > 0)
+  }, [mentionQuery])
+
   const submitResposta = async () => {
     if (!pergunta || !user?.id) return
 
