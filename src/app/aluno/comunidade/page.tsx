@@ -13,6 +13,7 @@ import { getAuthToken } from '@/lib/getAuthToken'
 import QuestionImageUpload from '@/components/comunidade/QuestionImageUpload'
 import BadgeDisplay from '@/components/comunidade/BadgeDisplay'
 import { getUserBadges } from '@/lib/badges'
+import { CURSOS } from '@/lib/constants/cursos'
 
 type FilterOwner = 'all' | 'mine'
 type FilterStatus = 'all' | 'answered' | 'unanswered'
@@ -990,12 +991,11 @@ export default function ComunidadePage() {
               )}
             >
               <option value="">Selecione uma categoria</option>
-              <option value="HTML">HTML</option>
-              <option value="CSS">CSS</option>
-              <option value="JavaScript">JavaScript</option>
-              <option value="React">React</option>
               <option value="Android">Android</option>
-              <option value="Web Development">Web Development</option>
+              <option value="iOS">iOS</option>
+              <option value="Frontend">Frontend</option>
+              <option value="Backend">Backend</option>
+              <option value="Análise de Dados">Análise de Dados</option>
               <option value="custom">Outra categoria</option>
             </select>
             {showCategoriaCustom && (
@@ -1141,12 +1141,11 @@ export default function ComunidadePage() {
               )}
             >
               <option value="">Selecione uma categoria</option>
-              <option value="HTML">HTML</option>
-              <option value="CSS">CSS</option>
-              <option value="JavaScript">JavaScript</option>
-              <option value="React">React</option>
               <option value="Android">Android</option>
-              <option value="Web Development">Web Development</option>
+              <option value="iOS">iOS</option>
+              <option value="Frontend">Frontend</option>
+              <option value="Backend">Backend</option>
+              <option value="Análise de Dados">Análise de Dados</option>
               <option value="custom">Outra categoria</option>
             </select>
             {showCategoriaCustom && (
