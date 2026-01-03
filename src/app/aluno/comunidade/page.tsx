@@ -347,7 +347,7 @@ export default function ComunidadePage() {
         throw new Error(json?.error || `Erro ${res.status}: Falha ao enviar resposta`)
       }
 
-      setSuccess('✅ Resposta enviada! O autor da pergunta pode marcar como válida para você ganhar XP.')
+      setSuccess('✅ Resposta enviada! O autor da pergunta pode marcar como certa para você ganhar XP.')
       setRespostaConteudo('')
       const perguntaIdParaAtualizar = selectedPergunta.id
       setSelectedPerguntaId(null)
@@ -671,7 +671,7 @@ export default function ComunidadePage() {
 
       if (json.marcada) {
         // Usar a mensagem da API se disponível, senão usar a padrão
-        const mensagem = json.mensagem || `✅ Resposta marcada como válida! O autor ganhou ${json.xp || 0} XP.`
+        const mensagem = json.mensagem || `✅ Resposta marcada como certa! O autor ganhou ${json.xp || 0} XP.`
         setSuccess(mensagem)
         // Limpar mensagem do card quando marcar com sucesso
         setRespostaMensagem((prev) => {
@@ -680,7 +680,7 @@ export default function ComunidadePage() {
           return newMap
         })
       } else {
-        setSuccess('Resposta marcada como válida.')
+        setSuccess('Resposta marcada como certa.')
       }
 
       await fetchPerguntas()
@@ -886,8 +886,10 @@ export default function ComunidadePage() {
     }
   }, [filteredPerguntas])
 
-  const perguntasResolvidas = filteredPerguntas.filter(p => p.resolvida).length
-  const perguntasAbertas = filteredPerguntas.filter(p => !p.resolvida).length
+  // Resolvidas = perguntas que têm uma resposta marcada como certa (melhorRespostaId)
+  // Abertas = perguntas que não têm resposta marcada como certa
+  const perguntasResolvidas = filteredPerguntas.filter(p => p.melhorRespostaId !== null && p.melhorRespostaId !== undefined).length
+  const perguntasAbertas = filteredPerguntas.filter(p => !p.melhorRespostaId || p.melhorRespostaId === null).length
 
   if (loading) {
     return (
@@ -1899,10 +1901,21 @@ export default function ComunidadePage() {
                                             ? "border-yellow-400/50 text-yellow-400 hover:bg-yellow-400/10"
                                             : "border-yellow-500 text-yellow-600 hover:bg-yellow-50"
                                         )}
-                                        onClick={() => votarResposta(resposta.id, pergunta.id)}
+                                        onClick={() => {
+                                          if (window.confirm(
+                                            '⚠️ ATENÇÃO: Esta ação não pode ser desfeita!\n\n' +
+                                            'Ao marcar esta resposta como certa:\n' +
+                                            '• Apenas uma resposta pode ser marcada como certa por pergunta\n' +
+                                            '• O autor desta resposta receberá XP\n' +
+                                            '• Esta ação não poderá ser revertida\n\n' +
+                                            'Deseja continuar?'
+                                          )) {
+                                            votarResposta(resposta.id, pergunta.id)
+                                          }
+                                        }}
                                       >
                                         <ThumbsUp className="w-3 h-3" />
-                                        Marcar como válida
+                                        Marcar como resposta certa
                                       </button>
                                     )}
                                     {isOwner && resposta.melhorResposta && (
@@ -1915,7 +1928,7 @@ export default function ComunidadePage() {
                                         )}
                                       >
                                         <CheckCircle2 className="w-3 h-3" />
-                                        Resposta válida
+                                        Resposta certa
                                       </span>
                                     )}
                                   </div>

@@ -37,10 +37,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: 'Pergunta não encontrada' }, { status: 404 })
     }
 
-    // Apenas o autor da pergunta pode marcar uma resposta como válida
+    // Apenas o autor da pergunta pode marcar uma resposta como certa
     if (pergunta.autor_id !== userId) {
       return NextResponse.json(
-        { error: 'Apenas o autor da pergunta pode marcar uma resposta como válida' },
+        { error: 'Apenas o autor da pergunta pode marcar uma resposta como certa' },
         { status: 403 }
       )
     }
@@ -48,7 +48,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     // Não pode marcar sua própria resposta
     if (resposta.autor_id === userId) {
       return NextResponse.json(
-        { error: 'Você não pode marcar sua própria resposta como válida' },
+        { error: 'Você não pode marcar sua própria resposta como certa' },
         { status: 400 }
       )
     }
@@ -58,10 +58,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const isAlreadyBest = resposta.melhor_resposta === true
 
     if (isAlreadyBest) {
-      console.log('⚠️ [API] Resposta já está marcada como válida. Não é possível desmarcar.')
+      console.log('⚠️ [API] Resposta já está marcada como certa. Não é possível desmarcar.')
       return NextResponse.json({ 
         success: false,
-        error: 'Esta resposta já está marcada como válida.',
+        error: 'Esta resposta já está marcada como certa.',
         marcada: true
       }, { status: 400 })
     } else {
@@ -151,7 +151,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
             source: 'comunidade',
             sourceId: respostaId,
             amount: xpNecessario,
-            description: 'Resposta marcada como válida na comunidade',
+            description: 'Resposta marcada como certa na comunidade',
             accessToken: accessToken,
           })
 
@@ -189,8 +189,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
         xp: xpTotalDado,
         xpFoiDado,
         mensagem: xpFoiDado 
-          ? `Resposta marcada como válida! O autor ganhou ${xpNecessario} XP adicional (total: ${xpTotalDado} XP).`
-          : `Resposta marcada como válida! O autor já tinha ${xpTotalDado} XP.`
+          ? `Resposta marcada como certa! O autor ganhou ${xpNecessario} XP adicional (total: ${xpTotalDado} XP).`
+          : `Resposta marcada como certa! O autor já tinha ${xpTotalDado} XP.`
       })
     }
   } catch (error: any) {

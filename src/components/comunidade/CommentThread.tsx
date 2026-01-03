@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { MessageSquare, Send } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { MessageSquare, Send, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
@@ -47,6 +47,14 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
   const [comentarioImagemResetTrigger, setComentarioImagemResetTrigger] = useState(0)
   const [error, setError] = useState<string>('')
   const [badgesMap, setBadgesMap] = useState<Map<string, string[]>>(new Map())
+  
+  // Estados para autocomplete de menções
+  const [mentionUsers, setMentionUsers] = useState<Array<{ id: string; name: string; avatar_url?: string | null }>>([])
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false)
+  const [mentionQuery, setMentionQuery] = useState('')
+  const [mentionIndex, setMentionIndex] = useState(-1) // Índice do cursor onde está o @
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const mentionDropdownRef = useRef<HTMLDivElement>(null)
 
   // Buscar contagem de comentários (inicial, sem expandir)
   const fetchComentariosCount = async () => {
@@ -105,6 +113,112 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
       fetchComentarios()
     }
   }, [expanded])
+
+  // Buscar usuários para autocomplete de menções
+  useEffect(() => {
+    const fetchUsers = async () => {
+      if (!mentionQuery.trim()) {
+        setMentionUsers([])
+        setShowMentionSuggestions(false)
+        return
+      }
+
+      try {
+        const token = await getAuthToken()
+        const res = await fetch(`/api/users/search?q=${encodeURIComponent(mentionQuery)}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+        const json = await res.json()
+
+        if (json.success && json.users) {
+          setMentionUsers(json.users)
+          setShowMentionSuggestions(json.users.length > 0)
+        }
+      } catch (e) {
+        console.error('Erro ao buscar usuários:', e)
+        setMentionUsers([])
+        setShowMentionSuggestions(false)
+      }
+    }
+
+    // Debounce
+    const timeoutId = setTimeout(() => {
+      fetchUsers()
+    }, 200)
+
+    return () => clearTimeout(timeoutId)
+  }, [mentionQuery])
+
+  // Detectar @ e buscar usuários
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value
+    setComentarioTexto(text)
+
+    const cursorPosition = e.target.selectionStart
+    const textBeforeCursor = text.substring(0, cursorPosition)
+    
+    // Encontrar o último @ antes do cursor
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@')
+    
+    if (lastAtIndex !== -1) {
+      // Verificar se há espaço após o @ (se sim, não é uma menção ativa)
+      const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1)
+      const hasSpace = textAfterAt.includes(' ') || textAfterAt.includes('\n')
+      
+      if (!hasSpace) {
+        const query = textAfterAt.trim()
+        setMentionQuery(query)
+        setMentionIndex(lastAtIndex)
+        return
+      }
+    }
+
+    // Se não encontrou @ válido, esconder sugestões
+    setShowMentionSuggestions(false)
+    setMentionQuery('')
+    setMentionIndex(-1)
+  }
+
+  // Selecionar usuário da lista
+  const selectUser = (user: { id: string; name: string }) => {
+    if (mentionIndex === -1) return
+
+    const text = comentarioTexto
+    const textBeforeAt = text.substring(0, mentionIndex)
+    const textAfterCursor = text.substring(textareaRef.current?.selectionStart || text.length)
+    
+    const newText = textBeforeAt + `@${user.name} ` + textAfterCursor
+    setComentarioTexto(newText)
+    setShowMentionSuggestions(false)
+    setMentionQuery('')
+    setMentionIndex(-1)
+
+    // Focar no textarea novamente e posicionar cursor após o nome
+    setTimeout(() => {
+      if (textareaRef.current) {
+        const newCursorPos = textBeforeAt.length + user.name.length + 2 // @nome + espaço
+        textareaRef.current.focus()
+        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos)
+      }
+    }, 0)
+  }
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        textareaRef.current &&
+        !textareaRef.current.contains(event.target as Node) &&
+        mentionDropdownRef.current &&
+        !mentionDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowMentionSuggestions(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const submitComentario = async () => {
     if (!user?.id) {
@@ -331,10 +445,11 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
                   Adicionar comentário
                 </button>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2 relative">
                   <textarea
+                    ref={textareaRef}
                     value={comentarioTexto}
-                    onChange={(e) => setComentarioTexto(e.target.value)}
+                    onChange={handleTextChange}
                     placeholder="Digite @username para mencionar alguém..."
                     rows={3}
                     className={cn(
@@ -344,6 +459,51 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
                         : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
                     )}
                   />
+                  {/* Dropdown de sugestões de menções */}
+                  {showMentionSuggestions && mentionUsers.length > 0 && (
+                    <div
+                      ref={mentionDropdownRef}
+                      className={cn(
+                        'absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border shadow-lg',
+                        theme === 'dark'
+                          ? 'bg-black/95 border-white/20 backdrop-blur-md'
+                          : 'bg-white border-gray-200 shadow-xl'
+                      )}
+                      style={{ top: '100%' }}
+                    >
+                      {mentionUsers.map((user) => (
+                        <button
+                          key={user.id}
+                          type="button"
+                          onClick={() => selectUser(user)}
+                          className={cn(
+                            'w-full text-left px-3 py-2 text-xs hover:bg-opacity-50 transition-colors border-b last:border-b-0 flex items-center gap-2',
+                            theme === 'dark'
+                              ? 'hover:bg-white/10 text-white border-white/5'
+                              : 'hover:bg-yellow-50 text-gray-900 border-gray-100'
+                          )}
+                        >
+                          {user.avatar_url ? (
+                            <img
+                              src={user.avatar_url}
+                              alt={user.name}
+                              className="w-5 h-5 rounded-full object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className={cn(
+                              'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0',
+                              theme === 'dark'
+                                ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-black'
+                                : 'bg-gradient-to-br from-yellow-600 to-yellow-700 text-white'
+                            )}>
+                              {user.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="truncate">{user.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <div className="text-xs">
                     <QuestionImageUpload
                       onImageChange={setComentarioImagem}
