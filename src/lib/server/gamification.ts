@@ -324,7 +324,7 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
   // Criar notificações para usuários mencionados
   if (mentionedUsers.length > 0 && resposta.id) {
     try {
-      const adminSupabase = getSupabaseAdmin()
+      // Usar o mesmo supabase client (já tem accessToken) para criar notificações
       const agora = new Date()
       const dataFim = new Date()
       dataFim.setDate(dataFim.getDate() + 7) // Notificação válida por 7 dias
@@ -343,7 +343,7 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
         // Não notificar o próprio autor
         if (mentionedUser.id === params.userId) continue
 
-        const { error: notifError } = await adminSupabase
+        const { error: notifError } = await supabase
           .from('notificacoes')
           .insert({
             titulo: '💬 Você foi mencionado',
@@ -359,6 +359,7 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
 
         if (notifError) {
           console.error(`❌ Erro ao criar notificação para usuário ${mentionedUser.id}:`, notifError)
+          console.error('❌ Detalhes do erro:', JSON.stringify(notifError, null, 2))
         } else {
           console.log(`✅ Notificação criada para usuário ${mentionedUser.id} (${mentionedUser.name})`)
         }
@@ -366,6 +367,7 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
     } catch (notifErr: any) {
       // Não falhar a criação da resposta se notificação falhar
       console.error('❌ Erro ao criar notificações de menção:', notifErr)
+      console.error('❌ Stack trace:', notifErr?.stack)
     }
   }
 
