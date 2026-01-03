@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/AuthContext'
 import { useState, useEffect, useCallback } from 'react'
 import Modal from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
+import { getAuthToken } from '@/lib/getAuthToken'
 import type { DatabaseDesafio, DatabaseDesafioSubmission } from '@/types/database'
 
 // Tecnologias organizadas por categoria/curso
@@ -167,9 +168,29 @@ export default function DesafiosPage() {
     setSelectionError('')
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
-      if (!token) throw new Error('Não autenticado')
+      console.log('🔐 Obtendo token para gerar desafio...')
+      let token = await getAuthToken()
+      
+      // Se não conseguiu token, tentar uma última vez com getSession direto (pode travar, mas é última opção)
+      if (!token) {
+        console.log('🔄 Última tentativa: getSession() direto...')
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          token = session?.access_token || null
+          if (token) {
+            console.log('✅ Token obtido na última tentativa')
+          }
+        } catch (e) {
+          console.error('❌ Última tentativa falhou:', e)
+        }
+      }
+      
+      if (!token) {
+        console.error('❌ Token não encontrado após todas as tentativas')
+        setSelectionError('Não foi possível obter o token de autenticação. Por favor, faça logout e login novamente.')
+        setIsGerando(false)
+        return
+      }
 
       const res = await fetch('/api/desafios/gerar', {
         method: 'POST',
@@ -204,9 +225,29 @@ export default function DesafiosPage() {
     setError('')
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
-      if (!token) throw new Error('Não autenticado')
+      console.log('🔐 Obtendo token para submeter desafio...')
+      let token = await getAuthToken()
+      
+      // Se não conseguiu token, tentar uma última vez com getSession direto
+      if (!token) {
+        console.log('🔄 Última tentativa: getSession() direto...')
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          token = session?.access_token || null
+          if (token) {
+            console.log('✅ Token obtido na última tentativa')
+          }
+        } catch (e) {
+          console.error('❌ Última tentativa falhou:', e)
+        }
+      }
+      
+      if (!token) {
+        console.error('❌ Token não encontrado após todas as tentativas')
+        setError('Não foi possível obter o token de autenticação. Por favor, faça logout e login novamente.')
+        setIsSubmittingGithub(false)
+        return
+      }
 
       const res = await fetch(`/api/desafios/${desafioParaSubmeter.id}/submeter`, {
         method: 'POST',
@@ -252,9 +293,29 @@ export default function DesafiosPage() {
     setError('')
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
-      if (!token) throw new Error('Não autenticado')
+      console.log('🔐 Obtendo token para desistir do desafio...')
+      let token = await getAuthToken()
+      
+      // Se não conseguiu token, tentar uma última vez com getSession direto
+      if (!token) {
+        console.log('🔄 Última tentativa: getSession() direto...')
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          token = session?.access_token || null
+          if (token) {
+            console.log('✅ Token obtido na última tentativa')
+          }
+        } catch (e) {
+          console.error('❌ Última tentativa falhou:', e)
+        }
+      }
+      
+      if (!token) {
+        console.error('❌ Token não encontrado após todas as tentativas')
+        setError('Não foi possível obter o token de autenticação. Por favor, faça logout e login novamente.')
+        setIsDesistindo(false)
+        return
+      }
 
       const res = await fetch(`/api/desafios/${desafioParaDesistir.id}/desistir`, {
         method: 'POST',
