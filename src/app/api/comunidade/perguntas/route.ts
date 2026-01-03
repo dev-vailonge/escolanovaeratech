@@ -96,26 +96,39 @@ export async function GET(request: Request) {
 
     console.log(`[API /comunidade/perguntas] Perguntas encontradas: ${perguntas?.length || 0}`)
 
-    // Buscar contagem de respostas para cada pergunta (apenas respostas diretas, não comentários)
     const perguntaIds = perguntas?.map((p) => p.id) || []
-    const { data: respostasCount } = await supabase
+    
+    // Buscar contagem de respostas diretas (para filtro de status)
+    const { data: respostasDiretas } = await supabase
       .from('respostas')
       .select('pergunta_id')
       .in('pergunta_id', perguntaIds.length > 0 ? perguntaIds : ['00000000-0000-0000-0000-000000000000'])
       .is('resposta_pai_id', null) // Apenas respostas diretas, não comentários
 
-    const countMap = new Map<string, number>()
-    respostasCount?.forEach((r) => {
-      countMap.set(r.pergunta_id, (countMap.get(r.pergunta_id) || 0) + 1)
+    const countMapDiretas = new Map<string, number>()
+    respostasDiretas?.forEach((r) => {
+      countMapDiretas.set(r.pergunta_id, (countMapDiretas.get(r.pergunta_id) || 0) + 1)
     })
 
-    // Aplicar filtro de status baseado em contagem de respostas
+    // Buscar contagem total de respostas (incluindo comentários) para exibição
+    const { data: todasRespostas } = await supabase
+      .from('respostas')
+      .select('pergunta_id')
+      .in('pergunta_id', perguntaIds.length > 0 ? perguntaIds : ['00000000-0000-0000-0000-000000000000'])
+      // Sem filtro de resposta_pai_id - inclui todas as respostas e comentários
+
+    const countMapTotal = new Map<string, number>()
+    todasRespostas?.forEach((r) => {
+      countMapTotal.set(r.pergunta_id, (countMapTotal.get(r.pergunta_id) || 0) + 1)
+    })
+
+    // Aplicar filtro de status baseado em contagem de respostas diretas
     let perguntasFiltradas = perguntas || []
     if (resolvida !== null && resolvida !== undefined) {
       const temRespostas = resolvida === 'true'
       perguntasFiltradas = perguntas?.filter((p) => {
-        const numRespostas = countMap.get(p.id) || 0
-        return temRespostas ? numRespostas > 0 : numRespostas === 0
+        const numRespostasDiretas = countMapDiretas.get(p.id) || 0
+        return temRespostas ? numRespostasDiretas > 0 : numRespostasDiretas === 0
       }) || []
     }
 
@@ -153,7 +166,7 @@ export async function GET(request: Request) {
 
     const perguntasComRespostas = perguntasFiltradas?.map((p) => ({
       ...p,
-      respostas: countMap.get(p.id) || 0,
+      respostas: countMapTotal.get(p.id) || 0, // Contagem total (respostas + comentários) para exibição
       curtida: votosMap.get(p.id) || false,
       autor: autorMap.get(p.autor_id) || {
         id: p.autor_id,
