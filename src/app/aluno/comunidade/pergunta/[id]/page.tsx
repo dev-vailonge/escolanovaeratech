@@ -105,8 +105,9 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
           })
 
           const badges = new Map<string, string[]>()
+          const token = await getAuthToken()
           for (const userId of userIds) {
-            const userBadges = await getUserBadges(userId)
+            const userBadges = await getUserBadges(userId, token || undefined)
             badges.set(userId, userBadges.map((b) => b.type))
           }
           setBadgesMap(badges)

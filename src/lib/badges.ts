@@ -35,11 +35,19 @@ export async function calculateTopMemberBadge(): Promise<string | null> {
 /**
  * Busca badges de um usuário
  * @param userId ID do usuário
+ * @param token Token de autenticação opcional
  * @returns Array de badges do usuário
  */
-export async function getUserBadges(userId: string): Promise<Badge[]> {
+export async function getUserBadges(userId: string, token?: string): Promise<Badge[]> {
   try {
-    const response = await fetch(`/api/comunidade/badges?userId=${userId}`)
+    const headers: HeadersInit = {}
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    
+    const response = await fetch(`/api/comunidade/badges?userId=${userId}`, {
+      headers,
+    })
     
     if (!response.ok) {
       console.warn('Erro ao buscar badges:', response.statusText)
