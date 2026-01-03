@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js'
 import { serverConfig } from '@/lib/server-config'
 
 export async function requireUserIdFromBearer(request: Request): Promise<string> {
@@ -16,35 +15,33 @@ export async function requireUserIdFromBearer(request: Request): Promise<string>
 
   console.log('🔍 [requireUserIdFromBearer] Validando token...', token.substring(0, 20) + '...')
 
-  // Criar cliente Supabase sem persistência de sessão
-  const supabase = createClient(serverConfig.supabase.url, serverConfig.supabase.anonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
+  // Usar API REST do Supabase diretamente para validar o token
+  // Isso é mais confiável do que usar o cliente JS que pode ter problemas com sessões
+  const supabaseUrl = serverConfig.supabase.url
+  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'apikey': serverConfig.supabase.anonKey,
     },
   })
 
-  // Usar getUser(accessToken) diretamente - esta é a forma correta de validar tokens no servidor
-  const { data, error } = await supabase.auth.getUser(token)
-  
-  if (error) {
-    console.error('❌ [requireUserIdFromBearer] Erro ao validar token:', error)
-    console.error('❌ [requireUserIdFromBearer] Detalhes do erro:', {
-      message: error.message,
-      status: error.status,
-      name: error.name
-    })
-    throw new Error('Não autenticado')
-  }
-  
-  if (!data?.user?.id) {
-    console.error('❌ [requireUserIdFromBearer] Token válido mas sem user.id:', data)
+  if (!response.ok) {
+    console.error('❌ [requireUserIdFromBearer] Erro ao validar token:', response.status, response.statusText)
+    const errorText = await response.text().catch(() => '')
+    console.error('❌ [requireUserIdFromBearer] Resposta do erro:', errorText.substring(0, 200))
     throw new Error('Não autenticado')
   }
 
-  console.log('✅ [requireUserIdFromBearer] Token válido para usuário:', data.user.id)
-  return data.user.id
+  const userData = await response.json()
+  
+  if (!userData?.id) {
+    console.error('❌ [requireUserIdFromBearer] Token válido mas sem user.id:', userData)
+    throw new Error('Não autenticado')
+  }
+
+  console.log('✅ [requireUserIdFromBearer] Token válido para usuário:', userData.id)
+  return userData.id
 }
 
 /**

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, ThumbsUp, CheckCircle2, Eye, MessageSquare, Tag, Send, Trash2, Folder, ArrowUpDown } from 'lucide-react'
+import { ArrowLeft, ThumbsUp, CheckCircle2, Eye, MessageSquare, Tag, Send, Trash2, Folder, ArrowUpDown, Clock, Edit } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
@@ -12,6 +12,7 @@ import BadgeDisplay from '@/components/comunidade/BadgeDisplay'
 import CommentThread from '@/components/comunidade/CommentThread'
 import QuestionImageUpload from '@/components/comunidade/QuestionImageUpload'
 import { getUserBadges } from '@/lib/badges'
+import { formatDateTime, wasEdited } from '@/lib/utils/dateFormat'
 
 interface Autor {
   id: string
@@ -54,6 +55,7 @@ interface Pergunta {
   categoria: string | null
   imagemUrl?: string | null
   created_at: string
+  updated_at?: string | null
   respostas: Resposta[]
   curtida?: boolean
 }
@@ -663,7 +665,18 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
               <span className={cn('text-sm', theme === 'dark' ? 'text-gray-400' : 'text-gray-600')}>
                 • Nível {pergunta.autor?.nivel || 1}
               </span>
+              <span className={cn('text-xs flex items-center gap-1', theme === 'dark' ? 'text-gray-500' : 'text-gray-500')}>
+                <Clock className="w-3 h-3" />
+                {formatDateTime(pergunta.created_at)}
+              </span>
             </div>
+            
+            {wasEdited(pergunta.created_at, pergunta.updated_at) && (
+              <div className={cn('flex items-center gap-1 mb-3 text-xs', theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600')}>
+                <Edit className="w-3 h-3" />
+                <span>Pergunta modificada em {formatDateTime(pergunta.updated_at)}</span>
+              </div>
+            )}
 
             <p className={cn(
               'text-sm md:text-base mb-4 whitespace-pre-wrap',
@@ -839,12 +852,30 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
 
       {/* Respostas */}
       <div className="space-y-4">
-        <h2 className={cn(
-          'text-lg font-bold',
-          theme === 'dark' ? 'text-white' : 'text-gray-900'
-        )}>
-          Respostas ({pergunta.respostas.length})
-        </h2>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <h2 className={cn(
+            'text-lg font-bold',
+            theme === 'dark' ? 'text-white' : 'text-gray-900'
+          )}>
+            Respostas ({pergunta.respostas.length})
+          </h2>
+          
+          {pergunta.respostas.length > 0 && (
+            <select
+              value={ordenacaoRespostas}
+              onChange={(e) => setOrdenacaoRespostas(e.target.value as 'mais_nova' | 'mais_antiga')}
+              className={cn(
+                'px-3 py-2 text-sm backdrop-blur-md border rounded-lg focus:outline-none transition-colors text-center',
+                theme === 'dark'
+                  ? 'bg-black/20 border-white/10 text-white focus:border-yellow-400/50'
+                  : 'bg-white border-yellow-400/90 text-gray-900 focus:border-yellow-500 shadow-sm'
+              )}
+            >
+              <option value="mais_nova">Mais nova</option>
+              <option value="mais_antiga">Mais antiga</option>
+            </select>
+          )}
+        </div>
 
         {pergunta.respostas.length === 0 ? (
           <div className={cn(
@@ -933,6 +964,10 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
                       )}
                       <span className={cn('text-xs', theme === 'dark' ? 'text-gray-400' : 'text-gray-600')}>
                         • Nível {resposta.autor?.nivel || 1}
+                      </span>
+                      <span className={cn('text-xs flex items-center gap-1', theme === 'dark' ? 'text-gray-500' : 'text-gray-500')}>
+                        <Clock className="w-3 h-3" />
+                        {formatDateTime(resposta.dataCriacao)}
                       </span>
                     </div>
                     {isOwner && !resposta.melhorResposta && canCreate && (

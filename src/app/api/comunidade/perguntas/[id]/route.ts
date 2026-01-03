@@ -151,6 +151,7 @@ export async function GET(
     const perguntaFormatada = {
       ...pergunta,
       imagemUrl: pergunta.imagem_url, // Mapear imagem_url para imagemUrl
+      updated_at: pergunta.updated_at, // Incluir updated_at
       autor: autor
         ? {
             id: autor.id,
