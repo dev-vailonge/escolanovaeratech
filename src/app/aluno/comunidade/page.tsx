@@ -1,6 +1,10 @@
 'use client'
 
+<<<<<<< Updated upstream
 import { MessageSquare, ThumbsUp, Eye, CheckCircle2, Tag, Search, Plus, Filter, Edit, Trash2, RefreshCw, ChevronDown, ChevronUp, Folder, Clock } from 'lucide-react'
+=======
+import { MessageSquare, ThumbsUp, Eye, CheckCircle2, Tag, Search, Plus, Filter, Edit, Trash2, RefreshCw, ChevronDown, ChevronUp, Folder, HelpCircle, Crown } from 'lucide-react'
+>>>>>>> Stashed changes
 import { useState, useMemo, useRef, useLayoutEffect, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '@/lib/ThemeContext'
@@ -92,6 +96,7 @@ export default function ComunidadePage() {
   const [showCriarPergunta, setShowCriarPergunta] = useState(false)
   const [showRespostas, setShowRespostas] = useState<string | null>(null)
   const [editingPerguntaId, setEditingPerguntaId] = useState<string | null>(null)
+  const [isPontosModalOpen, setIsPontosModalOpen] = useState(false)
   
   // Estados para formulários
   const [respostaConteudo, setRespostaConteudo] = useState<string>('')
@@ -1330,6 +1335,140 @@ export default function ComunidadePage() {
         </div>
       </Modal>
 
+      {/* Modal Como funcionam os pontos da Comunidade */}
+      <Modal
+        isOpen={isPontosModalOpen}
+        onClose={() => setIsPontosModalOpen(false)}
+        title="Como funcionam os pontos na Comunidade?"
+        size="md"
+      >
+        <div className="space-y-4 md:space-y-6">
+          {/* Seção Comunidade */}
+          <div>
+            <div className="flex items-center gap-2 mb-2 md:mb-3">
+              <MessageSquare className={cn(
+                "w-4 h-4 md:w-5 md:h-5 flex-shrink-0",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )} />
+              <h3 className={cn(
+                "text-base md:text-lg font-bold",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                Comunidade
+              </h3>
+            </div>
+            <div className="space-y-2">
+              <div className={cn(
+                "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
+                theme === 'dark' 
+                  ? "bg-black/30 border-white/10" 
+                  : "bg-gray-50 border-gray-200"
+              )}>
+                <span className={cn(
+                  "text-xs md:text-sm flex-1 min-w-0",
+                  theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                )}>
+                  Pergunta
+                </span>
+                <span className={cn(
+                  "font-bold text-sm md:text-base flex-shrink-0",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )}>
+                  10 XP
+                </span>
+              </div>
+              <div className={cn(
+                "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
+                theme === 'dark' 
+                  ? "bg-black/30 border-white/10" 
+                  : "bg-gray-50 border-gray-200"
+              )}>
+                <span className={cn(
+                  "text-xs md:text-sm flex-1 min-w-0",
+                  theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                )}>
+                  Resposta
+                </span>
+                <span className={cn(
+                  "font-bold text-sm md:text-base flex-shrink-0",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )}>
+                  1 XP
+                </span>
+              </div>
+              <div className={cn(
+                "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
+                theme === 'dark' 
+                  ? "bg-black/30 border-white/10" 
+                  : "bg-gray-50 border-gray-200"
+              )}>
+                <span className={cn(
+                  "text-xs md:text-sm flex-1 min-w-0 break-words",
+                  theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                )}>
+                  Resposta marcada como certa pelo autor
+                </span>
+                <span className={cn(
+                  "font-bold text-sm md:text-base flex-shrink-0",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )}>
+                  100 XP
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Seção Top Member */}
+          <div>
+            <div className="flex items-center gap-2 mb-2 md:mb-3">
+              <Crown className={cn(
+                "w-4 h-4 md:w-5 md:h-5 flex-shrink-0",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )} />
+              <h3 className={cn(
+                "text-base md:text-lg font-bold",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                Top Member
+              </h3>
+            </div>
+            <div className={cn(
+              "p-3 md:p-4 rounded-lg border",
+              theme === 'dark' 
+                ? "bg-black/30 border-white/10" 
+                : "bg-gray-50 border-gray-200"
+            )}>
+              <div className="flex items-start gap-3 mb-3">
+                <BadgeDisplay badgeType="top_member" className="flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className={cn(
+                    "text-xs md:text-sm mb-2 leading-relaxed",
+                    theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                  )}>
+                    Ganhe o badge <strong>Top Member</strong> sendo o usuário com mais curtidas nas suas perguntas na comunidade.
+                  </p>
+                  <div className={cn(
+                    "text-xs leading-relaxed space-y-1",
+                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                  )}>
+                    <p>
+                      <strong>Requisitos:</strong>
+                    </p>
+                    <ul className="list-disc list-inside space-y-0.5 ml-2">
+                      <li>Ter pelo menos 50 curtidas totais nas suas perguntas</li>
+                      <li>Ser o usuário com mais curtidas (ranking #1)</li>
+                    </ul>
+                    <p className="mt-2 italic">
+                      Nota: Curtir perguntas não dá XP, mas aumenta sua reputação na comunidade!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
       {(error || success) && (
         <div
           className={cn(
@@ -1362,6 +1501,18 @@ export default function ComunidadePage() {
           )}>
             Faça perguntas e ajude outros alunos
           </p>
+          <button
+            onClick={() => setIsPontosModalOpen(true)}
+            className={cn(
+              "flex items-center gap-1.5 mt-2 text-xs md:text-sm transition-colors",
+              theme === 'dark'
+                ? "text-gray-400 hover:text-yellow-400"
+                : "text-gray-500 hover:text-yellow-600"
+            )}
+          >
+            <HelpCircle className="w-3 h-3 md:w-4 md:h-4" />
+            <span>Como funcionam os pontos?</span>
+          </button>
         </div>
         <div className="flex items-center gap-2">
           <button 
