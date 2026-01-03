@@ -73,6 +73,7 @@ export default function DesafiosPage() {
 
     try {
       setLoading(true)
+      console.log('🔍 [loadMeusDesafios] Carregando desafios para usuário:', authUser.id)
 
       // Buscar atribuições do usuário
       const { data: atribuicoes, error: atribError } = await supabase
@@ -82,30 +83,46 @@ export default function DesafiosPage() {
         .order('created_at', { ascending: false })
 
       if (atribError) {
-        console.error('Erro ao buscar atribuições:', atribError)
+        console.error('❌ [loadMeusDesafios] Erro ao buscar atribuições:', atribError)
         setMeusDesafios([])
         return
       }
 
+      console.log('📋 [loadMeusDesafios] Atribuições encontradas:', atribuicoes?.length || 0, atribuicoes)
+
       if (!atribuicoes || atribuicoes.length === 0) {
+        console.log('⚠️ [loadMeusDesafios] Nenhuma atribuição encontrada')
         setMeusDesafios([])
         return
       }
 
       const desafioIds = atribuicoes.map(a => a.desafio_id)
+      console.log('🎯 [loadMeusDesafios] IDs de desafios para buscar:', desafioIds)
 
       // Buscar detalhes dos desafios
-      const { data: desafios } = await supabase
+      const { data: desafios, error: desafiosError } = await supabase
         .from('desafios')
         .select('*')
         .in('id', desafioIds)
 
+      if (desafiosError) {
+        console.error('❌ [loadMeusDesafios] Erro ao buscar desafios:', desafiosError)
+      } else {
+        console.log('📚 [loadMeusDesafios] Desafios encontrados:', desafios?.length || 0)
+      }
+
       // Buscar submissions do usuário
-      const { data: submissions } = await supabase
+      const { data: submissions, error: submissionsError } = await supabase
         .from('desafio_submissions')
         .select('*')
         .eq('user_id', authUser.id)
         .in('desafio_id', desafioIds)
+
+      if (submissionsError) {
+        console.error('❌ [loadMeusDesafios] Erro ao buscar submissions:', submissionsError)
+      } else {
+        console.log('📝 [loadMeusDesafios] Submissions encontradas:', submissions?.length || 0)
+      }
 
       // Montar lista de "Meus Desafios"
       const meusDesafiosList: MeuDesafio[] = atribuicoes.map(atrib => {
@@ -129,6 +146,7 @@ export default function DesafiosPage() {
         }
       }).filter(d => d.desafio)
 
+      console.log('✅ [loadMeusDesafios] Lista final montada:', meusDesafiosList.length, 'desafios')
       setMeusDesafios(meusDesafiosList)
     } catch (err) {
       console.error('Erro ao carregar meus desafios:', err)
@@ -205,6 +223,11 @@ export default function DesafiosPage() {
 
       setShowSelectionModal(false)
       setSuccess('🎯 Desafio gerado com sucesso! Confira na aba "Meus Desafios".')
+      
+      // Aguardar um pouco para garantir que a transação foi commitada
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // Recarregar desafios
       await loadMeusDesafios()
       setActiveTab('meus')
     } catch (e: any) {

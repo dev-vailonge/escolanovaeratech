@@ -195,9 +195,19 @@ export async function POST(request: Request) {
         .single()
 
       if (erroInsert) {
-        console.error('Erro ao salvar desafio:', erroInsert)
+        console.error('❌ Erro ao salvar desafio:', erroInsert)
+        console.error('❌ Detalhes do erro:', {
+          message: erroInsert.message,
+          details: erroInsert.details,
+          hint: erroInsert.hint,
+          code: erroInsert.code,
+        })
         return NextResponse.json(
-          { error: 'Erro ao salvar desafio no banco de dados' },
+          { 
+            error: 'Erro ao salvar desafio no banco de dados',
+            details: erroInsert.message,
+            code: erroInsert.code
+          },
           { status: 500 }
         )
       }
@@ -209,17 +219,34 @@ export async function POST(request: Request) {
     // REGISTRAR ATRIBUIÇÃO DO DESAFIO AO USUÁRIO
     // ====================================================
 
-    const { error: erroAtribuicao } = await supabase
+    const { error: erroAtribuicao, data: atribuicaoData } = await supabase
       .from('user_desafio_atribuido')
       .insert({
         user_id: userId,
         desafio_id: desafioFinal.id
       })
+      .select()
 
     if (erroAtribuicao) {
-      console.error('Erro ao registrar atribuição:', erroAtribuicao)
-      // Não falha a requisição por causa disso
+      console.error('❌ Erro ao registrar atribuição:', erroAtribuicao)
+      console.error('❌ Detalhes do erro de atribuição:', {
+        message: erroAtribuicao.message,
+        details: erroAtribuicao.details,
+        hint: erroAtribuicao.hint,
+        code: erroAtribuicao.code,
+      })
+      // Retornar erro ao invés de continuar silenciosamente
+      return NextResponse.json(
+        { 
+          error: 'Erro ao atribuir desafio ao usuário',
+          details: erroAtribuicao.message,
+          code: erroAtribuicao.code
+        },
+        { status: 500 }
+      )
     }
+
+    console.log('✅ Atribuição registrada com sucesso:', atribuicaoData)
 
     return NextResponse.json({
       success: true,
