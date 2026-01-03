@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, ThumbsUp, CheckCircle2, Eye, MessageSquare, Tag, Send, Trash2, Folder } from 'lucide-react'
+import { ArrowLeft, ThumbsUp, CheckCircle2, Eye, MessageSquare, Tag, Send, Trash2, Folder, ArrowUpDown } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
@@ -75,6 +75,7 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
   const [badgesMap, setBadgesMap] = useState<Map<string, string[]>>(new Map())
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const visualizacaoRegistrada = useRef(false)
+  const [ordenacaoRespostas, setOrdenacaoRespostas] = useState<'mais_nova' | 'mais_antiga'>('mais_nova')
 
   // Estados para autocomplete de menções
   const [mentionUsers, setMentionUsers] = useState<Array<{ id: string; name: string; avatar_url?: string | null }>>([])
@@ -857,7 +858,25 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
             </p>
           </div>
         ) : (
-          pergunta.respostas.map((resposta) => (
+          (() => {
+            // Ordenar respostas: melhor resposta sempre primeiro, depois pela ordenação escolhida
+            const respostasOrdenadas = [...pergunta.respostas].sort((a, b) => {
+              // Melhor resposta sempre primeiro
+              if (a.melhorResposta && !b.melhorResposta) return -1
+              if (!a.melhorResposta && b.melhorResposta) return 1
+              
+              // Depois ordenar por data
+              const dataA = new Date(a.dataCriacao).getTime()
+              const dataB = new Date(b.dataCriacao).getTime()
+              
+              if (ordenacaoRespostas === 'mais_nova') {
+                return dataB - dataA // Mais recente primeiro
+              } else {
+                return dataA - dataB // Mais antiga primeiro
+              }
+            })
+            
+            return respostasOrdenadas.map((resposta) => (
             <div
               key={resposta.id}
               className={cn(
@@ -982,7 +1001,8 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
                 </div>
               </div>
             </div>
-          ))
+            ))
+          })()
         )}
       </div>
     </div>
