@@ -254,7 +254,6 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
   // Usar getSupabaseClient com accessToken para que RLS funcione corretamente
   const { getSupabaseClient } = await import('./getSupabaseClient')
   const { extractMentions } = await import('@/lib/mentionParser')
-  const { getSupabaseAdmin } = await import('./supabaseAdmin')
   const supabase = await getSupabaseClient(params.accessToken)
 
   // Extrair e validar menções
