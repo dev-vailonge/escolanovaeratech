@@ -67,6 +67,7 @@ export default function ComunidadePage() {
 
   // Estados de filtro
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('') // Query com debounce para busca
   const [filterOwner, setFilterOwner] = useState<FilterOwner>('all')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [filterTechnology, setFilterTechnology] = useState<FilterTechnology>('all')
@@ -132,8 +133,8 @@ export default function ComunidadePage() {
       if (filterTechnology !== 'all') {
         params.append('categoria', filterTechnology)
       }
-      if (searchQuery.trim()) {
-        params.append('search', searchQuery.trim())
+      if (debouncedSearchQuery.trim()) {
+        params.append('search', debouncedSearchQuery.trim())
       }
 
       const res = await fetch(`/api/comunidade/perguntas?${params.toString()}`, {
@@ -189,9 +190,18 @@ export default function ComunidadePage() {
     }
   }
 
+  // Debounce da busca principal
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 500) // 500ms de delay antes de executar a busca
+
+    return () => clearTimeout(timeoutId)
+  }, [searchQuery])
+
   useEffect(() => {
     fetchPerguntas()
-  }, [filterOwner, filterStatus, filterTechnology, searchQuery, currentUserId])
+  }, [filterOwner, filterStatus, filterTechnology, debouncedSearchQuery, currentUserId])
 
   // Buscar sugestões
   useEffect(() => {
