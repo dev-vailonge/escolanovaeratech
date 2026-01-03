@@ -1,6 +1,6 @@
 'use client'
 
-import { MessageSquare, ThumbsUp, Eye, CheckCircle2, Tag, Search, Plus, Filter, Edit, Trash2, RefreshCw, ChevronDown, ChevronUp, Folder } from 'lucide-react'
+import { MessageSquare, ThumbsUp, Eye, CheckCircle2, Tag, Search, Plus, Filter, Edit, Trash2, RefreshCw, ChevronDown, ChevronUp, Folder, Clock } from 'lucide-react'
 import { useState, useMemo, useRef, useLayoutEffect, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '@/lib/ThemeContext'
@@ -14,6 +14,7 @@ import QuestionImageUpload from '@/components/comunidade/QuestionImageUpload'
 import BadgeDisplay from '@/components/comunidade/BadgeDisplay'
 import { getUserBadges } from '@/lib/badges'
 import { CURSOS } from '@/lib/constants/cursos'
+import { formatDateTime, wasEdited } from '@/lib/utils/dateFormat'
 
 type FilterOwner = 'all' | 'mine'
 type FilterStatus = 'all' | 'answered' | 'unanswered'
@@ -38,6 +39,7 @@ interface Pergunta {
   categoria: string | null
   imagem_url?: string | null
   created_at: string
+  updated_at?: string | null
   curtida?: boolean // Se o usuário atual curtiu esta pergunta
 }
 
@@ -71,6 +73,7 @@ export default function ComunidadePage() {
   const [filterOwner, setFilterOwner] = useState<FilterOwner>('all')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [filterTechnology, setFilterTechnology] = useState<FilterTechnology>('all')
+  const [filterOrder, setFilterOrder] = useState<'mais_nova' | 'mais_antiga'>('mais_nova')
   
   // Estados para autocomplete
   const [sugestoes, setSugestoes] = useState<string[]>([])
@@ -136,6 +139,7 @@ export default function ComunidadePage() {
       if (debouncedSearchQuery.trim()) {
         params.append('search', debouncedSearchQuery.trim())
       }
+      params.append('order', filterOrder)
 
       const res = await fetch(`/api/comunidade/perguntas?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -201,7 +205,7 @@ export default function ComunidadePage() {
 
   useEffect(() => {
     fetchPerguntas()
-  }, [filterOwner, filterStatus, filterTechnology, debouncedSearchQuery, currentUserId])
+  }, [filterOwner, filterStatus, filterTechnology, filterOrder, debouncedSearchQuery, currentUserId])
 
   // Buscar sugestões
   useEffect(() => {
@@ -1547,7 +1551,7 @@ export default function ComunidadePage() {
             setFilterTechnology(e.target.value)
           }}
           className={cn(
-            "px-3 md:px-4 py-2 text-sm md:text-base backdrop-blur-md border rounded-lg focus:outline-none transition-colors duration-300",
+            "px-3 md:px-4 py-2 text-sm md:text-base backdrop-blur-md border rounded-lg focus:outline-none transition-colors duration-300 text-center",
             theme === 'dark'
               ? "bg-black/20 border-white/10 text-white focus:border-yellow-400/50"
               : "bg-white border-yellow-400/90 text-gray-900 focus:border-yellow-500 shadow-sm"
@@ -1569,7 +1573,7 @@ export default function ComunidadePage() {
             setFilterOwner(e.target.value as FilterOwner)
           }}
           className={cn(
-            "px-3 md:px-4 py-2 text-sm md:text-base backdrop-blur-md border rounded-lg focus:outline-none transition-colors duration-300",
+            "px-3 md:px-4 py-2 text-sm md:text-base backdrop-blur-md border rounded-lg focus:outline-none transition-colors duration-300 text-center",
             theme === 'dark'
               ? "bg-black/20 border-white/10 text-white focus:border-yellow-400/50"
               : "bg-white border-yellow-400/90 text-gray-900 focus:border-yellow-500 shadow-sm"
@@ -1587,7 +1591,7 @@ export default function ComunidadePage() {
             setFilterStatus(e.target.value as FilterStatus)
           }}
           className={cn(
-            "px-3 md:px-4 py-2 text-sm md:text-base backdrop-blur-md border rounded-lg focus:outline-none transition-colors duration-300",
+            "px-3 md:px-4 py-2 text-sm md:text-base backdrop-blur-md border rounded-lg focus:outline-none transition-colors duration-300 text-center",
             theme === 'dark'
               ? "bg-black/20 border-white/10 text-white focus:border-yellow-400/50"
               : "bg-white border-yellow-400/90 text-gray-900 focus:border-yellow-500 shadow-sm"
@@ -1596,6 +1600,24 @@ export default function ComunidadePage() {
           <option value="all">Todas</option>
           <option value="answered">Respondidas</option>
           <option value="unanswered">Sem resposta</option>
+        </select>
+
+        {/* Filtro por Ordenação */}
+        <select
+          value={filterOrder}
+          onChange={(e) => {
+            scrollPositionRef.current = window.scrollY
+            setFilterOrder(e.target.value as 'mais_nova' | 'mais_antiga')
+          }}
+          className={cn(
+            "px-3 md:px-4 py-2 text-sm md:text-base backdrop-blur-md border rounded-lg focus:outline-none transition-colors duration-300 text-center",
+            theme === 'dark'
+              ? "bg-black/20 border-white/10 text-white focus:border-yellow-400/50"
+              : "bg-white border-yellow-400/90 text-gray-900 focus:border-yellow-500 shadow-sm"
+          )}
+        >
+          <option value="mais_nova">Mais nova</option>
+          <option value="mais_antiga">Mais antiga</option>
         </select>
       </div>
 
@@ -1748,6 +1770,16 @@ export default function ComunidadePage() {
                       <MessageSquare className="w-3 h-3 md:w-4 md:h-4" />
                       <span className="whitespace-nowrap">{pergunta.respostas} respostas</span>
                     </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                      <span className="whitespace-nowrap">{formatDateTime(pergunta.created_at)}</span>
+                    </div>
+                    {wasEdited(pergunta.created_at, pergunta.updated_at) && (
+                      <div className="flex items-center gap-1 text-yellow-500">
+                        <Edit className="w-3 h-3 md:w-4 md:h-4" />
+                        <span className="whitespace-nowrap">Modificada em {formatDateTime(pergunta.updated_at)}</span>
+                      </div>
+                    )}
                     <span className="flex items-center gap-1 truncate flex-wrap">
                       {pergunta.autor.avatar && !avatarErrors.has(`pergunta-${pergunta.autor.id}`) ? (
                         <img

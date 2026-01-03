@@ -29,6 +29,7 @@ export async function GET(request: Request) {
     const categoria = searchParams.get('categoria')
     const resolvida = searchParams.get('resolvida')
     const search = searchParams.get('search')
+    const order = searchParams.get('order') || 'mais_nova' // 'mais_nova' ou 'mais_antiga'
 
     let query = supabase
       .from('perguntas')
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
         created_at,
         updated_at
       `)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: order === 'mais_antiga' })
 
     if (autorId) {
       query = query.eq('autor_id', autorId)

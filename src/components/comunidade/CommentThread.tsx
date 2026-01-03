@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { MessageSquare, Send, User } from 'lucide-react'
+import { MessageSquare, Send, User, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
@@ -10,6 +10,7 @@ import { extractMentions } from '@/lib/mentionParser'
 import BadgeDisplay from './BadgeDisplay'
 import QuestionImageUpload from './QuestionImageUpload'
 import { getUserBadges } from '@/lib/badges'
+import { formatDateTime } from '@/lib/utils/dateFormat'
 
 interface Comentario {
   id: string
@@ -409,6 +410,10 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
                       )}
                       <span className={cn('text-[10px]', theme === 'dark' ? 'text-gray-500' : 'text-gray-500')}>
                         Nível {comentario.autor?.nivel || 1}
+                      </span>
+                      <span className={cn('text-[10px] flex items-center gap-1', theme === 'dark' ? 'text-gray-500' : 'text-gray-500')}>
+                        <Clock className="w-3 h-3" />
+                        {formatDateTime(comentario.dataCriacao)}
                       </span>
                     </div>
                     <p className={cn('mt-1 whitespace-pre-wrap', theme === 'dark' ? 'text-gray-300' : 'text-gray-700')}>
