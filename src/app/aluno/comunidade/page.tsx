@@ -17,7 +17,7 @@ import { CURSOS } from '@/lib/constants/cursos'
 
 type FilterOwner = 'all' | 'mine'
 type FilterStatus = 'all' | 'answered' | 'unanswered'
-type FilterTechnology = 'all' | 'Android' | 'iOS' | 'Frontend' | 'Backend' | 'Análise de Dados'
+type FilterTechnology = 'all' | string
 
 interface Pergunta {
   id: string
@@ -97,6 +97,7 @@ export default function ComunidadePage() {
   const [perguntaImagemUrlAtual, setPerguntaImagemUrlAtual] = useState<string | null>(null)
   const [showExemplos, setShowExemplos] = useState(false)
   const [badgesMap, setBadgesMap] = useState<Map<string, string[]>>(new Map())
+  const [categoriasDisponiveis, setCategoriasDisponiveis] = useState<string[]>([])
   
   const router = useRouter()
   
@@ -134,6 +135,23 @@ export default function ComunidadePage() {
 
       if (json.success && json.perguntas) {
         setPerguntas(json.perguntas)
+        
+        // Extrair categorias únicas das perguntas
+        const categoriasUnicas = new Set<string>()
+        json.perguntas.forEach((p: Pergunta) => {
+          if (p.categoria && p.categoria.trim()) {
+            categoriasUnicas.add(p.categoria.trim())
+          }
+        })
+        
+        // Ordenar categorias: padrão primeiro, depois customizadas
+        const categoriasPadrao = ['Android', 'iOS', 'Frontend', 'Backend', 'Análise de Dados']
+        const categoriasOrdenadas = [
+          ...categoriasPadrao.filter(c => categoriasUnicas.has(c)),
+          ...Array.from(categoriasUnicas).filter(c => !categoriasPadrao.includes(c)).sort()
+        ]
+        
+        setCategoriasDisponiveis(categoriasOrdenadas)
       }
     } catch (e: any) {
       console.error('Erro ao buscar perguntas:', e)
@@ -1408,7 +1426,7 @@ export default function ComunidadePage() {
           value={filterTechnology}
           onChange={(e) => {
             scrollPositionRef.current = window.scrollY
-            setFilterTechnology(e.target.value as FilterTechnology)
+            setFilterTechnology(e.target.value)
           }}
           className={cn(
             "px-3 md:px-4 py-2 text-sm md:text-base backdrop-blur-md border rounded-lg focus:outline-none transition-colors duration-300",
@@ -1418,11 +1436,11 @@ export default function ComunidadePage() {
           )}
         >
           <option value="all">Todas as categorias</option>
-          <option value="Android">Android</option>
-          <option value="iOS">iOS</option>
-          <option value="Frontend">Frontend</option>
-          <option value="Backend">Backend</option>
-          <option value="Análise de Dados">Análise de Dados</option>
+          {categoriasDisponiveis.map((categoria) => (
+            <option key={categoria} value={categoria}>
+              {categoria}
+            </option>
+          ))}
         </select>
 
         {/* Filtro por Owner */}
