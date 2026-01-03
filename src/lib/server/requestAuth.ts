@@ -16,36 +16,36 @@ export async function requireUserIdFromBearer(request: Request): Promise<string>
 
   console.log('🔍 [requireUserIdFromBearer] Validando token...', token.substring(0, 20) + '...')
 
-  // Criar cliente com o token no header Authorization
-  const supabase = createClient(serverConfig.supabase.url, serverConfig.supabase.anonKey, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-    global: {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    }
+  // Usar a API REST do Supabase diretamente para validar o token
+  // Isso funciona melhor no servidor do que getUser() sem sessão
+  const supabaseUrl = serverConfig.supabase.url
+  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'apikey': serverConfig.supabase.anonKey,
+    },
   })
 
-  // Usar getUser() que vai usar o header Authorization automaticamente
-  const { data, error } = await supabase.auth.getUser()
-  
-  if (error) {
-    console.error('❌ [requireUserIdFromBearer] Erro ao validar token:', error)
-    console.error('❌ [requireUserIdFromBearer] Detalhes do erro:', {
-      message: error.message,
-      status: error.status,
-      name: error.name
+  if (!response.ok) {
+    const errorText = await response.text()
+    console.error('❌ [requireUserIdFromBearer] Erro ao validar token via API REST:', {
+      status: response.status,
+      statusText: response.statusText,
+      body: errorText
     })
     throw new Error('Não autenticado')
   }
+
+  const userData = await response.json()
   
-  if (!data?.user?.id) {
-    console.error('❌ [requireUserIdFromBearer] Token válido mas sem user.id:', data)
+  if (!userData?.id) {
+    console.error('❌ [requireUserIdFromBearer] Token válido mas sem user.id:', userData)
     throw new Error('Não autenticado')
   }
 
-  console.log('✅ [requireUserIdFromBearer] Token válido para usuário:', data.user.id)
-  return data.user.id
+  console.log('✅ [requireUserIdFromBearer] Token válido para usuário:', userData.id)
+  return userData.id
 }
 
 /**
