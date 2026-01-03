@@ -18,9 +18,26 @@ export async function requireUserIdFromBearer(request: Request): Promise<string>
 
   const supabase = createClient(serverConfig.supabase.url, serverConfig.supabase.anonKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
   })
 
-  const { data, error } = await supabase.auth.getUser(token)
+  // Primeiro definir a sessão com o token
+  try {
+    await supabase.auth.setSession({
+      access_token: token,
+      refresh_token: '', // Não temos refresh token, mas access token deve ser suficiente
+    } as any)
+  } catch (sessionError: any) {
+    console.warn('⚠️ [requireUserIdFromBearer] Erro ao definir sessão (continuando):', sessionError?.message)
+    // Continuar mesmo com erro - o header Authorization pode ser suficiente
+  }
+
+  // Agora obter o usuário
+  const { data, error } = await supabase.auth.getUser()
   
   if (error) {
     console.error('❌ [requireUserIdFromBearer] Erro ao validar token:', error)
