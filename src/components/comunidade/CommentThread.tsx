@@ -225,8 +225,8 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
           </span>
         </button>
 
-        {/* Botão para adicionar comentário (separado, sempre visível quando não expandido) */}
-        {!expanded && canCreate && (
+        {/* Botão para adicionar comentário (separado, só aparece se houver comentários) */}
+        {!expanded && canCreate && displayCount > 0 && (
           <button
             onClick={() => {
               setExpanded(true)
