@@ -445,32 +445,32 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
                   Adicionar comentário
                 </button>
               ) : (
-                <div className="space-y-2 relative">
-                  <textarea
-                    ref={textareaRef}
-                    value={comentarioTexto}
-                    onChange={handleTextChange}
-                    placeholder="Digite @username para mencionar alguém..."
-                    rows={3}
-                    className={cn(
-                      'w-full px-3 py-2 rounded-lg border text-xs',
-                      theme === 'dark'
-                        ? 'bg-black/30 border-white/10 text-white placeholder-gray-500'
-                        : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
-                    )}
-                  />
-                  {/* Dropdown de sugestões de menções */}
-                  {showMentionSuggestions && mentionUsers.length > 0 && (
-                    <div
-                      ref={mentionDropdownRef}
+                <div className="space-y-2">
+                  <div className="relative">
+                    <textarea
+                      ref={textareaRef}
+                      value={comentarioTexto}
+                      onChange={handleTextChange}
+                      placeholder="Digite @username para mencionar alguém..."
+                      rows={3}
                       className={cn(
-                        'absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border shadow-lg',
+                        'w-full px-3 py-2 rounded-lg border text-xs',
                         theme === 'dark'
-                          ? 'bg-black/95 border-white/20 backdrop-blur-md'
-                          : 'bg-white border-gray-200 shadow-xl'
+                          ? 'bg-black/30 border-white/10 text-white placeholder-gray-500'
+                          : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
                       )}
-                      style={{ top: '100%' }}
-                    >
+                    />
+                    {/* Dropdown de sugestões de menções */}
+                    {showMentionSuggestions && mentionUsers.length > 0 && (
+                      <div
+                        ref={mentionDropdownRef}
+                        className={cn(
+                          'absolute z-50 top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-lg border shadow-lg',
+                          theme === 'dark'
+                            ? 'bg-black/95 border-white/20 backdrop-blur-md'
+                            : 'bg-white border-gray-200 shadow-xl'
+                        )}
+                      >
                       {mentionUsers.map((user) => (
                         <button
                           key={user.id}
