@@ -258,6 +258,7 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
 
   // Extrair e validar menções
   const mentions = extractMentions(params.conteudo)
+  console.log('🔍 [responderComunidade] Menções extraídas:', mentions)
   const userMentions: string[] = []
   const mentionedUsers: Array<{ id: string; name: string }> = []
 
@@ -272,7 +273,13 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
       query = query.or(conditions)
     }
     
-    const { data: users } = await query
+    const { data: users, error: usersError } = await query
+
+    if (usersError) {
+      console.error('❌ [responderComunidade] Erro ao buscar usuários:', usersError)
+    }
+
+    console.log('👥 [responderComunidade] Usuários encontrados na busca:', users?.length || 0)
 
     if (users) {
       // Filtrar para pegar apenas matches exatos (ignorando case)
@@ -280,10 +287,13 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
       const matchedUsers = users.filter(u => 
         mentionSet.has(u.name.toLowerCase())
       )
+      console.log('✅ [responderComunidade] Usuários matched:', matchedUsers.map(u => `${u.name} (${u.id})`))
       userMentions.push(...matchedUsers.map((u) => u.id))
       mentionedUsers.push(...matchedUsers)
     }
   }
+
+  console.log('📝 [responderComunidade] Total de usuários mencionados:', mentionedUsers.length)
 
   const { data: resposta, error: respostaError } = await supabase
     .from('respostas')
@@ -321,7 +331,13 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
   }
 
   // Criar notificações para usuários mencionados
+  console.log('🔔 [responderComunidade] Verificando se deve criar notificações...', {
+    mentionedUsersLength: mentionedUsers.length,
+    respostaId: resposta.id
+  })
+  
   if (mentionedUsers.length > 0 && resposta.id) {
+    console.log('🔔 [responderComunidade] Criando notificações para', mentionedUsers.length, 'usuário(s)')
     try {
       // Usar o mesmo supabase client (já tem accessToken) para criar notificações
       const agora = new Date()
@@ -329,19 +345,28 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
       dataFim.setDate(dataFim.getDate() + 7) // Notificação válida por 7 dias
 
       // Buscar dados do autor
-      const { data: autor } = await supabase
+      const { data: autor, error: autorError } = await supabase
         .from('users')
         .select('id, name')
         .eq('id', params.userId)
         .single()
 
+      if (autorError) {
+        console.error('❌ [responderComunidade] Erro ao buscar autor:', autorError)
+      }
+
       const autorNome = autor?.name || 'Alguém'
+      console.log('👤 [responderComunidade] Nome do autor:', autorNome)
       const actionUrl = `/aluno/comunidade/pergunta/${params.perguntaId}`
 
       for (const mentionedUser of mentionedUsers) {
         // Não notificar o próprio autor
-        if (mentionedUser.id === params.userId) continue
+        if (mentionedUser.id === params.userId) {
+          console.log('⏭️ [responderComunidade] Pulando notificação para próprio autor:', mentionedUser.id)
+          continue
+        }
 
+        console.log(`📤 [responderComunidade] Criando notificação para ${mentionedUser.name} (${mentionedUser.id})`)
         const { error: notifError } = await supabase
           .from('notificacoes')
           .insert({
@@ -357,17 +382,23 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
           })
 
         if (notifError) {
-          console.error(`❌ Erro ao criar notificação para usuário ${mentionedUser.id}:`, notifError)
-          console.error('❌ Detalhes do erro:', JSON.stringify(notifError, null, 2))
+          console.error(`❌ [responderComunidade] Erro ao criar notificação para usuário ${mentionedUser.id}:`, notifError)
+          console.error('❌ [responderComunidade] Detalhes do erro:', JSON.stringify(notifError, null, 2))
         } else {
-          console.log(`✅ Notificação criada para usuário ${mentionedUser.id} (${mentionedUser.name})`)
+          console.log(`✅ [responderComunidade] Notificação criada para usuário ${mentionedUser.id} (${mentionedUser.name})`)
         }
       }
     } catch (notifErr: any) {
       // Não falhar a criação da resposta se notificação falhar
-      console.error('❌ Erro ao criar notificações de menção:', notifErr)
-      console.error('❌ Stack trace:', notifErr?.stack)
+      console.error('❌ [responderComunidade] Erro ao criar notificações de menção:', notifErr)
+      console.error('❌ [responderComunidade] Stack trace:', notifErr?.stack)
     }
+  } else {
+    console.log('⚠️ [responderComunidade] Não criando notificações:', {
+      mentionedUsersLength: mentionedUsers.length,
+      respostaId: resposta.id,
+      reason: mentionedUsers.length === 0 ? 'Nenhum usuário mencionado' : 'Resposta ID não disponível'
+    })
   }
 
   return { awarded: true as const, respostaId: resposta.id, xp: xpResposta }
