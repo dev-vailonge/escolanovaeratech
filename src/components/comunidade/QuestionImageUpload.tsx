@@ -28,12 +28,12 @@ export default function QuestionImageUpload({
     setPreview(currentImageUrl || null)
   }, [currentImageUrl])
 
-  // Reset quando resetTrigger mudar
+  // Reset quando resetTrigger mudar (apenas se não houver currentImageUrl para manter)
   useEffect(() => {
-    if (resetTrigger !== undefined) {
+    if (resetTrigger !== undefined && !currentImageUrl) {
       handleRemove()
     }
-  }, [resetTrigger])
+  }, [resetTrigger, currentImageUrl])
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

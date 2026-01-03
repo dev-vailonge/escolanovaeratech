@@ -1577,8 +1577,8 @@ export default function ComunidadePage() {
                     )}>
                       {pergunta.titulo}
                     </h3>
-                    {/* Botões de editar/excluir - apenas se for o dono e não tiver respostas */}
-                    {isOwner && pergunta.respostas === 0 && (
+                    {/* Botões de editar/excluir - editar sempre permitido se for dono, excluir apenas sem respostas */}
+                    {isOwner && (
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button
                           onClick={() => iniciarEdicao(pergunta)}
@@ -1592,19 +1592,21 @@ export default function ComunidadePage() {
                         >
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => excluirPergunta(pergunta.id)}
-                          className={cn(
-                            "p-1.5 rounded border transition-colors",
-                            theme === 'dark'
-                              ? "border-white/20 text-gray-300 hover:bg-red-500/20 hover:text-red-400"
-                              : "border-gray-300 text-gray-600 hover:bg-red-50 hover:text-red-600"
-                          )}
-                          title="Excluir pergunta"
-                          disabled={isSubmitting}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {pergunta.respostas === 0 && (
+                          <button
+                            onClick={() => excluirPergunta(pergunta.id)}
+                            className={cn(
+                              "p-1.5 rounded border transition-colors",
+                              theme === 'dark'
+                                ? "border-white/20 text-gray-300 hover:bg-red-500/20 hover:text-red-400"
+                                : "border-gray-300 text-gray-600 hover:bg-red-50 hover:text-red-600"
+                            )}
+                            title="Excluir pergunta"
+                            disabled={isSubmitting}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
