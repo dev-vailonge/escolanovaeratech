@@ -60,10 +60,8 @@ export async function GET(request: Request) {
     // Não filtrar por resolvida aqui - vamos filtrar depois baseado na contagem de respostas
     // O parâmetro 'resolvida' será usado para filtrar por "tem respostas" ou "não tem respostas"
 
-    if (search) {
-      query = query.or(`titulo.ilike.%${search}%,descricao.ilike.%${search}%`)
-    }
-
+    // Busca será aplicada depois para incluir tags (array)
+    // Primeiro buscar todas (ou com filtros de categoria/autor)
     const { data: perguntas, error } = await query
 
     if (error) {
@@ -122,14 +120,34 @@ export async function GET(request: Request) {
       countMapTotal.set(r.pergunta_id, (countMapTotal.get(r.pergunta_id) || 0) + 1)
     })
 
+    // Aplicar busca (título, descrição, categoria e tags)
+    let perguntasComBusca = perguntas || []
+    if (search) {
+      const searchLower = search.toLowerCase()
+      perguntasComBusca = perguntas?.filter((p) => {
+        // Buscar em título
+        const tituloMatch = p.titulo?.toLowerCase().includes(searchLower) || false
+        // Buscar em descrição
+        const descricaoMatch = p.descricao?.toLowerCase().includes(searchLower) || false
+        // Buscar em categoria
+        const categoriaMatch = p.categoria?.toLowerCase().includes(searchLower) || false
+        // Buscar em tags (array)
+        const tagsMatch = p.tags?.some((tag: string) => 
+          tag.toLowerCase().includes(searchLower)
+        ) || false
+        
+        return tituloMatch || descricaoMatch || categoriaMatch || tagsMatch
+      }) || []
+    }
+
     // Aplicar filtro de status baseado em contagem de respostas diretas
-    let perguntasFiltradas = perguntas || []
+    let perguntasFiltradas = perguntasComBusca
     if (resolvida !== null && resolvida !== undefined) {
       const temRespostas = resolvida === 'true'
-      perguntasFiltradas = perguntas?.filter((p) => {
+      perguntasFiltradas = perguntasComBusca.filter((p) => {
         const numRespostasDiretas = countMapDiretas.get(p.id) || 0
         return temRespostas ? numRespostasDiretas > 0 : numRespostasDiretas === 0
-      }) || []
+      })
     }
 
     // Buscar dados dos autores
