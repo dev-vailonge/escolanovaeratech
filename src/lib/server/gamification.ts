@@ -367,7 +367,15 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
         }
 
         console.log(`📤 [responderComunidade] Criando notificação para ${mentionedUser.name} (${mentionedUser.id})`)
-        const { error: notifError } = await supabase
+        console.log(`📋 [responderComunidade] Dados da notificação:`, {
+          titulo: '💬 Você foi mencionado',
+          mensagem: `${autorNome} mencionou você em uma resposta.`,
+          target_user_id: mentionedUser.id,
+          autor_id: params.userId,
+          autor_nome: autorNome
+        })
+        
+        const { data: notifData, error: notifError } = await supabase
           .from('notificacoes')
           .insert({
             titulo: '💬 Você foi mencionado',
@@ -380,12 +388,19 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
             action_url: actionUrl,
             created_by: null,
           })
+          .select('id, target_user_id')
 
         if (notifError) {
           console.error(`❌ [responderComunidade] Erro ao criar notificação para usuário ${mentionedUser.id}:`, notifError)
           console.error('❌ [responderComunidade] Detalhes do erro:', JSON.stringify(notifError, null, 2))
+          console.error('❌ [responderComunidade] Código do erro:', notifError.code)
+          console.error('❌ [responderComunidade] Mensagem:', notifError.message)
         } else {
-          console.log(`✅ [responderComunidade] Notificação criada para usuário ${mentionedUser.id} (${mentionedUser.name})`)
+          console.log(`✅ [responderComunidade] Notificação criada com sucesso!`, {
+            notificacao_id: notifData?.[0]?.id,
+            target_user_id: notifData?.[0]?.target_user_id,
+            usuario_mentionado: mentionedUser.name
+          })
         }
       }
     } catch (notifErr: any) {

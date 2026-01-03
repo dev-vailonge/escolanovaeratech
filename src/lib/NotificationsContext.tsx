@@ -74,6 +74,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       // 2. Notificações broadcast (target_user_id IS NULL) com público-alvo apropriado
       
       // Query para notificações individuais do usuário
+      console.log('🔍 [NotificationsContext] Buscando notificações para usuário:', user.id, 'role:', user?.role, 'accessLevel:', user?.accessLevel)
       const { data: individualNotifs, error: error1 } = await supabase
         .from('notificacoes')
         .select('*')
@@ -81,6 +82,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         .lte('data_inicio', now)
         .gte('data_fim', now)
         .order('created_at', { ascending: false })
+      
+      if (error1) {
+        console.error('❌ [NotificationsContext] Erro ao buscar notificações individuais:', error1)
+      } else {
+        console.log('✅ [NotificationsContext] Notificações individuais encontradas:', individualNotifs?.length || 0)
+      }
       
       // Query para notificações broadcast (sem target_user_id)
       const { data: broadcastNotifs, error: error2 } = await supabase
