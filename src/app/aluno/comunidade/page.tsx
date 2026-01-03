@@ -1646,6 +1646,18 @@ export default function ComunidadePage() {
                   </div>
 
                     <div className="flex items-center gap-2 flex-wrap mb-3">
+                    {pergunta.categoria && (
+                      <span
+                        className={cn(
+                          "flex items-center gap-1 px-2 py-1 text-xs rounded border font-medium",
+                          theme === 'dark'
+                            ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+                            : "bg-yellow-100 text-yellow-700 border-yellow-300"
+                        )}
+                      >
+                        {pergunta.categoria}
+                      </span>
+                    )}
                     {pergunta.tags.map((tag, idx) => (
                       <span
                         key={idx}
