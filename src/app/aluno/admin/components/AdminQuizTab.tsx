@@ -338,6 +338,18 @@ export default function AdminQuizTab() {
                     )}>
                       {quiz.nivel}
                     </span>
+                    {/* Badge de IA */}
+                    {!quiz.created_by && (
+                      <span className={cn(
+                        "px-2 py-1 text-xs rounded-full flex items-center gap-1",
+                        theme === 'dark'
+                          ? "bg-purple-500/20 text-purple-400"
+                          : "bg-purple-100 text-purple-700"
+                      )}>
+                        <Sparkles className="w-3 h-3" />
+                        IA
+                      </span>
+                    )}
                     {!quiz.disponivel && (
                       <span className={cn(
                         "px-2 py-1 text-xs rounded-full border",

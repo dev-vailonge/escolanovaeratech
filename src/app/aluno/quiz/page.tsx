@@ -1,6 +1,6 @@
 'use client'
 
-import { HelpCircle, CheckCircle2, Play, Trophy, Lock, Loader2, BookOpen, Lightbulb } from 'lucide-react'
+import { HelpCircle, CheckCircle2, Play, Trophy, Lock, Loader2, BookOpen, Lightbulb, Sparkles } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { hasFullAccess } from '@/lib/types/auth'
@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Modal from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
 import { getAllQuizzes } from '@/lib/database'
+import { getAuthToken } from '@/lib/getAuthToken'
 import type { DatabaseQuiz } from '@/types/database'
 import type { QuizQuestion } from '@/types/quiz'
 import QuizPlayer, { QuizResult } from '@/components/quiz/QuizPlayer'
@@ -30,6 +31,7 @@ interface QuizUI {
   melhorPontuacao?: number
   disponivel: boolean
   xpTotalGanho?: number // XP total já ganho deste quiz
+  dataConclusao?: string // Data/hora de conclusão do quiz
 }
 
 export default function QuizPage() {
@@ -50,9 +52,18 @@ export default function QuizPage() {
   const [selectedTecnologia, setSelectedTecnologia] = useState('')
   const [selectedNivel, setSelectedNivel] = useState<'iniciante' | 'intermediario' | 'avancado' | ''>('')
   const [selectionError, setSelectionError] = useState<string>('')
+  const [isGerando, setIsGerando] = useState(false)
   
-  // Opções para os dropdowns
-  const tecnologias = ['HTML', 'CSS', 'JavaScript', 'React', 'Android', 'Web Development']
+  // Opções para os dropdowns (mesmas tecnologias da página de desafios)
+  const TECNOLOGIAS_POR_CATEGORIA = {
+    'Frontend Web': ['HTML', 'CSS', 'JavaScript', 'TypeScript', 'React', 'Next.js', 'Tailwind CSS'],
+    'Backend': ['Node.js', 'Express', 'APIs REST', 'PostgreSQL', 'MongoDB'],
+    'Mobile Android': ['Kotlin', 'Jetpack Compose', 'Android'],
+    'Mobile iOS': ['Swift', 'SwiftUI'],
+    'Análise de Dados': ['Python', 'Pandas', 'SQL', 'Data Visualization'],
+    'Fundamentos': ['Lógica de Programação', 'Algoritmos', 'Estrutura de Dados', 'Git'],
+  }
+  const tecnologias = Object.values(TECNOLOGIAS_POR_CATEGORIA).flat()
   const niveis: Array<'iniciante' | 'intermediario' | 'avancado'> = ['iniciante', 'intermediario', 'avancado']
 
   // Carregar quizzes do Supabase
@@ -68,7 +79,7 @@ export default function QuizPage() {
           authUser?.id
             ? supabase
                 .from('user_quiz_progress')
-                .select('quiz_id, tentativas, melhor_pontuacao, completo')
+                .select('quiz_id, tentativas, melhor_pontuacao, completo, updated_at')
                 .eq('user_id', authUser.id)
                 .then(({ data, error }) => {
                   if (error) {
@@ -101,13 +112,14 @@ export default function QuizPage() {
         }
         
         // Processar progresso
-        let userProgress: Record<string, { tentativas: number; melhor_pontuacao: number | null; completo: boolean }> = {}
+        let userProgress: Record<string, { tentativas: number; melhor_pontuacao: number | null; completo: boolean; dataConclusao?: string }> = {}
         if (progressResult.status === 'fulfilled' && Array.isArray(progressResult.value)) {
           progressResult.value.forEach((p: any) => {
             userProgress[p.quiz_id] = {
               tentativas: p.tentativas || 0,
               melhor_pontuacao: p.melhor_pontuacao,
-              completo: p.completo || false
+              completo: p.completo || false,
+              dataConclusao: p.completo ? p.updated_at : undefined
             }
           })
         }
@@ -145,7 +157,8 @@ export default function QuizPage() {
               tentativas: progress?.tentativas || 0,
               melhorPontuacao: progress?.melhor_pontuacao ?? undefined,
               disponivel: q.disponivel,
-              xpTotalGanho: xpGanhoPorQuiz[q.id] || 0
+              xpTotalGanho: xpGanhoPorQuiz[q.id] || 0,
+              dataConclusao: progress?.dataConclusao
             }
           })
         
@@ -173,35 +186,85 @@ export default function QuizPage() {
     setShowSelectionModal(true)
   }
 
-  // Confirmar seleção e buscar quiz
-  const handleConfirmarSelecao = () => {
+  // Confirmar seleção e gerar/buscar quiz
+  const handleConfirmarSelecao = async () => {
     if (!selectedTecnologia || !selectedNivel) {
       setSelectionError('Por favor, selecione tecnologia e nível')
       return
     }
 
-    // Buscar quiz correspondente
-    const quizEncontrado = quizes.find(q => 
-      q.tecnologia === selectedTecnologia && 
-      q.nivel === selectedNivel && 
-      q.disponivel &&
-      q.numQuestoes > 0
-    )
-
-    if (!quizEncontrado) {
-      setSelectionError(`Nenhum quiz disponível para ${selectedTecnologia} - ${selectedNivel.charAt(0).toUpperCase() + selectedNivel.slice(1)}`)
-      return
-    }
-
-    // Fechar modal de seleção
-    setShowSelectionModal(false)
+    setIsGerando(true)
     setSelectionError('')
-    
-    // Abrir QuizPlayer normalmente
-    setError('')
-    setSuccess('')
-    setSelectedQuiz(quizEncontrado)
-    setIsPlaying(true)
+
+    try {
+      console.log('🔐 Obtendo token para gerar quiz...')
+      let token = await getAuthToken()
+      
+      // Se não conseguiu token, tentar uma última vez com getSession direto
+      if (!token) {
+        console.log('🔄 Última tentativa: getSession() direto...')
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          token = session?.access_token || null
+          if (token) {
+            console.log('✅ Token obtido na última tentativa')
+          }
+        } catch (e) {
+          console.error('❌ Última tentativa falhou:', e)
+        }
+      }
+      
+      if (!token) {
+        console.error('❌ Token não encontrado após todas as tentativas')
+        setSelectionError('Não foi possível obter o token de autenticação. Por favor, faça logout e login novamente.')
+        setIsGerando(false)
+        return
+      }
+
+      const res = await fetch('/api/quiz/gerar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tecnologia: selectedTecnologia, nivel: selectedNivel })
+      })
+
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json?.error || 'Erro ao gerar quiz')
+      }
+
+      // Converter DatabaseQuiz para QuizUI
+      const quizDb = json.quiz as DatabaseQuiz
+      const questoes = Array.isArray(quizDb.questoes) ? quizDb.questoes as QuizQuestion[] : []
+      
+      const quizUI: QuizUI = {
+        id: quizDb.id,
+        titulo: quizDb.titulo,
+        descricao: quizDb.descricao,
+        tecnologia: quizDb.tecnologia,
+        nivel: quizDb.nivel,
+        questoes,
+        numQuestoes: questoes.length,
+        tempoEstimado: questoes.length * 2, // 2 min por pergunta
+        xpGanho: quizDb.xp,
+        completo: false, // Será verificado depois
+        tentativas: 0,
+        disponivel: quizDb.disponivel
+      }
+
+      // Fechar modal de seleção
+      setShowSelectionModal(false)
+      setSelectionError('')
+      
+      // Abrir QuizPlayer
+      setError('')
+      setSuccess('')
+      setSelectedQuiz(quizUI)
+      setIsPlaying(true)
+    } catch (e: any) {
+      setSelectionError(e?.message || 'Erro ao gerar quiz')
+    } finally {
+      setIsGerando(false)
+    }
   }
 
   // Iniciar quiz (para refazer)
@@ -354,25 +417,84 @@ export default function QuizPage() {
       <Modal 
         isOpen={showSelectionModal} 
         onClose={() => {
-          setShowSelectionModal(false)
-          setSelectionError('')
+          if (!isGerando) {
+            setShowSelectionModal(false)
+            setSelectionError('')
+          }
         }} 
-        title="Selecione Tecnologia e Nível" 
+        title={isGerando ? "Gerando Quiz" : "Selecione Tecnologia e Nível"} 
         size="md"
       >
-        <div className="space-y-4">
-          {selectionError && (
-            <div className={cn(
-              'border rounded-lg p-3 text-sm',
-              theme === 'dark'
-                ? 'bg-red-500/10 border-red-500/30 text-red-300'
-                : 'bg-red-50 border-red-200 text-red-700'
-            )}>
-              {selectionError}
+        {isGerando ? (
+          // Loading interativo
+          <div className="space-y-6 py-8">
+            <div className="flex flex-col items-center justify-center">
+              <div className={cn(
+                "w-20 h-20 rounded-full flex items-center justify-center mb-6",
+                theme === 'dark'
+                  ? "bg-yellow-500/20"
+                  : "bg-yellow-100"
+              )}>
+                <Sparkles className={cn(
+                  "w-10 h-10 animate-pulse",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )} />
+              </div>
+              
+              <h3 className={cn(
+                "text-xl font-bold mb-2 text-center",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                Nossa IA está criando um quiz para você!
+              </h3>
+              
+              <p className={cn(
+                "text-sm text-center max-w-md mb-4",
+                theme === 'dark' ? "text-gray-400" : "text-gray-600"
+              )}>
+                Aguarde um momento enquanto geramos {selectedTecnologia && (
+                  <>um quiz personalizado de <strong>{selectedTecnologia}</strong> no nível <strong>{selectedNivel === 'iniciante' ? 'Iniciante' : selectedNivel === 'intermediario' ? 'Intermediário' : 'Avançado'}</strong></>
+                )}
+                {!selectedTecnologia && (
+                  <>um quiz personalizado para você</>
+                )}...
+              </p>
+              
+              <div className={cn(
+                "w-full max-w-xs h-2 rounded-full overflow-hidden",
+                theme === 'dark' ? "bg-white/10" : "bg-gray-200"
+              )}>
+                <div className={cn(
+                  "h-full rounded-full animate-pulse",
+                  theme === 'dark' ? "bg-yellow-500" : "bg-yellow-600"
+                )} style={{
+                  width: '70%',
+                  animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                }} />
+              </div>
+              
+              <p className={cn(
+                "text-xs text-center mt-4",
+                theme === 'dark' ? "text-gray-500" : "text-gray-500"
+              )}>
+                Isso pode levar alguns segundos
+              </p>
             </div>
-          )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {selectionError && (
+              <div className={cn(
+                'border rounded-lg p-3 text-sm',
+                theme === 'dark'
+                  ? 'bg-red-500/10 border-red-500/30 text-red-300'
+                  : 'bg-red-50 border-red-200 text-red-700'
+              )}>
+                {selectionError}
+              </div>
+            )}
 
-          <div>
+            <div>
             <label className={cn(
               "block text-sm font-medium mb-2",
               theme === 'dark' ? "text-gray-300" : "text-gray-700"
@@ -393,8 +515,12 @@ export default function QuizPage() {
               )}
             >
               <option value="">Selecione uma tecnologia</option>
-              {tecnologias.map(tech => (
-                <option key={tech} value={tech}>{tech}</option>
+              {Object.entries(TECNOLOGIAS_POR_CATEGORIA).map(([categoria, techs]) => (
+                <optgroup key={categoria} label={categoria}>
+                  {techs.map(tech => (
+                    <option key={tech} value={tech}>{tech}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>
@@ -445,17 +571,27 @@ export default function QuizPage() {
             </button>
             <button
               onClick={handleConfirmarSelecao}
+              disabled={isGerando}
               className={cn(
-                "flex-1 px-4 py-2 rounded-lg font-medium transition-colors",
+                "flex-1 px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2",
+                isGerando && "opacity-50 cursor-not-allowed",
                 theme === 'dark'
                   ? "bg-yellow-400 hover:bg-yellow-500 text-black"
                   : "bg-yellow-500 hover:bg-yellow-600 text-white"
               )}
             >
-              Iniciar Quiz
+              {isGerando ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Gerando...
+                </>
+              ) : (
+                'Iniciar Quiz'
+              )}
             </button>
           </div>
-        </div>
+          </div>
+        )}
       </Modal>
 
       {(error || success) && (
@@ -750,6 +886,19 @@ export default function QuizPage() {
                               : 0}/{quiz.xpGanho} XP
                           </span>
                         </p>
+                        {quiz.dataConclusao && (
+                          <p>
+                            Concluído em: <span className="font-semibold">
+                              {new Date(quiz.dataConclusao).toLocaleDateString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </p>
+                        )}
                       </div>
                     </div>
 
