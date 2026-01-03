@@ -253,7 +253,38 @@ export async function completarQuiz(params: { userId: string; quizId: string; po
 export async function responderComunidade(params: { userId: string; perguntaId: string; conteudo: string; accessToken?: string }) {
   // Usar getSupabaseClient com accessToken para que RLS funcione corretamente
   const { getSupabaseClient } = await import('./getSupabaseClient')
+  const { extractMentions } = await import('@/lib/mentionParser')
+  const { getSupabaseAdmin } = await import('./supabaseAdmin')
   const supabase = await getSupabaseClient(params.accessToken)
+
+  // Extrair e validar menções
+  const mentions = extractMentions(params.conteudo)
+  const userMentions: string[] = []
+  const mentionedUsers: Array<{ id: string; name: string }> = []
+
+  if (mentions.length > 0) {
+    // Buscar usuários mencionados (case-insensitive)
+    let query = supabase
+      .from('users')
+      .select('id, name')
+    
+    const conditions = mentions.map((m) => `name.ilike.%${m}%`).join(',')
+    if (conditions) {
+      query = query.or(conditions)
+    }
+    
+    const { data: users } = await query
+
+    if (users) {
+      // Filtrar para pegar apenas matches exatos (ignorando case)
+      const mentionSet = new Set(mentions.map(m => m.toLowerCase()))
+      const matchedUsers = users.filter(u => 
+        mentionSet.has(u.name.toLowerCase())
+      )
+      userMentions.push(...matchedUsers.map((u) => u.id))
+      mentionedUsers.push(...matchedUsers)
+    }
+  }
 
   const { data: resposta, error: respostaError } = await supabase
     .from('respostas')
@@ -261,6 +292,7 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
       pergunta_id: params.perguntaId,
       autor_id: params.userId,
       conteudo: params.conteudo,
+      mencoes: userMentions.length > 0 ? userMentions : null,
     })
     .select('id')
     .single()
@@ -287,6 +319,54 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
     console.error('Erro ao inserir XP (resposta já criada):', xpError)
     // Não falhar - a resposta já foi criada com sucesso
     // O XP pode ser concedido manualmente ou via outro mecanismo
+  }
+
+  // Criar notificações para usuários mencionados
+  if (mentionedUsers.length > 0 && resposta.id) {
+    try {
+      const adminSupabase = getSupabaseAdmin()
+      const agora = new Date()
+      const dataFim = new Date()
+      dataFim.setDate(dataFim.getDate() + 7) // Notificação válida por 7 dias
+
+      // Buscar dados do autor
+      const { data: autor } = await supabase
+        .from('users')
+        .select('id, name')
+        .eq('id', params.userId)
+        .single()
+
+      const autorNome = autor?.name || 'Alguém'
+      const actionUrl = `/aluno/comunidade/pergunta/${params.perguntaId}`
+
+      for (const mentionedUser of mentionedUsers) {
+        // Não notificar o próprio autor
+        if (mentionedUser.id === params.userId) continue
+
+        const { error: notifError } = await adminSupabase
+          .from('notificacoes')
+          .insert({
+            titulo: '💬 Você foi mencionado',
+            mensagem: `${autorNome} mencionou você em uma resposta.`,
+            tipo: 'info',
+            data_inicio: agora.toISOString(),
+            data_fim: dataFim.toISOString(),
+            publico_alvo: 'todos',
+            target_user_id: mentionedUser.id,
+            action_url: actionUrl,
+            created_by: null,
+          })
+
+        if (notifError) {
+          console.error(`❌ Erro ao criar notificação para usuário ${mentionedUser.id}:`, notifError)
+        } else {
+          console.log(`✅ Notificação criada para usuário ${mentionedUser.id} (${mentionedUser.name})`)
+        }
+      }
+    } catch (notifErr: any) {
+      // Não falhar a criação da resposta se notificação falhar
+      console.error('❌ Erro ao criar notificações de menção:', notifErr)
+    }
   }
 
   return { awarded: true as const, respostaId: resposta.id, xp: xpResposta }
