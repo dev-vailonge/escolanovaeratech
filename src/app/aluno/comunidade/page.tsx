@@ -17,7 +17,7 @@ import { CURSOS } from '@/lib/constants/cursos'
 
 type FilterOwner = 'all' | 'mine'
 type FilterStatus = 'all' | 'answered' | 'unanswered'
-type FilterTechnology = 'all' | 'HTML' | 'CSS' | 'JavaScript' | 'React' | 'Android' | 'Web Development'
+type FilterTechnology = 'all' | 'Android' | 'iOS' | 'Frontend' | 'Backend' | 'Análise de Dados'
 
 interface Pergunta {
   id: string
@@ -782,16 +782,10 @@ export default function ComunidadePage() {
   // Função utilitária para filtrar perguntas (filtros adicionais no frontend)
   const filteredPerguntas = useMemo(() => {
     return perguntas.filter((pergunta) => {
-      // Filtro por tecnologia (tags)
+      // Filtro por categoria
       if (filterTechnology !== 'all') {
-        const techLower = filterTechnology.toLowerCase()
-        const categoriaMatch = pergunta.categoria?.toLowerCase().includes(techLower)
-        const tagsMatch = pergunta.tags.some(tag => 
-          tag.toLowerCase().includes(techLower) ||
-          (techLower === 'javascript' && tag.toLowerCase().includes('js'))
-        )
-        
-        if (!categoriaMatch && !tagsMatch) {
+        const categoriaMatch = pergunta.categoria === filterTechnology
+        if (!categoriaMatch) {
           return false
         }
       }
@@ -1409,7 +1403,7 @@ export default function ComunidadePage() {
           />
         </div>
 
-        {/* Filtro por Tecnologia */}
+        {/* Filtro por Categoria */}
         <select
           value={filterTechnology}
           onChange={(e) => {
@@ -1423,13 +1417,12 @@ export default function ComunidadePage() {
               : "bg-white border-yellow-400/90 text-gray-900 focus:border-yellow-500 shadow-sm"
           )}
         >
-          <option value="all">Todas as tecnologias</option>
-          <option value="HTML">HTML</option>
-          <option value="CSS">CSS</option>
-          <option value="JavaScript">JavaScript</option>
-          <option value="React">React</option>
+          <option value="all">Todas as categorias</option>
           <option value="Android">Android</option>
-          <option value="Web Development">Web Development</option>
+          <option value="iOS">iOS</option>
+          <option value="Frontend">Frontend</option>
+          <option value="Backend">Backend</option>
+          <option value="Análise de Dados">Análise de Dados</option>
         </select>
 
         {/* Filtro por Owner */}
