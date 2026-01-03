@@ -12,12 +12,13 @@ import React from 'react'
  * @returns Array de usernames mencionados (sem o @)
  */
 export function extractMentions(text: string): string[] {
-  // Regex que captura @ seguido de nome (1-3 palavras para cobrir nomes completos brasileiros)
+  // Regex que captura @ seguido de nome (1-2 palavras, nome + sobrenome)
   // Para no espaço após o nome, pontuação, dois espaços, ou fim do texto
-  // Exemplos: @Beto, @Beto Imlau, @João Silva Santos, @Maria da Silva
-  // NÃO captura: @Beto  olha (dois espaços), @Beto, olha (vírgula)
-  // Limita a 3 palavras (cobre maioria dos nomes brasileiros: nome + sobrenome + segundo sobrenome)
-  const mentionRegex = /@([\w\u00C0-\u017F]+(?:\s+[\w\u00C0-\u017F]+){0,2})(?=\s|$|[^\w\s\u00C0-\u017F])/g
+  // Exemplos: @Beto, @Beto Imlau, @João Silva
+  // NÃO captura: @Beto  olha (dois espaços), @Beto, olha (vírgula), @Beto Imlau teste (palavra extra)
+  // Limita a 2 palavras (nome + sobrenome) - funciona melhor porque evita capturar texto após o nome
+  // NOTA: Volta para 2 palavras porque 3 palavras capturava texto extra (ex: '@Carlos Imlau teste' capturava 'Carlos Imlau teste')
+  const mentionRegex = /@([\w\u00C0-\u017F]+(?:\s+[\w\u00C0-\u017F]+){0,1})(?=\s|$|[^\w\s\u00C0-\u017F])/g
   const matches = text.matchAll(mentionRegex)
   const mentions: string[] = []
   const seen = new Set<string>()
@@ -76,7 +77,7 @@ export function formatMentions(
 ): React.ReactNode {
   const parts: React.ReactNode[] = []
   // Mesma regex do extractMentions para consistência
-  const mentionRegex = /@([\w\u00C0-\u017F]+(?:\s+[\w\u00C0-\u017F]+){0,2})(?=\s|$|[^\w\s\u00C0-\u017F])/g
+  const mentionRegex = /@([\w\u00C0-\u017F]+(?:\s+[\w\u00C0-\u017F]+){0,1})(?=\s|$|[^\w\s\u00C0-\u017F])/g
   let lastIndex = 0
   let match
 
