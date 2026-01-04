@@ -65,12 +65,20 @@ export async function POST(
     }
 
     // Verificar se já existe uma submissão pendente ou aprovada
-    const { data: existingSubmission } = await supabase
+    const { data: existingSubmission, error: existingError } = await supabase
       .from('desafio_submissions')
       .select('id, status')
       .eq('user_id', userId)
       .eq('desafio_id', desafioId)
-      .single()
+      .maybeSingle()
+    
+    if (existingError && existingError.code !== 'PGRST116') {
+      console.error('❌ Erro ao verificar submissão existente:', existingError)
+      return NextResponse.json(
+        { error: 'Erro ao verificar submissão existente' },
+        { status: 500 }
+      )
+    }
 
     if (existingSubmission) {
       if (existingSubmission.status === 'aprovado') {
@@ -100,9 +108,19 @@ export async function POST(
         .single()
 
       if (updateError) {
-        console.error('Erro ao atualizar submissão:', updateError)
+        console.error('❌ Erro ao atualizar submissão:', updateError)
+        console.error('❌ Detalhes do erro:', {
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint,
+          code: updateError.code,
+        })
         return NextResponse.json(
-          { error: 'Erro ao atualizar submissão' },
+          { 
+            error: 'Erro ao atualizar submissão',
+            details: updateError.message,
+            code: updateError.code
+          },
           { status: 500 }
         )
       }

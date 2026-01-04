@@ -122,10 +122,13 @@ export async function PUT(
           desafioId: submission.desafio_id,
           accessToken
         })
-        xpAwarded = result?.xp || desafio?.xp || 0
+        // A função completarDesafio retorna { awarded: true, xp: number } ou { awarded: false, reason: string }
+        xpAwarded = result.awarded ? (result.xp ?? 0) : 0
+        console.log(`✅ XP concedido ao aluno: ${xpAwarded} (awarded: ${result.awarded})`)
       } catch (xpError) {
-        console.error('Erro ao dar XP:', xpError)
-        // Não falhar a requisição por causa do XP
+        console.error('❌ Erro ao dar XP:', xpError)
+        // Não falhar a requisição por causa do XP, mas usar 0 como fallback
+        xpAwarded = 0
       }
 
       // Notificar aluno sobre aprovação
