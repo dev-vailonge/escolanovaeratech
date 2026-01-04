@@ -193,6 +193,7 @@ export async function PUT(
           message: xpError.message || xpError.reason,
           code: xpError.code,
           details: xpError.details,
+          rpcError: xpError.rpcError, // Informações sobre erro da função SQL
         } : null,
         userId: submission.user_id,
         desafioId: submission.desafio_id,
