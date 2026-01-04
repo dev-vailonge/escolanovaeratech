@@ -3,6 +3,7 @@ import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/
 import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { completarDesafio } from '@/lib/server/gamification'
 import { notificarAlunoDesafioAprovado, notificarAlunoDesafioRejeitado } from '@/lib/server/desafioNotifications'
+import { XP_CONSTANTS } from '@/lib/gamification/constants'
 
 /**
  * PUT /api/admin/submissions/[id]
@@ -123,12 +124,19 @@ export async function PUT(
           accessToken
         })
         // A função completarDesafio retorna { awarded: true, xp: number } ou { awarded: false, reason: string }
-        xpAwarded = result.awarded ? (result.xp ?? 0) : 0
-        console.log(`✅ XP concedido ao aluno: ${xpAwarded} (awarded: ${result.awarded})`)
+        if (result.awarded) {
+          xpAwarded = result.xp ?? 0
+          console.log(`✅ XP concedido ao aluno: ${xpAwarded} (awarded: ${result.awarded})`)
+        } else {
+          // Se já estava completo, ainda mostrar o XP padrão na notificação
+          xpAwarded = XP_CONSTANTS.desafio.completo
+          console.log(`⚠️ Desafio já estava completo (reason: ${result.reason}), usando XP padrão: ${xpAwarded}`)
+        }
       } catch (xpError) {
         console.error('❌ Erro ao dar XP:', xpError)
-        // Não falhar a requisição por causa do XP, mas usar 0 como fallback
-        xpAwarded = 0
+        // Em caso de erro, ainda mostrar o XP padrão na notificação
+        xpAwarded = XP_CONSTANTS.desafio.completo
+        console.log(`⚠️ Erro ao dar XP, usando XP padrão: ${xpAwarded}`)
       }
 
       // Notificar aluno sobre aprovação
