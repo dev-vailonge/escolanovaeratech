@@ -17,7 +17,21 @@ export async function GET(request: NextRequest) {
   try {
     // Autenticar usuário
     const adminId = await requireUserIdFromBearer(request)
-    const supabase = getSupabaseAdmin()
+    
+    // Obter cliente Supabase Admin (pode falhar se SERVICE_ROLE_KEY não estiver configurada)
+    let supabase
+    try {
+      supabase = getSupabaseAdmin()
+    } catch (adminError: any) {
+      console.error('Erro ao obter Supabase Admin:', adminError)
+      if (adminError?.message?.includes('SUPABASE_SERVICE_ROLE_KEY')) {
+        return NextResponse.json(
+          { error: 'Configuração do servidor incompleta. Service role key não configurada.' },
+          { status: 500 }
+        )
+      }
+      throw adminError
+    }
 
     // Verificar se é admin
     const { data: admin, error: adminError } = await supabase
@@ -75,8 +89,17 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Erro ao buscar tokens:', error)
+      console.error('Detalhes do erro:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      })
       return NextResponse.json(
-        { error: 'Erro ao buscar dados de tokens' },
+        { 
+          error: 'Erro ao buscar dados de tokens',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        },
         { status: 500 }
       )
     }
@@ -99,6 +122,12 @@ export async function GET(request: NextRequest) {
 
       if (usersError) {
         console.error('Erro ao buscar usuários:', usersError)
+        console.error('Detalhes do erro de usuários:', {
+          message: usersError.message,
+          details: usersError.details,
+          hint: usersError.hint,
+          code: usersError.code
+        })
         // Continuar mesmo se falhar, usando valores padrão
       } else if (users) {
         users.forEach((user) => {
@@ -223,11 +252,30 @@ export async function GET(request: NextRequest) {
     })
   } catch (error: any) {
     console.error('Erro na API de tokens:', error)
+    console.error('Erro detalhado:', {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name
+    })
+    
     if (error.message?.includes('Não autenticado')) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
+    
+    if (error.message?.includes('SUPABASE_SERVICE_ROLE_KEY')) {
+      return NextResponse.json(
+        { error: 'Configuração do servidor incompleta. Service role key não configurada.' },
+        { status: 500 }
+      )
+    }
+    
+    // Retornar mensagem de erro mais detalhada em desenvolvimento
+    const errorMessage = process.env.NODE_ENV === 'development' 
+      ? `Erro ao buscar estatísticas de tokens: ${error?.message || 'Erro desconhecido'}`
+      : 'Erro ao buscar estatísticas de tokens'
+    
     return NextResponse.json(
-      { error: 'Erro ao buscar estatísticas de tokens' },
+      { error: errorMessage },
       { status: 500 }
     )
   }
