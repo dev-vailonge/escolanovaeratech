@@ -115,22 +115,34 @@ export default function AdminDesafiosTab() {
         throw new Error(json?.error || 'Erro ao atualizar submission')
       }
 
-      // Log de debug para XP
+      // Log de debug para XP (sempre aparece no console do navegador)
       if (status === 'aprovado') {
-        console.log('🔍 [DEBUG XP] Resultado da aprovação:', {
+        console.log('🔍 [DEBUG XP] ===== RESULTADO DA APROVAÇÃO =====')
+        console.log('📊 Dados recebidos:', json.debug || {
           xpAwarded: json.xpAwarded,
           xpAwardedSuccessfully: json.xpAwardedSuccessfully,
           xpError: json.xpError,
-          message: json.message,
         })
+        console.log('📝 Mensagem:', json.message)
         
-        if (json.xpError) {
-          console.error('❌ [DEBUG XP] Erro ao conceder XP:', json.xpError)
+        if (json.debug?.xpError) {
+          console.error('❌ [DEBUG XP] ERRO ao conceder XP:', {
+            message: json.debug.xpError.message,
+            code: json.debug.xpError.code,
+            details: json.debug.xpError.details,
+            userId: json.debug.userId,
+            desafioId: json.debug.desafioId,
+          })
+          console.error('💡 Dica: Verifique se a função SQL complete_desafio_for_user foi criada no banco')
         } else if (json.xpAwardedSuccessfully) {
-          console.log(`✅ [DEBUG XP] XP concedido com sucesso: ${json.xpAwarded} XP`)
+          console.log(`✅ [DEBUG XP] XP concedido com SUCESSO: ${json.xpAwarded} XP`)
+          console.log(`👤 Usuário: ${json.debug?.userId}`)
+          console.log(`🎯 Desafio: ${json.debug?.desafioId}`)
         } else {
-          console.warn(`⚠️ [DEBUG XP] XP não foi concedido mas mostra na mensagem: ${json.xpAwarded} XP`)
+          console.warn(`⚠️ [DEBUG XP] ATENÇÃO: XP não foi concedido mas mostra na mensagem: ${json.xpAwarded} XP`)
+          console.warn('💡 Verifique os logs do servidor ou se a função SQL foi executada')
         }
+        console.log('🔍 [DEBUG XP] ====================================')
       }
 
       setSuccess(json.message || 'Submissão atualizada com sucesso!')
