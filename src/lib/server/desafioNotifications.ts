@@ -45,32 +45,37 @@ export async function notificarAlunoDesafioAprovado(params: {
   desafioTitulo: string
   desafioId: string
   xpGanho: number
+  accessToken: string
 }) {
-  const supabase = getSupabaseAdmin()
-  
-  console.log(`🔔 Notificando aluno ${params.alunoId} sobre aprovação...`)
+  try {
+    const supabase = await getSupabaseClient(params.accessToken)
+    
+    console.log(`🔔 Notificando aluno ${params.alunoId} sobre aprovação...`)
 
-  const agora = new Date()
-  const dataFim = new Date()
-  dataFim.setDate(dataFim.getDate() + 7)
+    const agora = new Date()
+    const dataFim = new Date()
+    dataFim.setDate(dataFim.getDate() + 7)
 
-  const { error: insertError } = await supabase.from('notificacoes').insert({
-    titulo: '🎉 Desafio Aprovado!',
-    mensagem: `Parabéns! Seu desafio "${params.desafioTitulo}" foi aprovado! Você ganhou ${params.xpGanho} XP.`,
-    tipo: 'info', // 'success' não é válido na constraint, usando 'info'
-    data_inicio: agora.toISOString(),
-    data_fim: dataFim.toISOString(),
-    publico_alvo: 'todos',
-    target_user_id: params.alunoId,
-    related_desafio_id: params.desafioId,
-    action_url: '/aluno/desafios',
-    created_by: null
-  })
+    const { error: insertError } = await supabase.from('notificacoes').insert({
+      titulo: '🎉 Desafio Aprovado!',
+      mensagem: `Parabéns! Seu desafio "${params.desafioTitulo}" foi aprovado! Você ganhou ${params.xpGanho} XP.`,
+      tipo: 'info', // 'success' não é válido na constraint, usando 'info'
+      data_inicio: agora.toISOString(),
+      data_fim: dataFim.toISOString(),
+      publico_alvo: 'todos',
+      target_user_id: params.alunoId,
+      related_desafio_id: params.desafioId,
+      action_url: '/aluno/desafios',
+      created_by: null
+    })
 
-  if (insertError) {
-    console.error('❌ Erro ao criar notificação de aprovação:', insertError)
-  } else {
-    console.log(`✅ Notificação de aprovação criada para aluno ${params.alunoId}`)
+    if (insertError) {
+      console.error('❌ Erro ao criar notificação de aprovação:', insertError)
+    } else {
+      console.log(`✅ Notificação de aprovação criada para aluno ${params.alunoId}`)
+    }
+  } catch (error: any) {
+    console.error('❌ Erro ao notificar aluno sobre aprovação:', error?.message || error)
   }
 }
 
@@ -82,35 +87,40 @@ export async function notificarAlunoDesafioRejeitado(params: {
   desafioTitulo: string
   desafioId: string
   motivo?: string
+  accessToken: string
 }) {
-  const supabase = getSupabaseAdmin()
-  
-  console.log(`🔔 Notificando aluno ${params.alunoId} sobre rejeição...`)
+  try {
+    const supabase = await getSupabaseClient(params.accessToken)
+    
+    console.log(`🔔 Notificando aluno ${params.alunoId} sobre rejeição...`)
 
-  const agora = new Date()
-  const dataFim = new Date()
-  dataFim.setDate(dataFim.getDate() + 7)
+    const agora = new Date()
+    const dataFim = new Date()
+    dataFim.setDate(dataFim.getDate() + 7)
 
-  const mensagem = params.motivo 
-    ? `Seu desafio "${params.desafioTitulo}" foi rejeitado. Motivo: ${params.motivo}. Você pode reenviar!`
-    : `Seu desafio "${params.desafioTitulo}" foi rejeitado. Revise e tente novamente!`
+    const mensagem = params.motivo 
+      ? `Seu desafio "${params.desafioTitulo}" foi rejeitado. Motivo: ${params.motivo}. Você pode reenviar!`
+      : `Seu desafio "${params.desafioTitulo}" foi rejeitado. Revise e tente novamente!`
 
-  const { error: insertError } = await supabase.from('notificacoes').insert({
-    titulo: '❌ Desafio Rejeitado',
-    mensagem,
-    tipo: 'warning',
-    data_inicio: agora.toISOString(),
-    data_fim: dataFim.toISOString(),
-    publico_alvo: 'todos',
-    target_user_id: params.alunoId,
-    related_desafio_id: params.desafioId,
-    action_url: '/aluno/desafios',
-    created_by: null
-  })
+    const { error: insertError } = await supabase.from('notificacoes').insert({
+      titulo: '❌ Desafio Rejeitado',
+      mensagem,
+      tipo: 'warning',
+      data_inicio: agora.toISOString(),
+      data_fim: dataFim.toISOString(),
+      publico_alvo: 'todos',
+      target_user_id: params.alunoId,
+      related_desafio_id: params.desafioId,
+      action_url: '/aluno/desafios',
+      created_by: null
+    })
 
-  if (insertError) {
-    console.error('❌ Erro ao criar notificação de rejeição:', insertError)
-  } else {
-    console.log(`✅ Notificação de rejeição criada para aluno ${params.alunoId}`)
+    if (insertError) {
+      console.error('❌ Erro ao criar notificação de rejeição:', insertError)
+    } else {
+      console.log(`✅ Notificação de rejeição criada para aluno ${params.alunoId}`)
+    }
+  } catch (error: any) {
+    console.error('❌ Erro ao notificar aluno sobre rejeição:', error?.message || error)
   }
 }

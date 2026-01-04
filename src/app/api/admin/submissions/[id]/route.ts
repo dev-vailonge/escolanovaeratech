@@ -26,6 +26,12 @@ export async function PUT(
     }
 
     const accessToken = getAccessTokenFromBearer(request)
+    if (!accessToken) {
+      return NextResponse.json(
+        { error: 'Token de acesso não fornecido' },
+        { status: 401 }
+      )
+    }
     const supabase = await getSupabaseClient(accessToken)
 
     // Verificar se é admin
@@ -127,7 +133,8 @@ export async function PUT(
         alunoId: submission.user_id,
         desafioTitulo: desafio?.titulo || 'Desafio',
         desafioId: submission.desafio_id,
-        xpGanho: xpAwarded
+        xpGanho: xpAwarded,
+        accessToken
       }).catch(err => console.error('Erro ao notificar aluno:', err))
     } else {
       // Notificar aluno sobre rejeição
@@ -135,7 +142,8 @@ export async function PUT(
         alunoId: submission.user_id,
         desafioTitulo: desafio?.titulo || 'Desafio',
         desafioId: submission.desafio_id,
-        motivo: admin_notes
+        motivo: admin_notes,
+        accessToken
       }).catch(err => console.error('Erro ao notificar aluno:', err))
     }
 

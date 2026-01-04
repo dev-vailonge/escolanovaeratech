@@ -42,6 +42,12 @@ export async function POST(
 
     // Obter accessToken e criar cliente Supabase
     const accessToken = getAccessTokenFromBearer(request)
+    if (!accessToken) {
+      return NextResponse.json(
+        { error: 'Token de acesso não fornecido' },
+        { status: 401 }
+      )
+    }
     const supabase = await getSupabaseClient(accessToken)
 
     // Verificar se o desafio existe
