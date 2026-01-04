@@ -117,10 +117,25 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
     .maybeSingle()
 
   if (existingError) throw existingError
-  if (existing?.completo) {
-    return { awarded: false as const, reason: 'already_completed' as const }
+  
+  // Verificar se o usuário já recebeu XP deste desafio específico
+  const { data: xpHistory, error: xpHistoryError } = await supabase
+    .from('user_xp_history')
+    .select('amount')
+    .eq('user_id', params.userId)
+    .eq('source', 'desafio')
+    .eq('source_id', params.desafioId)
+
+  if (xpHistoryError) throw xpHistoryError
+  
+  // Se já recebeu XP deste desafio, não dar novamente
+  const xpTotalGanho = (xpHistory || []).reduce((sum, entry) => sum + (entry.amount || 0), 0)
+  if (xpTotalGanho > 0) {
+    return { awarded: false as const, reason: 'already_received_xp' as const, xp: 0 }
   }
 
+  // Se já está marcado como completo mas não recebeu XP, re-marcar e dar XP
+  // (pode acontecer em casos de bug ou dados inconsistentes)
   const { data: desafio, error: desafioError } = await supabase
     .from('desafios')
     .select('xp, titulo')
