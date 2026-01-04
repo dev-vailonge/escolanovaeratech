@@ -288,23 +288,6 @@ export default function DesafiosPage() {
     return () => clearInterval(interval)
   }, [isGerando, loadingMessages.length])
 
-  // Rotacionar mensagens de loading a cada 3 segundos (20 mensagens = 60 segundos)
-  useEffect(() => {
-    if (!isGerando) {
-      setLoadingMessageIndex(0)
-      return
-    }
-
-    const interval = setInterval(() => {
-      setLoadingMessageIndex((prev) => {
-        // Ciclar pelas mensagens (20 mensagens x 3s = 60s total)
-        return (prev + 1) % loadingMessages.length
-      })
-    }, 3000) // Mudar mensagem a cada 3 segundos
-
-    return () => clearInterval(interval)
-  }, [isGerando, loadingMessages.length])
-
   // Verificar se pode gerar novo desafio
   const podeGerarNovo = meusDesafios.every(d => d.status === 'aprovado' || d.status === 'rejeitado' || d.status === 'desistiu')
   const desafioAtivo = meusDesafios.find(d => d.status === 'pendente_envio' || d.status === 'aguardando_aprovacao')
@@ -330,6 +313,7 @@ export default function DesafiosPage() {
 
     setIsGerando(true)
     setSelectionError('')
+    setLoadingMessageIndex(0) // Resetar mensagem ao iniciar
 
     try {
       console.log('🔐 Obtendo token para gerar desafio...')
