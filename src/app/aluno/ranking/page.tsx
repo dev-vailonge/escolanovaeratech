@@ -36,7 +36,7 @@ function getDaysUntilMonthEnd(): number {
 export default function RankingPage() {
   const { theme } = useTheme()
   const { user: authUser } = useAuth()
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true) // Iniciar como true para mostrar loading inicial
   const [error, setError] = useState<string>('')
   const [hotmartStatus, setHotmartStatus] = useState<string>('')
   const [ranking, setRanking] = useState<any[] | null>(null)
@@ -57,6 +57,9 @@ export default function RankingPage() {
   useEffect(() => {
     let mounted = true
     const run = async () => {
+      // Se não há usuário ainda, aguardar
+      if (!authUser) return
+
       try {
         const { data: { session } } = await supabase.auth.getSession()
         const token = session?.access_token
@@ -134,7 +137,7 @@ export default function RankingPage() {
     return () => {
       mounted = false
     }
-  }, [refreshTrigger])
+  }, [refreshTrigger, authUser]) // Adicionar authUser como dependência
 
   // Buscar ranking conforme o tipo selecionado (para a lista)
   // Mensal: ranking do mês atual (ordenado por xp_mensal)
@@ -142,22 +145,40 @@ export default function RankingPage() {
   useEffect(() => {
     let mounted = true
     const run = async () => {
+      // Se não há usuário ainda, aguardar
+      if (!authUser) {
+        setLoading(true)
+        return
+      }
+
       setError('')
-      setLoading(true)
+      if (mounted) setLoading(true)
+      
       try {
+        // Buscar sessão diretamente (mais rápido que esperar por authUser)
         const { data: { session } } = await supabase.auth.getSession()
         const token = session?.access_token
-        if (!token) throw new Error('Não autenticado')
+        if (!token) {
+          if (mounted) {
+            setError('Não autenticado')
+            setLoading(false)
+          }
+          return
+        }
 
-        // Busca ranking geral (all time)
+        // Busca ranking geral (all time) - sem cache para dados sempre frescos
         const res = await fetch(`/api/ranking?type=geral&_t=${Date.now()}`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store', // Forçar busca de dados frescos
         })
         const json = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(json?.error || 'Erro ao carregar ranking')
+        
+        if (!res.ok) {
+          throw new Error(json?.error || 'Erro ao carregar ranking')
+        }
 
         if (!mounted) return
+        
         // ranking contém lista ordenada por xp total (maior pontuação all time)
         setRanking(json?.ranking || [])
         setHotmartStatus(json?.hotmart?.message || '')
@@ -170,11 +191,13 @@ export default function RankingPage() {
       }
     }
 
+    // Executar imediatamente ao montar e quando refreshTrigger mudar
     run()
+    
     return () => {
       mounted = false
     }
-  }, [refreshTrigger])
+  }, [refreshTrigger, authUser]) // Adicionar authUser como dependência
 
   // Removido fallback para mock - ranking deve vir sempre da API
 
@@ -182,11 +205,20 @@ export default function RankingPage() {
   useEffect(() => {
     let mounted = true
     const run = async () => {
-      setLoadingHistorico(true)
+      // Se não há usuário ainda, aguardar
+      if (!authUser) {
+        if (mounted) setLoadingHistorico(true)
+        return
+      }
+
+      if (mounted) setLoadingHistorico(true)
       try {
         const { data: { session } } = await supabase.auth.getSession()
         const token = session?.access_token
-        if (!token) return
+        if (!token) {
+          if (mounted) setLoadingHistorico(false)
+          return
+        }
 
         const res = await fetch(`/api/ranking/historico?limit=12&_t=${Date.now()}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -214,7 +246,7 @@ export default function RankingPage() {
     return () => {
       mounted = false
     }
-  }, [refreshTrigger])
+  }, [refreshTrigger, authUser]) // Adicionar authUser como dependência
 
   // Calcular dias restantes e verificar se é dia 1
   const now = new Date()
