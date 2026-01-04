@@ -598,7 +598,7 @@ export default function QuizPage() {
                     theme === 'dark' ? "bg-yellow-500" : "bg-yellow-600"
                   )} 
                   style={{
-                    width: `${Math.min(70 + (loadingMessageIndex * 5), 95)}%`,
+                    width: `${Math.min(50 + (loadingMessageIndex * 2.5), 95)}%`,
                     animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
                   }} 
                 />
