@@ -56,12 +56,7 @@ export async function GET(request: NextRequest) {
         total_tokens,
         estimated_cost_usd,
         metadata,
-        created_at,
-        users:user_id (
-          id,
-          name,
-          email
-        )
+        created_at
       `)
       .order('created_at', { ascending: false })
 
@@ -87,24 +82,60 @@ export async function GET(request: NextRequest) {
     }
 
     // ====================================================
+    // BUSCAR DADOS DOS USUÁRIOS (QUERY SEPARADA)
+    // ====================================================
+
+    // Coletar todos os user_ids únicos
+    const userIds = [...new Set((records || []).map((r: any) => r.user_id).filter(Boolean))]
+    
+    // Buscar dados dos usuários
+    let usersMap = new Map<string, { name: string; email: string }>()
+    
+    if (userIds.length > 0) {
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .in('id', userIds)
+
+      if (usersError) {
+        console.error('Erro ao buscar usuários:', usersError)
+        // Continuar mesmo se falhar, usando valores padrão
+      } else if (users) {
+        users.forEach((user) => {
+          usersMap.set(user.id, {
+            name: user.name || 'Desconhecido',
+            email: user.email || 'N/A',
+          })
+        })
+      }
+    }
+
+    // ====================================================
     // PROCESSAR E FORMATAR DADOS
     // ====================================================
 
-    const formattedRecords = (records || []).map((record: any) => ({
-      id: record.id,
-      user_name: record.users?.name || 'Desconhecido',
-      user_email: record.users?.email || 'N/A',
-      user_id: record.user_id,
-      feature: record.feature,
-      endpoint: record.endpoint,
-      model: record.model,
-      prompt_tokens: record.prompt_tokens,
-      completion_tokens: record.completion_tokens,
-      total_tokens: record.total_tokens,
-      estimated_cost_usd: parseFloat(record.estimated_cost_usd),
-      metadata: record.metadata,
-      created_at: record.created_at,
-    }))
+    const formattedRecords = (records || []).map((record: any) => {
+      const userData = usersMap.get(record.user_id) || {
+        name: 'Desconhecido',
+        email: 'N/A',
+      }
+
+      return {
+        id: record.id,
+        user_name: userData.name,
+        user_email: userData.email,
+        user_id: record.user_id,
+        feature: record.feature,
+        endpoint: record.endpoint,
+        model: record.model,
+        prompt_tokens: record.prompt_tokens,
+        completion_tokens: record.completion_tokens,
+        total_tokens: record.total_tokens,
+        estimated_cost_usd: parseFloat(record.estimated_cost_usd),
+        metadata: record.metadata,
+        created_at: record.created_at,
+      }
+    })
 
     // ====================================================
     // CALCULAR ESTATÍSTICAS GERAIS
