@@ -115,6 +115,8 @@ export async function PUT(
     // Se aprovado, dar XP ao aluno e notificar
     const desafio = submission.desafios as any
     let xpAwarded = 0
+    let xpError: any = null
+    let xpAwardedSuccessfully = false
     
     if (status === 'aprovado') {
       try {
@@ -126,14 +128,21 @@ export async function PUT(
         // A função completarDesafio retorna { awarded: true, xp: number } ou { awarded: false, reason: string }
         if (result.awarded) {
           xpAwarded = result.xp ?? 0
+          xpAwardedSuccessfully = true
           console.log(`✅ XP concedido ao aluno: ${xpAwarded} (awarded: ${result.awarded})`)
         } else {
           // Se já estava completo, ainda mostrar o XP padrão na notificação
           xpAwarded = XP_CONSTANTS.desafio.completo
+          xpError = { reason: result.reason, message: `Desafio já estava completo: ${result.reason}` }
           console.log(`⚠️ Desafio já estava completo (reason: ${result.reason}), usando XP padrão: ${xpAwarded}`)
         }
-      } catch (xpError) {
-        console.error('❌ Erro ao dar XP:', xpError)
+      } catch (xpErrorCaught: any) {
+        xpError = {
+          message: xpErrorCaught?.message || 'Erro desconhecido',
+          details: xpErrorCaught?.details,
+          code: xpErrorCaught?.code,
+        }
+        console.error('❌ Erro ao dar XP:', xpErrorCaught)
         // Em caso de erro, ainda mostrar o XP padrão na notificação
         xpAwarded = XP_CONSTANTS.desafio.completo
         console.log(`⚠️ Erro ao dar XP, usando XP padrão: ${xpAwarded}`)
@@ -162,6 +171,11 @@ export async function PUT(
       success: true,
       submission: updated,
       xpAwarded,
+      xpAwardedSuccessfully,
+      xpError: xpError ? {
+        message: xpError.message || xpError.reason,
+        code: xpError.code,
+      } : null,
       message: status === 'aprovado' 
         ? `Submissão aprovada! Aluno recebeu ${xpAwarded} XP.`
         : 'Submissão rejeitada.'

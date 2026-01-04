@@ -115,6 +115,24 @@ export default function AdminDesafiosTab() {
         throw new Error(json?.error || 'Erro ao atualizar submission')
       }
 
+      // Log de debug para XP
+      if (status === 'aprovado') {
+        console.log('🔍 [DEBUG XP] Resultado da aprovação:', {
+          xpAwarded: json.xpAwarded,
+          xpAwardedSuccessfully: json.xpAwardedSuccessfully,
+          xpError: json.xpError,
+          message: json.message,
+        })
+        
+        if (json.xpError) {
+          console.error('❌ [DEBUG XP] Erro ao conceder XP:', json.xpError)
+        } else if (json.xpAwardedSuccessfully) {
+          console.log(`✅ [DEBUG XP] XP concedido com sucesso: ${json.xpAwarded} XP`)
+        } else {
+          console.warn(`⚠️ [DEBUG XP] XP não foi concedido mas mostra na mensagem: ${json.xpAwarded} XP`)
+        }
+      }
+
       setSuccess(json.message || 'Submissão atualizada com sucesso!')
       setReviewingSubmission(null)
       setAdminNotes('')
