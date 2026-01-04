@@ -191,6 +191,8 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
   }
 
   // Fallback: método direto (funciona quando user_id = auth.uid())
+  // Se chegou aqui, a função RPC falhou - tentar método direto
+  console.log(`⚠️ [completarDesafio] Usando fallback (método direto) - RPC não funcionou`)
   const { data: existing, error: existingError } = await supabase
     .from('user_desafio_progress')
     .select('id, completo')
@@ -198,7 +200,14 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
     .eq('desafio_id', params.desafioId)
     .maybeSingle()
 
-  if (existingError) throw existingError
+  if (existingError) {
+    // Se falhar, lançar erro com informações do RPC se disponível
+    const errorToThrow: any = existingError
+    if (rpcErrorInfo) {
+      errorToThrow.rpcError = rpcErrorInfo
+    }
+    throw errorToThrow
+  }
   
   // Verificar se o usuário já recebeu XP deste desafio específico
   const { data: xpHistory, error: xpHistoryError } = await supabase
