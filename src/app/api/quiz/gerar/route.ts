@@ -5,6 +5,10 @@ import { gerarQuizComIA } from '@/lib/openai'
 import { parseQuizText } from '@/lib/quiz/parseQuizText'
 import { XP_CONSTANTS } from '@/lib/gamification/constants'
 
+// Aumentar timeout para 60 segundos (máximo no plano Pro da Vercel)
+// Hobby: 10s, Pro: 60s, Enterprise: 300s
+export const maxDuration = 60
+
 const TECNOLOGIAS_VALIDAS = ['HTML', 'CSS', 'JavaScript', 'TypeScript', 'React', 'Next.js', 'Node.js', 'Express', 'Android', 'Kotlin', 'Swift', 'Python', 'PostgreSQL', 'MongoDB', 'Tailwind CSS', 'Git', 'Algoritmos', 'Estrutura de Dados', 'Lógica de Programação', 'Web Development', 'APIs REST']
 const NIVEIS_VALIDOS = ['iniciante', 'intermediario', 'avancado'] as const
 
@@ -100,70 +104,89 @@ export async function POST(request: Request) {
     // ====================================================
     if (!quizFinal) {
       console.log(`🤖 Gerando novo quiz com OpenAI: ${tecnologia} / ${nivel}`)
+      const startTime = Date.now()
       
-      // Gerar quiz com IA
-      const quizGerado = await gerarQuizComIA(
-        tecnologia,
-        nivel,
-        userId,
-        '/api/quiz/gerar'
-      )
-
-      // Parse do texto para QuizQuestion[]
-      const { questions, errors } = parseQuizText(quizGerado.texto)
-
-      if (errors.length > 0) {
-        console.error('⚠️ Erros no parse do quiz:', errors)
-      }
-
-      if (questions.length === 0) {
-        console.error('❌ Nenhuma pergunta parseada do quiz')
-        return NextResponse.json(
-          { error: 'Erro ao processar quiz gerado pela IA' },
-          { status: 500 }
-        )
-      }
-
-      // Gerar título e descrição do quiz
-      const titulo = `Quiz de ${tecnologia} - ${nivel.charAt(0).toUpperCase() + nivel.slice(1)}`
-      const descricao = `Teste seus conhecimentos em ${tecnologia} com ${questions.length} perguntas de nível ${nivel}.`
-
-      // Salvar novo quiz no banco
-      const { data: novoQuiz, error: erroInsert } = await supabase
-        .from('quizzes')
-        .insert({
-          titulo,
-          descricao,
+      try {
+        // Gerar quiz com IA
+        const quizGerado = await gerarQuizComIA(
           tecnologia,
           nivel,
-          questoes: questions,
-          xp: XP_QUIZ,
-          disponivel: true,
-          created_by: null // Quiz gerado por IA não tem autor específico
-        })
-        .select()
-        .single()
-
-      if (erroInsert) {
-        console.error('❌ Erro ao salvar quiz:', erroInsert)
-        console.error('❌ Detalhes do erro:', {
-          message: erroInsert.message,
-          details: erroInsert.details,
-          hint: erroInsert.hint,
-          code: erroInsert.code,
-        })
-        return NextResponse.json(
-          { 
-            error: 'Erro ao salvar quiz no banco de dados',
-            details: erroInsert.message,
-            code: erroInsert.code
-          },
-          { status: 500 }
+          userId,
+          '/api/quiz/gerar'
         )
-      }
+        
+        const generationTime = Date.now() - startTime
+        console.log(`⏱️ Geração de quiz concluída em ${generationTime}ms`)
 
-      quizFinal = novoQuiz
-      console.log('✅ Novo quiz criado:', novoQuiz.id, `(${questions.length} perguntas)`)
+        // Parse do texto para QuizQuestion[]
+        const { questions, errors } = parseQuizText(quizGerado.texto)
+
+        if (errors.length > 0) {
+          console.error('⚠️ Erros no parse do quiz:', errors)
+        }
+
+        if (questions.length === 0) {
+          console.error('❌ Nenhuma pergunta parseada do quiz')
+          return NextResponse.json(
+            { error: 'Erro ao processar quiz gerado pela IA' },
+            { status: 500 }
+          )
+        }
+
+        // Gerar título e descrição do quiz
+        const titulo = `Quiz de ${tecnologia} - ${nivel.charAt(0).toUpperCase() + nivel.slice(1)}`
+        const descricao = `Teste seus conhecimentos em ${tecnologia} com ${questions.length} perguntas de nível ${nivel}.`
+
+        // Salvar novo quiz no banco
+        const { data: novoQuiz, error: erroInsert } = await supabase
+          .from('quizzes')
+          .insert({
+            titulo,
+            descricao,
+            tecnologia,
+            nivel,
+            questoes: questions,
+            xp: XP_QUIZ,
+            disponivel: true,
+            created_by: null // Quiz gerado por IA não tem autor específico
+          })
+          .select()
+          .single()
+
+        if (erroInsert) {
+          console.error('❌ Erro ao salvar quiz:', erroInsert)
+          console.error('❌ Detalhes do erro:', {
+            message: erroInsert.message,
+            details: erroInsert.details,
+            hint: erroInsert.hint,
+            code: erroInsert.code,
+          })
+          return NextResponse.json(
+            { 
+              error: 'Erro ao salvar quiz no banco de dados',
+              details: erroInsert.message,
+              code: erroInsert.code
+            },
+            { status: 500 }
+          )
+        }
+
+        quizFinal = novoQuiz
+        console.log('✅ Novo quiz criado:', novoQuiz.id, `(${questions.length} perguntas)`)
+      } catch (generationError: any) {
+        const generationTime = Date.now() - startTime
+        console.error(`❌ Erro após ${generationTime}ms ao gerar quiz com IA:`, generationError)
+        
+        // Se foi timeout ou erro da OpenAI, retornar erro específico
+        if (generationError?.message?.includes('timeout') || generationTime > 55000) {
+          return NextResponse.json(
+            { error: 'A geração do quiz está demorando mais que o esperado. Por favor, tente novamente.' },
+            { status: 504 }
+          )
+        }
+        
+        throw generationError // Re-throw para ser capturado pelo catch principal
+      }
     }
 
     return NextResponse.json({
@@ -173,14 +196,23 @@ export async function POST(request: Request) {
     })
 
   } catch (error: any) {
-    console.error('Erro ao gerar quiz:', error)
+    console.error('❌ Erro ao gerar quiz:', error)
+    console.error('❌ Stack trace:', error?.stack)
     
     if (error.message === 'Não autenticado') {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
+    // Erro de timeout específico
+    if (error?.name === 'AbortError' || error?.message?.includes('timeout')) {
+      return NextResponse.json(
+        { error: 'A operação demorou muito. Por favor, tente novamente.' },
+        { status: 504 }
+      )
+    }
+
     return NextResponse.json(
-      { error: error.message || 'Erro ao gerar quiz' },
+      { error: error.message || 'Erro ao gerar quiz. Tente novamente.' },
       { status: 500 }
     )
   }
