@@ -65,15 +65,28 @@ export async function insertXpEntry(params: {
   accessToken?: string
 }) {
   const supabase = await getSupabaseClient(params.accessToken)
-  const { error } = await supabase.from('user_xp_history').insert({
+  
+  console.log(`📤 [insertXpEntry] Inserindo XP: userId=${params.userId}, source=${params.source}, amount=${params.amount}, sourceId=${params.sourceId}`)
+  
+  const { data, error } = await supabase.from('user_xp_history').insert({
     user_id: params.userId,
     source: params.source,
     source_id: params.sourceId,
     amount: params.amount,
     description: params.description || null,
-  })
+  }).select()
 
-  if (error) throw error
+  if (error) {
+    console.error(`❌ [insertXpEntry] Erro ao inserir XP:`, {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+    })
+    throw error
+  }
+
+  console.log(`✅ [insertXpEntry] XP inserido com sucesso:`, data?.[0]?.id)
 
   // Atualizar nível automaticamente após inserir XP
   await syncUserLevel(params.userId, params.accessToken)
@@ -158,14 +171,20 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
   // Usar valor oficial de XP para desafios (40 XP)
   const xpDesafio = XP_CONSTANTS.desafio.completo
   
-  await insertXpEntry({
-    userId: params.userId,
-    source: 'desafio',
-    sourceId: params.desafioId,
-    amount: xpDesafio,
-    description: `Desafio concluído: ${desafio.titulo}`,
-    accessToken: params.accessToken,
-  })
+  try {
+    await insertXpEntry({
+      userId: params.userId,
+      source: 'desafio',
+      sourceId: params.desafioId,
+      amount: xpDesafio,
+      description: `Desafio concluído: ${desafio.titulo}`,
+      accessToken: params.accessToken,
+    })
+    console.log(`✅ [completarDesafio] XP concedido com sucesso: ${xpDesafio} XP para usuário ${params.userId}`)
+  } catch (xpError: any) {
+    console.error(`❌ [completarDesafio] Erro ao inserir XP:`, xpError)
+    throw xpError // Relança o erro para que a rota de aprovação possa tratá-lo
+  }
 
   return { awarded: true as const, xp: xpDesafio }
 }
