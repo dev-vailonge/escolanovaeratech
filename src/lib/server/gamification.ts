@@ -244,7 +244,14 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
     { onConflict: 'user_id,desafio_id' }
   )
 
-  if (upsertError) throw upsertError
+  if (upsertError) {
+    // Incluir informações do RPC se disponível
+    const errorToThrow: any = upsertError
+    if (rpcErrorInfo) {
+      errorToThrow.rpcError = rpcErrorInfo
+    }
+    throw errorToThrow
+  }
 
   // Usar valor oficial de XP para desafios (40 XP)
   const xpDesafio = XP_CONSTANTS.desafio.completo

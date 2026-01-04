@@ -141,6 +141,7 @@ export async function PUT(
           message: xpErrorCaught?.message || 'Erro desconhecido',
           details: xpErrorCaught?.details,
           code: xpErrorCaught?.code,
+          rpcError: xpErrorCaught?.rpcError, // Incluir erro RPC se existir
         }
         console.error('❌ [API] Erro ao dar XP - detalhes completos:', {
           message: xpErrorCaught?.message,
@@ -148,6 +149,7 @@ export async function PUT(
           details: xpErrorCaught?.details,
           hint: xpErrorCaught?.hint,
           stack: xpErrorCaught?.stack,
+          rpcError: xpErrorCaught?.rpcError,
         })
         // Em caso de erro, ainda mostrar o XP padrão na notificação
         xpAwarded = XP_CONSTANTS.desafio.completo
