@@ -255,7 +255,14 @@ export default function DesafiosPage() {
           submission,
           status
         }
-      }).filter(d => d.desafio)
+      }).filter(d => {
+        // Filtrar desafios que existem
+        if (!d.desafio) return false
+        // Filtrar desafios com status "desistiu" (casos antigos onde a atribuição não foi removida)
+        // Desafios desistidos não devem aparecer na lista, pois a atribuição é removida ao desistir
+        if (d.status === 'desistiu') return false
+        return true
+      })
 
       console.log('✅ [loadMeusDesafios] Lista final montada:', meusDesafiosList.length, 'desafios')
       setMeusDesafios(meusDesafiosList)

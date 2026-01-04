@@ -112,11 +112,17 @@ export async function POST(
     }
 
     // Remover atribuição do desafio ao usuário (sai da lista "Meus Desafios")
-    await supabase
+    const { error: deleteAtribuicaoError } = await supabase
       .from('user_desafio_atribuido')
       .delete()
       .eq('user_id', userId)
       .eq('desafio_id', desafioId)
+    
+    if (deleteAtribuicaoError) {
+      console.error('❌ Erro ao remover atribuição do desafio:', deleteAtribuicaoError)
+      // Não falhar a requisição por causa disso, mas logar o erro
+      // A submissão já foi criada/atualizada com status 'desistiu'
+    }
 
     // Buscar XP atual do usuário na tabela users
     const { data: userData, error: userError } = await supabase
