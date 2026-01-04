@@ -53,6 +53,111 @@ export default function QuizPage() {
   const [selectedNivel, setSelectedNivel] = useState<'iniciante' | 'intermediario' | 'avancado' | ''>('')
   const [selectionError, setSelectionError] = useState<string>('')
   const [isGerando, setIsGerando] = useState(false)
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
+  
+  // Mensagens animadas e provocativas para o loading (20 mensagens para cobrir 60s)
+  const loadingMessages = [
+    {
+      title: "Nossa IA está criando um quiz para você!",
+      subtitle: "Aguarde um momento enquanto geramos",
+      emoji: "✨"
+    },
+    {
+      title: "Espere mais um pouco...",
+      subtitle: "Estamos gerando seu quiz personalizado",
+      emoji: "⚡"
+    },
+    {
+      title: "Se prepare heim!",
+      subtitle: "As perguntas estão sendo criadas especialmente para você",
+      emoji: "🔥"
+    },
+    {
+      title: "Pensando nas melhores questões...",
+      subtitle: "Nossa IA está analisando o nível escolhido",
+      emoji: "🤔"
+    },
+    {
+      title: "Criando perguntas desafiadoras!",
+      subtitle: "Garantindo que o quiz seja interessante",
+      emoji: "💡"
+    },
+    {
+      title: "Quase lá!",
+      subtitle: "Últimos ajustes para garantir que o quiz seja perfeito",
+      emoji: "🎯"
+    },
+    {
+      title: "Validando cada questão...",
+      subtitle: "Garantindo qualidade e relevância",
+      emoji: "✅"
+    },
+    {
+      title: "Faltam só alguns segundos...",
+      subtitle: "Nossa IA está finalizando as questões",
+      emoji: "🚀"
+    },
+    {
+      title: "Quase pronto!",
+      subtitle: "Organizando as perguntas de forma inteligente",
+      emoji: "📝"
+    },
+    {
+      title: "Criando as alternativas...",
+      subtitle: "Garantindo que cada opção seja relevante",
+      emoji: "🎲"
+    },
+    {
+      title: "Adicionando explicações...",
+      subtitle: "Para que você aprenda com cada resposta",
+      emoji: "📚"
+    },
+    {
+      title: "Revisando tudo...",
+      subtitle: "Garantindo que está tudo perfeito para você",
+      emoji: "🔍"
+    },
+    {
+      title: "Quase finalizando!",
+      subtitle: "Ajustando os últimos detalhes",
+      emoji: "⚙️"
+    },
+    {
+      title: "Preparando o quiz...",
+      subtitle: "Organizando tudo para sua experiência",
+      emoji: "🎨"
+    },
+    {
+      title: "Últimos toques!",
+      subtitle: "Deixando tudo perfeito para você",
+      emoji: "🌟"
+    },
+    {
+      title: "Quase terminando...",
+      subtitle: "Só mais alguns segundos",
+      emoji: "⏳"
+    },
+    {
+      title: "Finalizando!",
+      subtitle: "O quiz está quase pronto",
+      emoji: "🎊"
+    },
+    {
+      title: "Está quase pronto!",
+      subtitle: "Só mais um pouquinho",
+      emoji: "💫"
+    },
+    {
+      title: "Quase acabando!",
+      subtitle: "Últimos ajustes finais",
+      emoji: "⚡"
+    },
+    {
+      title: "Está saindo do forno!",
+      subtitle: "Seu quiz personalizado está quase pronto",
+      emoji: "🔥"
+    }
+  ]
   
   // Opções para os dropdowns (mesmas tecnologias da página de desafios)
   const TECNOLOGIAS_POR_CATEGORIA = {
@@ -65,6 +170,23 @@ export default function QuizPage() {
   }
   const tecnologias = Object.values(TECNOLOGIAS_POR_CATEGORIA).flat()
   const niveis: Array<'iniciante' | 'intermediario' | 'avancado'> = ['iniciante', 'intermediario', 'avancado']
+
+  // Rotacionar mensagens de loading a cada 3 segundos
+  useEffect(() => {
+    if (!isGerando) {
+      setLoadingMessageIndex(0)
+      return
+    }
+
+    const interval = setInterval(() => {
+      setLoadingMessageIndex((prev) => {
+        // Ciclar pelas mensagens
+        return (prev + 1) % loadingMessages.length
+      })
+    }, 3000) // Mudar mensagem a cada 3 segundos
+
+    return () => clearInterval(interval)
+  }, [isGerando, loadingMessages.length])
 
   // Carregar quizzes do Supabase
   useEffect(() => {
@@ -195,6 +317,7 @@ export default function QuizPage() {
 
     setIsGerando(true)
     setSelectionError('')
+    setLoadingMessageIndex(0) // Resetar mensagem ao iniciar
 
     try {
       console.log('🔐 Obtendo token para gerar quiz...')
@@ -426,11 +549,11 @@ export default function QuizPage() {
         size="md"
       >
         {isGerando ? (
-          // Loading interativo
+          // Loading interativo com mensagens dinâmicas
           <div className="space-y-6 py-8">
             <div className="flex flex-col items-center justify-center">
               <div className={cn(
-                "w-20 h-20 rounded-full flex items-center justify-center mb-6",
+                "w-20 h-20 rounded-full flex items-center justify-center mb-6 transition-all duration-500",
                 theme === 'dark'
                   ? "bg-yellow-500/20"
                   : "bg-yellow-100"
@@ -442,42 +565,54 @@ export default function QuizPage() {
               </div>
               
               <h3 className={cn(
-                "text-xl font-bold mb-2 text-center",
+                "text-xl font-bold mb-2 text-center transition-all duration-300 flex items-center justify-center gap-2",
                 theme === 'dark' ? "text-white" : "text-gray-900"
-              )}>
-                Nossa IA está criando um quiz para você!
+              )} key={loadingMessageIndex}>
+                <span className="text-2xl animate-bounce" style={{ animationDelay: '0.5s' }}>
+                  {loadingMessages[loadingMessageIndex]?.emoji || '✨'}
+                </span>
+                <span>{loadingMessages[loadingMessageIndex]?.title || 'Gerando quiz...'}</span>
               </h3>
               
               <p className={cn(
-                "text-sm text-center max-w-md mb-4",
+                "text-sm text-center max-w-md mb-4 transition-all duration-300",
                 theme === 'dark' ? "text-gray-400" : "text-gray-600"
-              )}>
-                Aguarde um momento enquanto geramos {selectedTecnologia && (
-                  <>um quiz personalizado de <strong>{selectedTecnologia}</strong> no nível <strong>{selectedNivel === 'iniciante' ? 'Iniciante' : selectedNivel === 'intermediario' ? 'Intermediário' : 'Avançado'}</strong></>
+              )} key={`subtitle-${loadingMessageIndex}`}>
+                {loadingMessages[loadingMessageIndex]?.subtitle || 'Aguarde um momento...'}
+                {selectedTecnologia && (
+                  <> de <strong className={cn(
+                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                  )}>{selectedTecnologia}</strong> no nível <strong className={cn(
+                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                  )}>{selectedNivel === 'iniciante' ? 'Iniciante' : selectedNivel === 'intermediario' ? 'Intermediário' : 'Avançado'}</strong></>
                 )}
-                {!selectedTecnologia && (
-                  <>um quiz personalizado para você</>
-                )}...
               </p>
               
               <div className={cn(
                 "w-full max-w-xs h-2 rounded-full overflow-hidden",
                 theme === 'dark' ? "bg-white/10" : "bg-gray-200"
               )}>
-                <div className={cn(
-                  "h-full rounded-full animate-pulse",
-                  theme === 'dark' ? "bg-yellow-500" : "bg-yellow-600"
-                )} style={{
-                  width: '70%',
-                  animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
-                }} />
+                <div 
+                  className={cn(
+                    "h-full rounded-full transition-all duration-500",
+                    theme === 'dark' ? "bg-yellow-500" : "bg-yellow-600"
+                  )} 
+                  style={{
+                    width: `${Math.min(50 + (loadingMessageIndex * 2.5), 95)}%`,
+                    animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                  }} 
+                />
               </div>
               
               <p className={cn(
-                "text-xs text-center mt-4",
+                "text-xs text-center mt-4 animate-pulse",
                 theme === 'dark' ? "text-gray-500" : "text-gray-500"
               )}>
-                Isso pode levar alguns segundos
+                {loadingMessageIndex < 6 
+                  ? "Isso pode levar alguns segundos..." 
+                  : loadingMessageIndex < 14
+                  ? "Quase terminando..."
+                  : "Finalizando..."}
               </p>
             </div>
           </div>
