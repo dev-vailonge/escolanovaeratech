@@ -20,17 +20,17 @@
 
 ### 🔴 O que ainda precisa ser corrigido:
 - **Críticas:** 0 itens ✅
-- **Importantes:** 1 item (admin quiz)
+- **Importantes:** 0 itens ✅
 - **Baixas:** 14 itens (endpoints administrativos/internos)
 
 ### 📈 Estatísticas:
 - **Total de ocorrências de `getSupabaseAdmin()`:** 59
-- **Já corrigidas:** ~20-22 (comunidade + gamification + desafios + quiz + admin submissions + notificações)
+- **Já corrigidas:** ~23-25 (comunidade + gamification + desafios + quiz + admin submissions + admin quiz + notificações)
 - **Críticas pendentes:** 0 ✅
-- **Importantes pendentes:** 1 (admin criar/editar quiz manualmente)
+- **Importantes pendentes:** 0 ✅
 - **Baixas pendentes:** ~13-14
 
-**Conclusão:** ✅ **Todos os erros críticos foram corrigidos!** Sistemas de desafios e quiz completos agora funcionam sem service role key. Geração de quiz com IA implementada com RLS. Restam apenas endpoints de admin (decisão de produto) e funcionalidades internas de baixa prioridade.
+**Conclusão:** ✅ **Todos os erros críticos E importantes foram corrigidos!** Sistemas de desafios e quiz completos agora funcionam sem service role key. Admin pode criar/editar quizzes manualmente usando RLS. Geração de quiz com IA implementada com RLS. Restam apenas endpoints administrativos/internos de baixa prioridade.
 
 ---
 
@@ -44,12 +44,12 @@
 
 ### 🟡 Prioridade IMPORTANTE (Funcionalidades principais)
 
-#### 1. **Admin - Criar/Editar quiz** 🟡 IMPORTANTE
-- **Arquivo:** `src/app/api/admin/quiz/route.ts` (linhas 11, 69, 127)
-- **Problema:** Usa `getSupabaseAdmin()` (3 lugares)
-- **Impacto:** ⚠️ Admins não conseguem criar/editar quizzes
-- **Solução:** Substituir por `getSupabaseClient(accessToken)` OU manter service role key apenas para admin (decisão de produto)
-- **Status:** 🟡 PENDENTE (decisão necessária)
+#### 1. **Admin - Criar/Editar quiz** ✅ CORRIGIDO
+- **Arquivo:** `src/app/api/admin/quiz/route.ts`
+- **Problema:** Usava `getSupabaseAdmin()` (3 lugares)
+- **Impacto:** ⚠️ Admins não conseguiam criar/editar quizzes em produção
+- **Solução:** Substituído por `getSupabaseClient(accessToken)` com RLS
+- **Status:** ✅ CORRIGIDO (testado e funcionando)
 
 #### 2. ~~**Admin - Gerenciar submissões**~~ ✅ CORRIGIDO
 - **Arquivo:** `src/app/api/admin/submissions/route.ts` e `[id]/route.ts`
@@ -349,12 +349,12 @@
 3. ✅ **CORRIGIDO:** Gerar desafio (`/api/desafios/gerar`) - 2026-01-02
 4. ✅ **TESTADO:** Funcionalidades críticas testadas em dev
 
-### ✅ Fase 2: Corrigir IMPORTANTES - CONCLUÍDA (parcial)
+### ✅ Fase 2: Corrigir IMPORTANTES - CONCLUÍDA
 5. ✅ **CORRIGIDO:** Submeter desafio - 2026-01-02
 6. ✅ **CORRIGIDO:** Desistir de desafio - 2026-01-02
 7. ✅ **CORRIGIDO:** Admin - Gerenciar submissões - 2026-01-03
 8. ✅ **CORRIGIDO:** Gerar quiz com IA - 2026-01-03
-9. ⏳ **PENDENTE:** Admin - Criar/Editar quiz manualmente (decisão necessária)
+9. ✅ **CORRIGIDO:** Admin - Criar/Editar quiz manualmente - 2026-01-04 (testado e funcionando)
 
 ### Fase 3: Avaliar BAIXOS
 8. Decidir quais endpoints administrativos realmente precisam de service role key
@@ -379,6 +379,7 @@
 - [x] Admin - Aprovar/Rejeitar submissões - ✅ **CORRIGIDO** (2026-01-03 - usa `getSupabaseClient`)
 - [x] Gerar quiz com IA - ✅ **CORRIGIDO** (2026-01-03 - usa `getSupabaseClient`)
 - [x] Frontend quiz - ✅ **CORRIGIDO** (2026-01-03 - integração completa)
+- [x] Admin - Criar/Editar quiz - ✅ **CORRIGIDO** (2026-01-04 - usa `getSupabaseClient`, testado)
 
 ### Verificar RLS:
 - [ ] Políticas RLS estão configuradas para todas as tabelas necessárias?
@@ -397,5 +398,5 @@
 ---
 
 **Última atualização:** 2026-01-04  
-**Status geral:** ✅ **Todos os itens críticos corrigidos e testados em produção!** Sistemas de desafios e quiz completos funcionando. XP sendo concedido corretamente quando admin aprova submissões de alunos (usando função SQL com SECURITY DEFINER). Notificações corrigidas e melhoradas (abrem diretamente na sub-aba submissions). Filtro de desafios desistidos implementado. Melhorias significativas de UX (modal de loading animada).  
-**Próxima ação:** Decidir sobre admin criar/editar quiz manualmente (manter service role key OU corrigir). Avaliar endpoints de baixa prioridade.
+**Status geral:** ✅ **Todos os itens críticos E importantes corrigidos e testados em produção!** Sistemas de desafios e quiz completos funcionando. Admin pode criar/editar quizzes manualmente usando RLS. XP sendo concedido corretamente quando admin aprova submissões de alunos (usando função SQL com SECURITY DEFINER). Notificações corrigidas e melhoradas (abrem diretamente na sub-aba submissions). Filtro de desafios desistidos implementado. Melhorias significativas de UX (modal de loading animada).  
+**Próxima ação:** Avaliar endpoints administrativos/internos de baixa prioridade (decidir quais realmente precisam de service role key).
