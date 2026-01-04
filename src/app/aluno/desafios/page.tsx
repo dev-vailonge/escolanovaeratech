@@ -816,6 +816,7 @@ export default function DesafiosPage() {
             </button>
           </div>
         </div>
+        )}
       </Modal>
 
       {/* Modal para submeter GitHub */}
