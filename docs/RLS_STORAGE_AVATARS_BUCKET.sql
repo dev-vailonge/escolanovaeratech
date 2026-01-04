@@ -1,60 +1,91 @@
--- Políticas RLS para o bucket de avatares (avatars)
--- Permite que usuários autenticados façam upload de seus próprios avatares
+-- ============================================================================
+-- CONFIGURAÇÃO DE POLÍTICAS RLS PARA O BUCKET DE AVATARES (avatars)
+-- ============================================================================
+-- IMPORTANTE: As políticas de Storage não podem ser criadas via SQL direto.
+-- Use o Dashboard do Supabase para configurar as políticas.
+--
+-- PASSO A PASSO:
+-- 1. Acesse: Supabase Dashboard > Storage > avatars > Policies
+-- 2. Clique em "New Policy"
+-- 3. Configure cada política abaixo
+-- ============================================================================
 
--- IMPORTANTE: Estas políticas devem ser configuradas no Supabase Storage
--- Via SQL Editor ou via Dashboard > Storage > avatars > Policies
+-- ============================================================================
+-- POLÍTICA 1: INSERT (Upload)
+-- ============================================================================
+-- Nome: "Usuários podem fazer upload de avatares próprios"
+-- 
+-- Target roles: authenticated
+-- Allowed operation: INSERT
+-- 
+-- Policy definition (USING):
+-- (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text)
+--
+-- Policy definition (WITH CHECK):
+-- (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text)
+-- ============================================================================
 
--- Política para INSERT (upload): Usuários podem fazer upload no seu próprio diretório
-CREATE POLICY "Usuários podem fazer upload de avatares próprios"
-ON storage.objects
-FOR INSERT
-TO authenticated
-WITH CHECK (
-  bucket_id = 'avatars' 
-  AND (storage.foldername(name))[1] = auth.uid()::text
-);
+-- ============================================================================
+-- POLÍTICA 2: UPDATE (Upsert)
+-- ============================================================================
+-- Nome: "Usuários podem atualizar avatares próprios"
+-- 
+-- Target roles: authenticated
+-- Allowed operation: UPDATE
+-- 
+-- Policy definition (USING):
+-- (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text)
+--
+-- Policy definition (WITH CHECK):
+-- (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text)
+-- ============================================================================
 
--- Política para UPDATE (upsert): Usuários podem atualizar seus próprios avatares
-CREATE POLICY "Usuários podem atualizar avatares próprios"
-ON storage.objects
-FOR UPDATE
-TO authenticated
-USING (
-  bucket_id = 'avatars' 
-  AND (storage.foldername(name))[1] = auth.uid()::text
-)
-WITH CHECK (
-  bucket_id = 'avatars' 
-  AND (storage.foldername(name))[1] = auth.uid()::text
-);
+-- ============================================================================
+-- POLÍTICA 3: DELETE
+-- ============================================================================
+-- Nome: "Usuários podem deletar avatares próprios"
+-- 
+-- Target roles: authenticated
+-- Allowed operation: DELETE
+-- 
+-- Policy definition (USING):
+-- (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text)
+-- ============================================================================
 
--- Política para DELETE: Usuários podem deletar seus próprios avatares
-CREATE POLICY "Usuários podem deletar avatares próprios"
-ON storage.objects
-FOR DELETE
-TO authenticated
-USING (
-  bucket_id = 'avatars' 
-  AND (storage.foldername(name))[1] = auth.uid()::text
-);
+-- ============================================================================
+-- POLÍTICA 4: SELECT (Download/Leitura)
+-- ============================================================================
+-- Nome: "Avatares são públicos para leitura"
+-- 
+-- Target roles: public
+-- Allowed operation: SELECT
+-- 
+-- Policy definition (USING):
+-- (bucket_id = 'avatars')
+-- ============================================================================
 
--- Política para SELECT (download): Público pode ler avatares (para exibição)
-CREATE POLICY "Avatares são públicos para leitura"
-ON storage.objects
-FOR SELECT
-TO public
-USING (bucket_id = 'avatars');
-
--- Comentários explicativos
-COMMENT ON POLICY "Usuários podem fazer upload de avatares próprios" ON storage.objects IS 
-'Permite que usuários autenticados façam upload de avatares apenas no diretório com seu próprio user_id (avatars/{user_id}/*)';
-
-COMMENT ON POLICY "Usuários podem atualizar avatares próprios" ON storage.objects IS 
-'Permite que usuários autenticados atualizem seus próprios avatares';
-
-COMMENT ON POLICY "Usuários podem deletar avatares próprios" ON storage.objects IS 
-'Permite que usuários autenticados deletem seus próprios avatares';
-
-COMMENT ON POLICY "Avatares são públicos para leitura" ON storage.objects IS 
-'Permite que qualquer pessoa (incluindo não autenticados) leia avatares para exibição';
+-- ============================================================================
+-- EXPLICAÇÃO DAS POLÍTICAS
+-- ============================================================================
+--
+-- INSERT/UPDATE/DELETE:
+-- - Apenas usuários autenticados podem fazer essas operações
+-- - Apenas no diretório próprio: avatars/{user_id}/*
+-- - A função storage.foldername(name)[1] extrai o primeiro nível do caminho
+--   (que deve ser o user_id)
+-- - auth.uid()::text retorna o ID do usuário autenticado como texto
+--
+-- SELECT:
+-- - Qualquer pessoa (incluindo não autenticados) pode ler avatares
+-- - Necessário para exibir avatares nas páginas públicas
+-- - Não há restrição de diretório (público pode ver todos os avatares)
+--
+-- ESTRUTURA DE PASTAS ESPERADA:
+-- avatars/
+--   └── {user_id}/
+--       ├── 1234567890-abc123.jpg
+--       ├── 1234567891-xyz789.png
+--       └── ...
+--
+-- ============================================================================
 
