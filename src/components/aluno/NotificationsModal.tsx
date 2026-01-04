@@ -18,45 +18,45 @@ function NotificationIcon({ tipo }: { tipo: DatabaseNotificacao['tipo'] }) {
     case 'info':
       return (
         <div className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+          "w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center flex-shrink-0",
           theme === 'dark' 
             ? "bg-yellow-400/20 text-yellow-400" 
             : "bg-yellow-100 text-yellow-600"
         )}>
-          <Info className="w-5 h-5" />
+          <Info className="w-4 h-4 md:w-5 md:h-5" />
         </div>
       )
     case 'update':
       return (
         <div className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+          "w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center flex-shrink-0",
           theme === 'dark' 
             ? "bg-emerald-500/20 text-emerald-400" 
             : "bg-emerald-100 text-emerald-600"
         )}>
-          <RefreshCw className="w-5 h-5" />
+          <RefreshCw className="w-4 h-4 md:w-5 md:h-5" />
         </div>
       )
     case 'warning':
       return (
         <div className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+          "w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center flex-shrink-0",
           theme === 'dark' 
             ? "bg-orange-500/20 text-orange-400" 
             : "bg-orange-100 text-orange-600"
         )}>
-          <AlertTriangle className="w-5 h-5" />
+          <AlertTriangle className="w-4 h-4 md:w-5 md:h-5" />
         </div>
       )
     default:
       return (
         <div className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+          "w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center flex-shrink-0",
           theme === 'dark' 
             ? "bg-white/10 text-gray-400" 
             : "bg-gray-100 text-gray-600"
         )}>
-          <Bell className="w-5 h-5" />
+          <Bell className="w-4 h-4 md:w-5 md:h-5" />
         </div>
       )
   }
@@ -102,31 +102,31 @@ function NotificationCard({
       exit={{ opacity: 0, y: -10 }}
       onClick={handleClick}
       className={cn(
-        "p-4 rounded-xl border transition-all duration-200",
-        isClickable && "cursor-pointer",
+        "p-3 md:p-4 rounded-lg md:rounded-xl border transition-all duration-200",
+        isClickable && "cursor-pointer active:scale-[0.98]",
         isRead 
           ? theme === 'dark' 
             ? "bg-white/5 border-white/5 opacity-50" 
             : "bg-gray-50 border-gray-100 opacity-70"
           : theme === 'dark'
-            ? "bg-[#111111] border-yellow-400/20 hover:border-yellow-400/50"
-            : "bg-gradient-to-br from-yellow-50 to-white border-yellow-200 hover:border-yellow-300"
+            ? "bg-[#111111] border-yellow-400/20 hover:border-yellow-400/50 active:border-yellow-400/40"
+            : "bg-gradient-to-br from-yellow-50 to-white border-yellow-200 hover:border-yellow-300 active:border-yellow-400"
       )}
     >
-      <div className="flex gap-3">
+      <div className="flex gap-2.5 md:gap-3">
         <NotificationIcon tipo={notification.tipo} />
         
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <div>
+            <div className="min-w-0 flex-1">
               <h3 className={cn(
-                "font-semibold text-base",
+                "font-semibold text-sm md:text-base break-words",
                 theme === 'dark' ? "text-white" : "text-gray-900"
               )}>
                 {notification.titulo}
               </h3>
               <span className={cn(
-                "inline-block px-2 py-0.5 text-xs rounded-full mt-1",
+                "inline-block px-1.5 md:px-2 py-0.5 text-xs rounded-full mt-1",
                 notification.tipo === 'info' && (
                   theme === 'dark'
                     ? "bg-yellow-400/20 text-yellow-400"
@@ -154,27 +154,28 @@ function NotificationCard({
                   onMarkAsRead()
                 }}
                 className={cn(
-                  "p-1.5 rounded-lg transition-colors flex-shrink-0",
+                  "p-2 md:p-1.5 rounded-lg transition-colors flex-shrink-0 active:scale-95 touch-manipulation",
                   theme === 'dark'
-                    ? "hover:bg-white/10 text-gray-400 hover:text-green-400"
-                    : "hover:bg-gray-100 text-gray-500 hover:text-green-600"
+                    ? "hover:bg-white/10 text-gray-400 hover:text-green-400 active:bg-white/20"
+                    : "hover:bg-gray-100 text-gray-500 hover:text-green-600 active:bg-gray-200"
                 )}
                 title="Marcar como lida"
+                aria-label="Marcar como lida"
               >
-                <Check className="w-4 h-4" />
+                <Check className="w-4 h-4 md:w-4 md:h-4" />
               </button>
             )}
           </div>
           
           <p className={cn(
-            "text-sm mt-2 leading-relaxed",
+            "text-sm md:text-sm mt-2 leading-relaxed break-words",
             theme === 'dark' ? "text-gray-300" : "text-gray-600"
           )}>
             {notification.mensagem}
           </p>
           
           <div className={cn(
-            "flex items-center gap-2 mt-3 text-xs",
+            "flex items-center gap-2 mt-2 md:mt-3 text-xs",
             theme === 'dark' ? "text-gray-500" : "text-gray-400"
           )}>
             <span>
@@ -201,42 +202,15 @@ export default function NotificationsModal() {
     isModalOpen, 
     closeModal, 
     markAsRead, 
-    markAllAsRead 
+    markAllAsRead,
+    isRead
   } = useNotifications()
   
   const [mounted, setMounted] = useState(false)
-  const [readIds, setReadIds] = useState<Set<string>>(new Set())
 
-  // Carregar IDs lidas do localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('ne_notifications_read')
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored)
-          setReadIds(new Set(parsed))
-        } catch (e) {
-          console.error('Erro ao parsear notificações lidas:', e)
-        }
-      }
-    }
     setMounted(true)
   }, [])
-
-  // Atualizar readIds quando notificações forem marcadas como lidas
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('ne_notifications_read')
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored)
-          setReadIds(new Set(parsed))
-        } catch (e) {
-          // Ignora erro
-        }
-      }
-    }
-  }, [notifications])
 
   // Fechar modal ao pressionar ESC
   useEffect(() => {
@@ -261,22 +235,11 @@ export default function NotificationsModal() {
     }
   }, [isModalOpen])
 
-  const handleMarkAsRead = (notificationId: string) => {
-    markAsRead(notificationId)
-    setReadIds(prev => new Set([...prev, notificationId]))
-  }
-
-  const handleMarkAllAsRead = () => {
-    markAllAsRead()
-    const allIds = notifications.map(n => n.id)
-    setReadIds(new Set(allIds))
-  }
-
   if (!isModalOpen || !mounted) return null
 
   const modalContent = (
     <div
-      className="fixed inset-0 flex items-center justify-center p-4"
+      className="fixed inset-0 flex items-center justify-center p-2 md:p-4"
       onClick={closeModal}
       style={{
         position: 'fixed',
@@ -313,7 +276,8 @@ export default function NotificationsModal() {
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ type: 'spring', duration: 0.3 }}
         className={cn(
-          "relative w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden",
+          "relative w-full max-w-lg rounded-2xl md:rounded-2xl rounded-t-3xl md:rounded-t-2xl shadow-2xl overflow-hidden",
+          "h-[90vh] md:h-auto md:max-h-[80vh]",
           theme === 'dark'
             ? "bg-[#0a0a0a] border border-yellow-400/20"
             : "bg-white border border-yellow-200"
@@ -322,34 +286,33 @@ export default function NotificationsModal() {
         style={{
           position: 'relative',
           zIndex: 10000,
-          maxHeight: '80vh',
         }}
       >
         {/* Header */}
         <div className={cn(
-          "flex items-center justify-between p-4 md:p-5 border-b sticky top-0 z-10",
+          "flex items-center justify-between p-3 md:p-4 lg:p-5 border-b sticky top-0 z-10",
           theme === 'dark' 
             ? "border-yellow-400/10 bg-[#0a0a0a]/95 backdrop-blur-sm" 
             : "border-yellow-200 bg-white/95 backdrop-blur-sm"
         )}>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
             <div className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center",
+              "w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center flex-shrink-0",
               theme === 'dark'
                 ? "bg-yellow-400/20 text-yellow-400"
                 : "bg-yellow-100 text-yellow-600"
             )}>
-              <Bell className="w-5 h-5" />
+              <Bell className="w-4 h-4 md:w-5 md:h-5" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <h2 className={cn(
-                "text-lg font-bold",
+                "text-base md:text-lg font-bold truncate",
                 theme === 'dark' ? "text-white" : "text-gray-900"
               )}>
                 Notificações
               </h2>
               <p className={cn(
-                "text-xs",
+                "text-xs md:text-xs",
                 theme === 'dark' ? "text-gray-400" : "text-gray-500"
               )}>
                 {unreadCount > 0 
@@ -359,28 +322,29 @@ export default function NotificationsModal() {
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
             {unreadCount > 0 && (
               <button
-                onClick={handleMarkAllAsRead}
+                onClick={markAllAsRead}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                  "flex items-center gap-1 md:gap-1.5 px-2.5 md:px-3 py-1.5 md:py-1.5 rounded-lg text-xs font-medium transition-colors",
+                  "active:scale-95",
                   theme === 'dark'
-                    ? "bg-yellow-400/10 text-yellow-400 hover:bg-yellow-400/20"
-                    : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
+                    ? "bg-yellow-400/10 text-yellow-400 hover:bg-yellow-400/20 active:bg-yellow-400/30"
+                    : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200 active:bg-yellow-300"
                 )}
               >
-                <CheckCheck className="w-3.5 h-3.5" />
-                Marcar todas
+                <CheckCheck className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="hidden sm:inline">Marcar todas</span>
               </button>
             )}
             <button
               onClick={closeModal}
               className={cn(
-                "p-2 rounded-lg transition-colors",
+                "p-2 md:p-2 rounded-lg transition-colors active:scale-95",
                 theme === 'dark'
-                  ? "hover:bg-white/10 text-gray-400 hover:text-white"
-                  : "hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                  ? "hover:bg-white/10 text-gray-400 hover:text-white active:bg-white/20"
+                  : "hover:bg-gray-100 text-gray-600 hover:text-gray-900 active:bg-gray-200"
               )}
               aria-label="Fechar"
             >
@@ -391,8 +355,11 @@ export default function NotificationsModal() {
 
         {/* Content */}
         <div 
-          className="p-4 md:p-5 space-y-3 overflow-y-auto"
-          style={{ maxHeight: 'calc(80vh - 80px)' }}
+          className="p-3 md:p-4 lg:p-5 space-y-2.5 md:space-y-3 overflow-y-auto flex-1"
+          style={{ 
+            maxHeight: 'calc(90vh - 70px)',
+            WebkitOverflowScrolling: 'touch'
+          }}
         >
           <AnimatePresence mode="popLayout">
             {notifications.length === 0 ? (
@@ -413,8 +380,8 @@ export default function NotificationsModal() {
                   onClose={closeModal}
                   key={notification.id}
                   notification={notification}
-                  isRead={readIds.has(notification.id)}
-                  onMarkAsRead={() => handleMarkAsRead(notification.id)}
+                  isRead={isRead(notification.id)}
+                  onMarkAsRead={() => markAsRead(notification.id)}
                 />
               ))
             )}
