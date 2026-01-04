@@ -21,14 +21,14 @@
 ### 🔴 O que ainda precisa ser corrigido:
 - **Críticas:** 0 itens ✅
 - **Importantes:** 0 itens ✅
-- **Baixas:** 14 itens (endpoints administrativos/internos)
+- **Baixas:** 12 itens (endpoints administrativos/internos) - **Verificado 2026-01-04**
 
 ### 📈 Estatísticas:
 - **Total de ocorrências de `getSupabaseAdmin()`:** 59
 - **Já corrigidas:** ~23-25 (comunidade + gamification + desafios + quiz + admin submissions + admin quiz + notificações)
 - **Críticas pendentes:** 0 ✅
 - **Importantes pendentes:** 0 ✅
-- **Baixas pendentes:** ~13-14
+- **Baixas pendentes:** 12 (verificados após análise completa - ver abaixo)
 
 **Conclusão:** ✅ **Todos os erros críticos E importantes foram corrigidos!** Sistemas de desafios e quiz completos agora funcionam sem service role key. Admin pode criar/editar quizzes manualmente usando RLS. Geração de quiz com IA implementada com RLS. Restam apenas endpoints administrativos/internos de baixa prioridade.
 
@@ -130,19 +130,17 @@
 - **Solução:** Pode manter service role key OU usar `getSupabaseClient(accessToken)` com validação de admin
 - **Status:** 🟢 BAIXA PRIORIDADE
 
-#### 13. **Users - Me** 🟢 BAIXO
+#### 13. **Users - Me** ✅ JÁ CORRIGIDO
 - **Arquivo:** `src/app/api/users/me/route.ts`
-- **Problema:** Usa `getSupabaseAdmin()` (2 lugares)
-- **Impacto:** ✅ Baixo - endpoint de perfil
-- **Solução:** Substituir por `getSupabaseClient(accessToken)`
-- **Status:** 🟢 BAIXA PRIORIDADE
+- **Problema:** ~~Usava `getSupabaseAdmin()`~~ 
+- **Mudança:** ✅ Já substituído por `getSupabaseClient(accessToken)` 
+- **Status:** ✅ **CORRIGIDO** (2026-01-04 - upload de avatar funcionando em produção)
 
-#### 14. **Notificações de desafio** 🟢 BAIXO
-- **Arquivo:** `src/lib/server/desafioNotifications.ts` (3 lugares)
-- **Problema:** Usa `getSupabaseAdmin()`
-- **Impacto:** ✅ Baixo - notificações internas
-- **Solução:** Substituir por `getSupabaseClient(accessToken)` OU manter service role key
-- **Status:** 🟢 BAIXA PRIORIDADE
+#### 14. **Notificações de desafio** ✅ JÁ CORRIGIDO
+- **Arquivo:** `src/lib/server/desafioNotifications.ts`
+- **Problema:** ~~Usava `getSupabaseAdmin()`~~ 
+- **Mudança:** ✅ Já substituído por `getSupabaseClient(accessToken)` e função RPC `notify_admins_new_submission`
+- **Status:** ✅ **CORRIGIDO** (2026-01-03 - notificações funcionando)
 
 #### 15. **OpenAI - Track tokens** 🟢 BAIXO
 - **Arquivo:** `src/lib/openai.ts` (linha 67)
@@ -151,12 +149,11 @@
 - **Solução:** Substituir por `getSupabaseClient(accessToken)` OU manter service role key
 - **Status:** 🟢 BAIXA PRIORIDADE
 
-#### 16. **Database.ts - Funções auxiliares** 🟢 BAIXO
-- **Arquivo:** `src/lib/database.ts` (linhas 685, 1085)
-- **Problema:** Usa `getSupabaseAdmin()` dinamicamente
-- **Impacto:** ✅ Baixo - funções auxiliares
-- **Solução:** Avaliar se realmente precisa de service role key
-- **Status:** 🟢 BAIXA PRIORIDADE
+#### 16. **Database.ts - Funções auxiliares** ✅ VERIFICADO - NÃO USA
+- **Arquivo:** `src/lib/database.ts`
+- **Problema:** ~~Mencionado como usando `getSupabaseAdmin()`~~ 
+- **Verificação:** ✅ Verificado - arquivo não usa `getSupabaseAdmin()` (pode ter sido corrigido ou removido)
+- **Status:** ✅ **NÃO PRECISA CORREÇÃO** (2026-01-04 - verificado)
 
 ---
 
