@@ -1,67 +1,105 @@
 -- ============================================================================
 -- CONFIGURAÇÃO DE POLÍTICAS RLS PARA O BUCKET DE AVATARES (avatars)
 -- ============================================================================
--- IMPORTANTE: As políticas de Storage não podem ser criadas via SQL direto.
--- Use o Dashboard do Supabase para configurar as políticas.
---
+-- IMPORTANTE: Tente executar via SQL primeiro. Se der erro de permissão,
+-- configure via Dashboard do Supabase (veja instruções no final do arquivo).
+-- ============================================================================
+
+-- Política 1: INSERT (Upload)
+-- Permite que usuários autenticados façam upload de avatares no próprio diretório
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'storage' 
+    AND tablename = 'objects' 
+    AND policyname = 'Usuários podem fazer upload de avatares próprios'
+  ) THEN
+    EXECUTE $$
+    CREATE POLICY "Usuários podem fazer upload de avatares próprios"
+    ON storage.objects
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (
+      bucket_id = 'avatars' 
+      AND (storage.foldername(name))[1] = auth.uid()::text
+    )$$;
+  END IF;
+END $$;
+
+-- Política 2: UPDATE (Upsert)
+-- Permite que usuários autenticados atualizem seus próprios avatares
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'storage' 
+    AND tablename = 'objects' 
+    AND policyname = 'Usuários podem atualizar avatares próprios'
+  ) THEN
+    EXECUTE $$
+    CREATE POLICY "Usuários podem atualizar avatares próprios"
+    ON storage.objects
+    FOR UPDATE
+    TO authenticated
+    USING (
+      bucket_id = 'avatars' 
+      AND (storage.foldername(name))[1] = auth.uid()::text
+    )
+    WITH CHECK (
+      bucket_id = 'avatars' 
+      AND (storage.foldername(name))[1] = auth.uid()::text
+    )$$;
+  END IF;
+END $$;
+
+-- Política 3: DELETE
+-- Permite que usuários autenticados deletem seus próprios avatares
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'storage' 
+    AND tablename = 'objects' 
+    AND policyname = 'Usuários podem deletar avatares próprios'
+  ) THEN
+    EXECUTE $$
+    CREATE POLICY "Usuários podem deletar avatares próprios"
+    ON storage.objects
+    FOR DELETE
+    TO authenticated
+    USING (
+      bucket_id = 'avatars' 
+      AND (storage.foldername(name))[1] = auth.uid()::text
+    )$$;
+  END IF;
+END $$;
+
+-- Política 4: SELECT (Download/Leitura)
+-- Permite que qualquer pessoa leia avatares (para exibição)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'storage' 
+    AND tablename = 'objects' 
+    AND policyname = 'Avatares são públicos para leitura'
+  ) THEN
+    EXECUTE $$
+    CREATE POLICY "Avatares são públicos para leitura"
+    ON storage.objects
+    FOR SELECT
+    TO public
+    USING (bucket_id = 'avatars')$$;
+  END IF;
+END $$;
+
+-- ============================================================================
+-- ALTERNATIVA: Se o SQL acima não funcionar, configure via Dashboard
+-- ============================================================================
 -- PASSO A PASSO:
 -- 1. Acesse: Supabase Dashboard > Storage > avatars > Policies
--- 2. Clique em "New Policy"
--- 3. Configure cada política abaixo
--- ============================================================================
-
--- ============================================================================
--- POLÍTICA 1: INSERT (Upload)
--- ============================================================================
--- Nome: "Usuários podem fazer upload de avatares próprios"
--- 
--- Target roles: authenticated
--- Allowed operation: INSERT
--- 
--- Policy definition (USING):
--- (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text)
---
--- Policy definition (WITH CHECK):
--- (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text)
--- ============================================================================
-
--- ============================================================================
--- POLÍTICA 2: UPDATE (Upsert)
--- ============================================================================
--- Nome: "Usuários podem atualizar avatares próprios"
--- 
--- Target roles: authenticated
--- Allowed operation: UPDATE
--- 
--- Policy definition (USING):
--- (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text)
---
--- Policy definition (WITH CHECK):
--- (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text)
--- ============================================================================
-
--- ============================================================================
--- POLÍTICA 3: DELETE
--- ============================================================================
--- Nome: "Usuários podem deletar avatares próprios"
--- 
--- Target roles: authenticated
--- Allowed operation: DELETE
--- 
--- Policy definition (USING):
--- (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text)
--- ============================================================================
-
--- ============================================================================
--- POLÍTICA 4: SELECT (Download/Leitura)
--- ============================================================================
--- Nome: "Avatares são públicos para leitura"
--- 
--- Target roles: public
--- Allowed operation: SELECT
--- 
--- Policy definition (USING):
--- (bucket_id = 'avatars')
+-- 2. Clique em "New Policy" para cada política abaixo
 -- ============================================================================
 
 -- ============================================================================
