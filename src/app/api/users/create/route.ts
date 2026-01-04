@@ -18,7 +18,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = getSupabaseAdmin()
+    // Tentar obter cliente Supabase Admin
+    let supabase
+    try {
+      supabase = getSupabaseAdmin()
+    } catch (adminError: any) {
+      console.warn('⚠️ Supabase Admin não disponível (service role key não configurada):', adminError.message)
+      // Se não tiver service role key, retornar erro informativo
+      // A página de signup trata isso como não-bloqueante (usuário será criado por trigger ou AuthContext)
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Service role key não configurada. O usuário será criado automaticamente por trigger do banco de dados ou pelo AuthContext.',
+          code: 'MISSING_SERVICE_ROLE_KEY'
+        },
+        { status: 503 } // Service Unavailable - indica que o serviço não está disponível, mas não é um erro crítico
+      )
+    }
 
     // SEGURANÇA: Verificar se o usuário realmente existe no auth.users
     // Isso previne criação de usuários sem autenticação válida
