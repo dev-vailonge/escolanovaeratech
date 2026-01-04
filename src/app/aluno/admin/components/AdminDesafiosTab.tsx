@@ -38,6 +38,14 @@ export default function AdminDesafiosTab() {
   const [adminNotes, setAdminNotes] = useState('')
   const [isApproving, setIsApproving] = useState(false)
 
+  // Sincronizar com parâmetro da URL
+  useEffect(() => {
+    const subtabParam = searchParams.get('subtab')
+    if (subtabParam === 'submissions' && activeTab !== 'submissions') {
+      setActiveTab('submissions')
+    }
+  }, [searchParams, activeTab])
+
   useEffect(() => {
     carregarDesafios()
   }, [])
