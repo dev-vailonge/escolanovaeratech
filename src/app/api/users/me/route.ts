@@ -110,7 +110,6 @@ export async function PATCH(request: Request) {
       if (uploadError) {
         console.error('❌ [API] Erro upload avatar:', {
           message: uploadError.message,
-          statusCode: uploadError.statusCode,
           error: uploadError,
           bucket: AVATAR_BUCKET,
           objectPath,
