@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Trophy, TrendingUp, HelpCircle, MessageSquare, CheckCircle, Target, FileText, Award, Lock, RefreshCw, Crown } from 'lucide-react'
+import { useEffect, useState, useMemo } from 'react'
+import { Trophy, TrendingUp, HelpCircle, MessageSquare, CheckCircle, Target, FileText, Award, Lock, RefreshCw, Crown, Clock } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/AuthContext'
@@ -9,12 +9,32 @@ import { supabase } from '@/lib/supabase'
 import Modal from '@/components/ui/Modal'
 import { calculateLevel, getLevelBorderColor, getLevelRequirements, getLevelCategory } from '@/lib/gamification'
 import BadgeDisplay from '@/components/comunidade/BadgeDisplay'
+import CountdownTimer from '@/components/ui/countdown-timer'
 
-type RankingType = 'mensal' | 'geral'
+// Função para verificar se o mês atual já fechou
+// O mês anterior é considerado fechado no dia 1 (a partir de 00:01)
+// Exemplo: Se estamos em 1º de fevereiro às 00:01, janeiro fechou e podemos mostrar o campeão de janeiro
+// Se estamos nos dias 2-31, estamos no meio do mês atual (mostra cronômetro)
+function isMonthClosed(): boolean {
+  const now = new Date()
+  const day = now.getDate()
+  // Consideramos o mês anterior fechado a partir do dia 1
+  // No dia 1, já podemos mostrar o campeão do mês anterior
+  return day >= 1
+}
+
+// Função para calcular dias restantes até o fim do mês atual
+function getDaysUntilMonthEnd(): number {
+  const now = new Date()
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  const diffTime = lastDayOfMonth.getTime() - now.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return Math.max(0, diffDays)
+}
+
 
 export default function RankingPage() {
   const { theme } = useTheme()
-  const [rankingType, setRankingType] = useState<RankingType>('mensal')
   const { user: authUser } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>('')
@@ -23,8 +43,17 @@ export default function RankingPage() {
   const [rankingMensal, setRankingMensal] = useState<any[] | null>(null)
   const [isPontuacaoModalOpen, setIsPontuacaoModalOpen] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [historicoCampeoes, setHistoricoCampeoes] = useState<any[]>([])
+  const [loadingHistorico, setLoadingHistorico] = useState(false)
   
-  // Buscar ranking mensal para o Card Mural (sempre)
+  // Calcular mês atual - sempre começar no mês atual
+  const nowInit = new Date()
+  const mesAtualKeyInit = `${nowInit.getFullYear()}-${String(nowInit.getMonth() + 1).padStart(2, '0')}`
+  
+  const [mesAtivo, setMesAtivo] = useState<string>(mesAtualKeyInit)
+  
+  // Buscar ranking mensal para o Card Mural
+  // Se o mês fechou (dia >= 2), busca o campeão do mês anterior que acabou de fechar
   useEffect(() => {
     let mounted = true
     const run = async () => {
@@ -33,17 +62,71 @@ export default function RankingPage() {
         const token = session?.access_token
         if (!token) return
 
-        const res = await fetch(`/api/ranking?type=mensal&_t=${Date.now()}`, {
-          headers: { Authorization: `Bearer ${token}` },
-          cache: 'no-store', // Forçar busca de dados frescos
-        })
-        const json = await res.json().catch(() => ({}))
-        if (!res.ok) return
+        const now = new Date()
+        const day = now.getDate()
+        
+        // No dia 1, buscar campeão do mês anterior
+        // Nos dias 2-31, mostrar cronômetro (não buscar campeão ainda)
+        if (day >= 2) {
+          console.log('[Ranking] Estamos no meio do mês, mostrando contagem regressiva')
+          if (mounted) setRankingMensal([])
+          return
+        }
 
-        if (!mounted) return
-        setRankingMensal(json?.ranking || [])
+        console.log('[Ranking] Dia 1 - buscando campeão do mês anterior...')
+        
+        // Calcular qual deve ser o mês anterior
+        const mesAnterior = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        const mesAnteriorKey = `${mesAnterior.getFullYear()}-${String(mesAnterior.getMonth() + 1).padStart(2, '0')}`
+        const mesAnteriorNome = mesAnterior.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+        
+        console.log('[Ranking] Mês anterior esperado:', mesAnteriorKey, mesAnteriorNome)
+        
+        // Se o mês fechou, buscar o campeão do mês anterior (último mês fechado)
+        const resHistorico = await fetch(`/api/ranking/historico?limit=1&_t=${Date.now()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        })
+        const jsonHistorico = await resHistorico.json().catch(() => ({}))
+        
+        console.log('[Ranking] Resposta do histórico:', {
+          ok: resHistorico.ok,
+          historicoLength: jsonHistorico.historico?.length || 0,
+          historico: jsonHistorico.historico
+        })
+        
+        if (resHistorico.ok && jsonHistorico.historico && jsonHistorico.historico.length > 0) {
+          const campeaoDoMes = jsonHistorico.historico[0]
+          console.log('[Ranking] Campeão encontrado:', campeaoDoMes.name, 'do mês', campeaoDoMes.mes, 'mesKey:', campeaoDoMes.mesKey)
+          
+          // Validar que o mês retornado é realmente o mês anterior
+          if (campeaoDoMes.mesKey === mesAnteriorKey) {
+            console.log('[Ranking] ✅ Mês validado corretamente, exibindo campeão')
+            // Converter o formato do histórico para o formato esperado pelo ranking
+            if (mounted) {
+              setRankingMensal([{
+                id: campeaoDoMes.id,
+                name: campeaoDoMes.name,
+                xp: 0, // Não usado para o card
+                xp_mensal: campeaoDoMes.xpMensal,
+                avatar_url: campeaoDoMes.avatarUrl,
+                level: campeaoDoMes.level,
+              }])
+            }
+          } else {
+            console.log('[Ranking] ❌ Mês não corresponde ao esperado. Esperado:', mesAnteriorKey, 'Recebido:', campeaoDoMes.mesKey)
+            // Se o mês não corresponde, não mostrar campeão
+            if (mounted) setRankingMensal([])
+          }
+        } else {
+          console.log('[Ranking] Nenhum campeão encontrado no histórico')
+          // Se não encontrar histórico, limpar para não mostrar campeão errado
+          if (mounted) setRankingMensal([])
+        }
       } catch (e: any) {
-        // Silencioso - não precisa mostrar erro aqui
+        console.error('Erro ao buscar campeão do mês:', e)
+        // Em caso de erro, limpar para não mostrar dados incorretos
+        if (mounted) setRankingMensal([])
       }
     }
 
@@ -66,8 +149,8 @@ export default function RankingPage() {
         const token = session?.access_token
         if (!token) throw new Error('Não autenticado')
 
-        // Busca ranking mensal ou geral conforme o seletor
-        const res = await fetch(`/api/ranking?type=${rankingType}&_t=${Date.now()}`, {
+        // Busca ranking geral (all time)
+        const res = await fetch(`/api/ranking?type=geral&_t=${Date.now()}`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store', // Forçar busca de dados frescos
         })
@@ -75,9 +158,7 @@ export default function RankingPage() {
         if (!res.ok) throw new Error(json?.error || 'Erro ao carregar ranking')
 
         if (!mounted) return
-        // ranking contém lista ordenada:
-        // - Se mensal: ordenado por xp_mensal (maior pontuação do mês)
-        // - Se geral: ordenado por xp (maior pontuação all time)
+        // ranking contém lista ordenada por xp total (maior pontuação all time)
         setRanking(json?.ranking || [])
         setHotmartStatus(json?.hotmart?.message || '')
       } catch (e: any) {
@@ -93,24 +174,125 @@ export default function RankingPage() {
     return () => {
       mounted = false
     }
-  }, [rankingType, refreshTrigger])
+  }, [refreshTrigger])
 
   // Removido fallback para mock - ranking deve vir sempre da API
 
-  // Campeão do mês para o Card Mural
-  const campeaoMensal = rankingMensal && rankingMensal.length > 0 ? (() => {
+  // Buscar histórico de campeões (excluindo o mês atual se ainda não fechou)
+  useEffect(() => {
+    let mounted = true
+    const run = async () => {
+      setLoadingHistorico(true)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+        if (!token) return
+
+        const res = await fetch(`/api/ranking/historico?limit=12&_t=${Date.now()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok || !mounted) return
+
+        // Se o mês fechou, remover o primeiro item do histórico (que é o mês atual)
+        // pois ele já está sendo mostrado no card "Campeão do Mês"
+        let historico = json?.historico || []
+        if (isMonthClosed() && historico.length > 0) {
+          historico = historico.slice(1) // Remover o primeiro (mês atual)
+        }
+        
+        setHistoricoCampeoes(historico)
+      } catch (e: any) {
+        console.error('Erro ao buscar histórico:', e)
+      } finally {
+        if (mounted) setLoadingHistorico(false)
+      }
+    }
+
+    run()
+    return () => {
+      mounted = false
+    }
+  }, [refreshTrigger])
+
+  // Calcular dias restantes e verificar se é dia 1
+  const now = new Date()
+  const day = now.getDate()
+  const isDia1 = day === 1
+  const diasRestantes = getDaysUntilMonthEnd()
+  
+  // Calcular data do fim do mês (último dia do mês às 23:59:59)
+  const fimDoMes = useMemo(() => {
+    const currentDate = new Date()
+    const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+    lastDayOfMonth.setHours(23, 59, 59, 999)
+    return lastDayOfMonth
+  }, [])
+  
+  // Calcular mês atual e anterior
+  const mesAtualKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const mesAnteriorDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const mesAnteriorKey = `${mesAnteriorDate.getFullYear()}-${String(mesAnteriorDate.getMonth() + 1).padStart(2, '0')}`
+  
+  // Campeão do mês anterior para o Card Mural (só mostra no dia 1)
+  const campeaoMensal = useMemo(() => {
+    if (!isDia1 || !rankingMensal || rankingMensal.length === 0) return null
+    
     const u = rankingMensal[0]
-    const xpTotal = u.xp || 0
-    const calculatedLevel = calculateLevel(xpTotal)
+    // Se já tem level (vindo do histórico), usar ele. Senão, calcular
+    const level = u.level || calculateLevel(u.xp || 0)
     return {
       id: u.id,
       name: u.name,
-      level: calculatedLevel,
-      xp: xpTotal,
-      xpMensal: u.xp_mensal,
+      level: level,
+      xp: u.xp || 0,
+      xpMensal: u.xp_mensal || 0,
       avatarUrl: u.avatar_url || null,
     }
-  })() : null
+  }, [rankingMensal, isDia1])
+  
+  
+  // Criar lista de meses (12 meses do ano atual: Jan a Dez de 2026)
+  const meses = useMemo(() => {
+    const lista: Array<{ key: string; nome: string; nomeAbreviado: string; date: Date }> = []
+    const anoAtual = now.getFullYear() // Pega o ano atual (2026)
+    
+    // Sempre mostrar os 12 meses do ano atual (janeiro a dezembro)
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(anoAtual, i, 1)
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const nomeCompleto = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+      const nomeAbreviado = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
+      lista.push({ 
+        key, 
+        nome: nomeCompleto.charAt(0).toUpperCase() + nomeCompleto.slice(1),
+        nomeAbreviado: nomeAbreviado.charAt(0).toUpperCase() + nomeAbreviado.slice(1),
+        date 
+      })
+    }
+    
+    return lista
+  }, [])
+  
+  // Criar mapa de campeões por mês
+  const campeoesPorMes = useMemo(() => {
+    const mapa = new Map<string, any>()
+    // Adicionar campeão do mês anterior (se existir e estivermos no dia 1)
+    if (isDia1 && campeaoMensal) {
+      mapa.set(mesAnteriorKey, {
+        ...campeaoMensal,
+        mesKey: mesAnteriorKey,
+      })
+    }
+    // Adicionar campeões do histórico
+    historicoCampeoes.forEach(campeao => {
+      if (campeao.mesKey) {
+        mapa.set(campeao.mesKey, campeao)
+      }
+    })
+    return mapa
+  }, [historicoCampeoes, campeaoMensal, isDia1, mesAnteriorKey])
 
   // Normaliza dados do ranking da API para o formato esperado
   // A API já retorna ordenado corretamente:
@@ -167,13 +349,191 @@ export default function RankingPage() {
           >
             {loading && 'Carregando ranking...'}
             {!loading && error}
-            {!loading && !error && hotmartStatus && `Hotmart: ${hotmartStatus}`}
+            {!loading && !error && hotmartStatus && (
+              <span>
+                <strong>Hotmart Club:</strong> As aulas assistidas no Hotmart Club ainda não estão sendo contabilizadas no ranking.
+              </span>
+            )}
           </div>
         )}
       </div>
 
-      {/* Card Mural - Campeão do Mês */}
-      {campeaoMensal && (
+      {/* Card Mural - Campeão do Mês com Abas */}
+      <div className={cn(
+        "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
+        theme === 'dark'
+          ? "bg-black/20 border-white/10"
+          : "bg-white border-yellow-400/90 shadow-md"
+      )}>
+        <h2 className={cn(
+          "text-lg md:text-xl font-bold mb-4 md:mb-6 text-center",
+          theme === 'dark' ? "text-white" : "text-gray-900"
+        )}>
+          Campeões Mensais
+        </h2>
+        
+        {/* Abas dos Meses */}
+        <div className={cn(
+          "backdrop-blur-sm border rounded-lg p-1.5 mb-4 transition-colors duration-300 overflow-x-auto",
+          theme === 'dark'
+            ? "bg-black/30 border-white/10"
+            : "bg-gray-50 border-gray-200"
+        )}>
+          <div className="flex gap-1.5 min-w-max justify-center md:justify-start">
+            {meses.map((mes) => {
+              const isActive = mesAtivo === mes.key
+              const isMesAtual = mes.key === mesAtualKey
+              
+              return (
+                <button
+                  key={mes.key}
+                  onClick={() => setMesAtivo(mes.key)}
+                  className={cn(
+                    "px-3 py-2 rounded-md font-medium transition-all text-xs md:text-sm whitespace-nowrap flex-shrink-0",
+                    "min-w-[50px] text-center",
+                    isActive
+                      ? theme === 'dark'
+                        ? "bg-yellow-400 text-black shadow-md"
+                        : "bg-yellow-500 text-white shadow-md"
+                      : theme === 'dark'
+                        ? "text-gray-400 hover:text-white hover:bg-white/5"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-yellow-500/20",
+                    isMesAtual && !isActive && "font-semibold"
+                  )}
+                  title={mes.nome}
+                >
+                  <span className="hidden md:inline">{mes.nome}</span>
+                  <span className="md:hidden">{mes.nomeAbreviado.split(' ')[0]}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Conteúdo da Aba Ativa */}
+        <div className="flex flex-col items-center justify-center w-full">
+          {(() => {
+            const isMesAtual = mesAtivo === mesAtualKey
+            
+            // Se estamos no dia 1 e visualizando o mês atual, mostrar campeão do mês anterior
+            // Se estamos nos dias 2-31 e visualizando o mês atual, mostrar cronômetro
+            // Se visualizando qualquer outro mês, mostrar campeão (se existir)
+            if (isMesAtual && !isDia1) {
+              // Mês Atual (dias 2-31) - Mostrar contagem regressiva
+              return (
+                <div className={cn(
+                  "backdrop-blur-sm border rounded-xl p-4 md:p-6 w-full transition-colors duration-300",
+                  theme === 'dark'
+                    ? "bg-black/30 border-yellow-400/50"
+                    : "bg-yellow-50 border-yellow-300"
+                )}>
+                  <div className="text-center w-full">
+                    <div className="w-full">
+                      <CountdownTimer targetDate={fimDoMes} theme={theme === 'dark' ? 'dark' : 'light'} />
+                    </div>
+                    <p className={cn(
+                      "text-sm md:text-base leading-relaxed mt-4",
+                      theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                    )}>
+                      restantes para o campeão do mês ser revelado
+                    </p>
+                  </div>
+                </div>
+              )
+            }
+            
+            // Para outros meses ou dia 1 do mês atual, mostrar campeão se existir
+            const campeao = campeoesPorMes.get(mesAtivo)
+            
+            if (campeao) {
+              // Mostrar campeão do mês
+              return (
+                <div className={cn(
+                  "backdrop-blur-sm border rounded-xl p-4 md:p-6 w-full transition-colors duration-300",
+                  theme === 'dark'
+                    ? "bg-black/30 border-yellow-400/50"
+                    : "bg-yellow-50 border-yellow-300"
+                )}>
+                  <Trophy className={cn(
+                    "w-8 h-8 md:w-12 md:h-12 mx-auto mb-3 md:mb-4",
+                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                  )} />
+                  {campeao.avatarUrl ? (
+                    <img
+                      src={campeao.avatarUrl}
+                      alt={campeao.name}
+                      className={cn(
+                        "w-20 h-20 md:w-24 md:h-24 rounded-full mx-auto mb-3 md:mb-4 object-cover border-[3px]",
+                        getLevelBorderColor(campeao.level, theme === 'dark')
+                      )}
+                    />
+                  ) : (
+                    <div className={cn(
+                      "w-20 h-20 md:w-24 md:h-24 rounded-full mx-auto mb-3 md:mb-4 flex items-center justify-center font-bold text-2xl md:text-3xl border-[3px]",
+                      theme === 'dark'
+                        ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
+                        : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white",
+                      getLevelBorderColor(campeao.level, theme === 'dark')
+                    )}>
+                      {campeao.name.charAt(0)}
+                    </div>
+                  )}
+                  <p className={cn(
+                    "font-semibold text-lg md:text-xl text-center mb-2",
+                    theme === 'dark' ? "text-white" : "text-gray-900"
+                  )}>
+                    {campeao.name}
+                  </p>
+                  <p className={cn(
+                    "text-sm md:text-base text-center mb-2",
+                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                  )}>
+                    Nível {campeao.level}
+                  </p>
+                  <p className={cn(
+                    "font-bold text-center text-base md:text-lg",
+                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                  )}>
+                    {campeao.xpMensal.toLocaleString('pt-BR')} XP
+                  </p>
+                </div>
+              )
+            } else {
+              // Mês sem campeão (sem dados históricos)
+              return (
+                <div className={cn(
+                  "backdrop-blur-sm border rounded-xl p-4 md:p-6 w-full transition-colors duration-300",
+                  theme === 'dark'
+                    ? "bg-black/30 border-yellow-400/50"
+                    : "bg-yellow-50 border-yellow-300"
+                )}>
+                  <Trophy className={cn(
+                    "w-8 h-8 md:w-12 md:h-12 mx-auto mb-3 md:mb-4",
+                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                  )} />
+                  <div className="text-center">
+                    <p className={cn(
+                      "text-sm md:text-base mb-1",
+                      theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                    )}>
+                      Sem dados deste mês
+                    </p>
+                    <p className={cn(
+                      "text-xs md:text-sm",
+                      theme === 'dark' ? "text-gray-500" : "text-gray-500"
+                    )}>
+                      Não há registro de campeão para este período
+                    </p>
+                  </div>
+                </div>
+              )
+            }
+          })()}
+        </div>
+      </div>
+
+      {/* Mural de Campeões Históricos */}
+      {historicoCampeoes.length > 0 && (
         <div className={cn(
           "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
           theme === 'dark'
@@ -184,101 +544,82 @@ export default function RankingPage() {
             "text-lg md:text-xl font-bold mb-4 md:mb-6 text-center",
             theme === 'dark' ? "text-white" : "text-gray-900"
           )}>
-            Campeão do Mês
+            Mural de Campeões
           </h2>
-          <div className="flex flex-col items-center justify-center max-w-md mx-auto">
-            <div className={cn(
-              "backdrop-blur-sm border rounded-xl p-4 md:p-6 w-full transition-colors duration-300",
-              theme === 'dark'
-                ? "bg-black/30 border-yellow-400/50"
-                : "bg-yellow-50 border-yellow-300"
-            )}>
-              <Trophy className={cn(
-                "w-8 h-8 md:w-12 md:h-12 mx-auto mb-3 md:mb-4",
-                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-              )} />
-              {campeaoMensal.avatarUrl ? (
-                <img
-                  src={campeaoMensal.avatarUrl}
-                  alt={campeaoMensal.name}
-                  className={cn(
-                    "w-20 h-20 md:w-24 md:h-24 rounded-full mx-auto mb-3 md:mb-4 object-cover border-[3px]",
-                    getLevelBorderColor(campeaoMensal.level, theme === 'dark')
-                  )}
-                />
-              ) : (
-                <div className={cn(
-                  "w-20 h-20 md:w-24 md:h-24 rounded-full mx-auto mb-3 md:mb-4 flex items-center justify-center font-bold text-2xl md:text-3xl border-[3px]",
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {historicoCampeoes.map((campeao, index) => (
+              <div
+                key={index}
+                className={cn(
+                  "backdrop-blur-sm border rounded-lg p-4 transition-colors duration-300",
                   theme === 'dark'
-                    ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
-                    : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white",
-                  getLevelBorderColor(campeaoMensal.level, theme === 'dark')
-                )}>
-                  {campeaoMensal.name.charAt(0)}
+                    ? "bg-black/30 border-white/10 hover:border-yellow-400/50"
+                    : "bg-gray-50 border-gray-200 hover:border-yellow-300"
+                )}
+              >
+                <div className="text-center mb-2">
+                  <p className={cn(
+                    "text-xs md:text-sm font-semibold mb-1",
+                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                  )}>
+                    {campeao.mes}
+                  </p>
+                  <Trophy className={cn(
+                    "w-6 h-6 md:w-8 md:h-8 mx-auto mb-2",
+                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                  )} />
                 </div>
-              )}
-              <p className={cn(
-                "font-semibold text-lg md:text-xl text-center mb-2",
-                theme === 'dark' ? "text-white" : "text-gray-900"
-              )}>
-                {campeaoMensal.name}
-              </p>
-              <p className={cn(
-                "text-sm md:text-base text-center mb-2",
-                theme === 'dark' ? "text-gray-400" : "text-gray-600"
-              )}>
-                Nível {campeaoMensal.level}
-              </p>
-              <p className={cn(
-                "font-bold text-center text-base md:text-lg",
-                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-              )}>
-                {campeaoMensal.xpMensal.toLocaleString('pt-BR')} XP
-              </p>
-            </div>
+                {campeao.avatarUrl ? (
+                  <img
+                    src={campeao.avatarUrl}
+                    alt={campeao.name}
+                    className={cn(
+                      "w-16 h-16 md:w-20 md:h-20 rounded-full mx-auto mb-2 object-cover border-2",
+                      getLevelBorderColor(campeao.level, theme === 'dark')
+                    )}
+                  />
+                ) : (
+                  <div className={cn(
+                    "w-16 h-16 md:w-20 md:h-20 rounded-full mx-auto mb-2 flex items-center justify-center font-bold text-xl md:text-2xl border-2",
+                    theme === 'dark'
+                      ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
+                      : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white",
+                    getLevelBorderColor(campeao.level, theme === 'dark')
+                  )}>
+                    {campeao.name.charAt(0)}
+                  </div>
+                )}
+                <p className={cn(
+                  "font-semibold text-sm md:text-base text-center mb-1 truncate",
+                  theme === 'dark' ? "text-white" : "text-gray-900"
+                )}>
+                  {campeao.name}
+                </p>
+                <p className={cn(
+                  "text-xs md:text-sm text-center mb-1",
+                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                )}>
+                  Nível {campeao.level}
+                </p>
+                <p className={cn(
+                  "font-bold text-xs md:text-sm text-center",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )}>
+                  {campeao.xpMensal.toLocaleString('pt-BR')} XP
+                </p>
+              </div>
+            ))}
           </div>
-          </div>
-        )}
-        
-      {/* Seletores Mensal/Geral */}
-      <div className="flex flex-col items-center gap-3">
-        <div className="flex gap-2 justify-center">
-          <button
-            onClick={() => setRankingType('mensal')}
-            className={cn(
-              "px-4 py-2 rounded-lg font-medium transition-colors text-sm md:text-base",
-              rankingType === 'mensal'
-                ? theme === 'dark'
-                  ? "bg-yellow-400 text-black"
-                  : "bg-yellow-500 text-white"
-                : theme === 'dark'
-                  ? "bg-black/30 text-gray-400 border border-white/10 hover:bg-white/5"
-                  : "bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200"
-            )}
-          >
-            Mensal
-          </button>
-          <button
-            onClick={() => setRankingType('geral')}
-            className={cn(
-              "px-4 py-2 rounded-lg font-medium transition-colors text-sm md:text-base",
-              rankingType === 'geral'
-                ? theme === 'dark'
-                  ? "bg-yellow-400 text-black"
-                  : "bg-yellow-500 text-white"
-                : theme === 'dark'
-                  ? "bg-black/30 text-gray-400 border border-white/10 hover:bg-white/5"
-                  : "bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200"
-            )}
-          >
-            Geral
-          </button>
         </div>
+      )}
+        
+      {/* Link para informações sobre pontos */}
+      <div className="flex justify-center">
         <button
           onClick={() => setIsPontuacaoModalOpen(true)}
           className={cn(
             "flex items-center gap-2 text-xs md:text-sm transition-colors",
-        theme === 'dark'
+            theme === 'dark'
               ? "text-gray-400 hover:text-yellow-400"
               : "text-gray-600 hover:text-yellow-600"
           )}
@@ -412,8 +753,7 @@ export default function RankingPage() {
                   "font-bold text-xs md:text-sm",
                   theme === 'dark' ? "text-white" : "text-gray-900"
                 )}>
-                  {/* Mensal: mostra XP do mês | Geral: mostra XP total (all time) */}
-                  {(rankingType === 'mensal' ? user.xpMensal : user.xp).toLocaleString('pt-BR')} XP
+                  {user.xp.toLocaleString('pt-BR')} XP
                 </p>
                 <p className={cn(
                   "text-xs hidden md:block",
