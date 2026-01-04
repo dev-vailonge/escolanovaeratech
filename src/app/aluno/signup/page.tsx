@@ -22,16 +22,19 @@ function AlunoSignUpContent() {
   })
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
+  const [userEmail, setUserEmail] = useState('')
 
   useEffect(() => {
     initializeAuth()
   }, [initializeAuth])
 
-  useEffect(() => {
-    if (user && !loading) {
-      router.push('/aluno')
-    }
-  }, [user, loading, router])
+  // Não redirecionar automaticamente - usuário precisa verificar email primeiro
+  // useEffect(() => {
+  //   if (user && !loading) {
+  //     router.push('/aluno')
+  //   }
+  // }, [user, loading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -77,7 +80,7 @@ function AlunoSignUpContent() {
       const userId = data.user.id
 
       // Tentar criar usuário na tabela users via API (opcional - pode falhar se não tiver service role key)
-      // Se falhar, o AuthContext criará automaticamente ou um trigger do banco pode criar
+      // Se falhar, o trigger do banco criará automaticamente
       try {
         const response = await fetch('/api/users/create', {
           method: 'POST',
@@ -99,23 +102,20 @@ function AlunoSignUpContent() {
           console.log('✅ Usuário criado na tabela users via API')
         } else {
           // Se não tiver service role key ou outro erro, não bloquear - continuar normalmente
-          // O AuthContext ou trigger do banco criará o usuário
+          // O trigger do banco criará o usuário automaticamente
           console.warn('⚠️ API de criar usuário não disponível (pode ser falta de service role key), continuando...')
-          console.warn('⚠️ O usuário será criado pelo AuthContext ou trigger do banco')
+          console.warn('⚠️ O usuário será criado pelo trigger do banco automaticamente')
         }
       } catch (apiError: any) {
         // Não bloquear em caso de erro - continuar normalmente
         console.warn('⚠️ Erro ao chamar API de criar usuário (não bloqueante):', apiError.message)
-        console.warn('⚠️ O usuário será criado pelo AuthContext ou trigger do banco')
+        console.warn('⚠️ O usuário será criado pelo trigger do banco automaticamente')
       }
 
-      // Forçar refresh da sessão no AuthContext (que criará o usuário se necessário)
-      await initializeAuth()
-
-      // Aguardar um pouco para o AuthContext atualizar
-      await new Promise(resolve => setTimeout(resolve, 500))
-
-      router.push('/aluno')
+      // Mostrar mensagem de verificação de email
+      setEmailSent(true)
+      setUserEmail(formData.email)
+      setIsLoading(false)
     } catch (err: any) {
       console.error('Erro no signup:', err)
       if (err?.message?.includes('User already registered') || err?.message?.includes('already registered')) {
@@ -177,24 +177,120 @@ function AlunoSignUpContent() {
             : "bg-yellow-400/90 border-yellow-500/30 shadow-yellow-400/20"
         )}
       >
-        <div className="text-center mb-8">
-          <h1 className={cn(
-            "text-3xl md:text-4xl font-bold mb-2",
-            theme === 'dark'
-              ? "bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent"
-              : "text-gray-900"
-          )}>
-            Criar Conta
-          </h1>
-          <p className={cn(
-            "text-sm md:text-base",
-            theme === 'dark' ? "text-gray-400" : "text-gray-700"
-          )}>
-            Junte-se à Nova Era Tech e comece sua jornada
-          </p>
-        </div>
+        {emailSent ? (
+          // Mensagem de verificação de email
+          <div className="text-center space-y-6">
+            <div className="flex justify-center">
+              <div className={cn(
+                "rounded-full p-4",
+                theme === 'dark'
+                  ? "bg-yellow-400/20 border border-yellow-400/30"
+                  : "bg-yellow-500/20 border border-yellow-600/30"
+              )}>
+                <svg 
+                  className={cn(
+                    "w-12 h-12",
+                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                  )} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+            </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <h1 className={cn(
+                "text-2xl md:text-3xl font-bold mb-3",
+                theme === 'dark'
+                  ? "bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent"
+                  : "text-gray-900"
+              )}>
+                Verifique seu e-mail
+              </h1>
+              <p className={cn(
+                "text-sm md:text-base leading-relaxed",
+                theme === 'dark' ? "text-gray-300" : "text-gray-700"
+              )}>
+                Enviamos um e-mail de verificação para
+              </p>
+              <p className={cn(
+                "text-base md:text-lg font-semibold mt-2 break-all",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-700"
+              )}>
+                {userEmail}
+              </p>
+            </div>
+
+            <div className={cn(
+              "p-4 rounded-lg text-left",
+              theme === 'dark'
+                ? "bg-yellow-400/10 border border-yellow-400/20"
+                : "bg-yellow-50 border border-yellow-200"
+            )}>
+              <p className={cn(
+                "text-sm leading-relaxed",
+                theme === 'dark' ? "text-gray-300" : "text-gray-700"
+              )}>
+                <strong>Próximos passos:</strong>
+              </p>
+              <ol className={cn(
+                "text-sm mt-2 space-y-1 list-decimal list-inside",
+                theme === 'dark' ? "text-gray-400" : "text-gray-600"
+              )}>
+                <li>Abra sua caixa de entrada</li>
+                <li>Procure pelo e-mail da Nova Era Tech</li>
+                <li>Clique no link de verificação</li>
+                <li>Faça login com suas credenciais</li>
+              </ol>
+            </div>
+
+            <div className="pt-4">
+              <Link
+                href="/aluno/login"
+                className={cn(
+                  "inline-block font-semibold py-3 px-6 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400/50 transition-all",
+                  theme === 'dark'
+                    ? "bg-yellow-500 text-black hover:bg-yellow-400 focus:ring-offset-black shadow-lg shadow-yellow-400/30 hover:shadow-yellow-400/50"
+                    : "bg-yellow-600 text-white hover:bg-yellow-700 focus:ring-offset-white shadow-lg shadow-yellow-600/30 hover:shadow-yellow-700/50"
+                )}
+              >
+                Ir para Login
+              </Link>
+            </div>
+
+            <div className="pt-2">
+              <p className={cn(
+                "text-xs",
+                theme === 'dark' ? "text-gray-500" : "text-gray-500"
+              )}>
+                Não recebeu o e-mail? Verifique sua pasta de spam
+              </p>
+            </div>
+          </div>
+        ) : (
+          // Formulário de cadastro
+          <>
+            <div className="text-center mb-8">
+              <h1 className={cn(
+                "text-3xl md:text-4xl font-bold mb-2",
+                theme === 'dark'
+                  ? "bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent"
+                  : "text-gray-900"
+              )}>
+                Criar Conta
+              </h1>
+              <p className={cn(
+                "text-sm md:text-base",
+                theme === 'dark' ? "text-gray-400" : "text-gray-700"
+              )}>
+                Junte-se à Nova Era Tech e comece sua jornada
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label 
               htmlFor="name" 
@@ -302,27 +398,29 @@ function AlunoSignUpContent() {
               'Criar conta'
             )}
           </button>
-        </form>
+            </form>
 
-        <div className="mt-6 text-center">
-          <p className={cn(
-            "text-sm",
-            theme === 'dark' ? "text-gray-400" : "text-gray-600"
-          )}>
-            Já tem uma conta?{' '}
-            <Link
-              href="/aluno/login"
-              className={cn(
-                "font-medium transition-colors",
-                theme === 'dark'
-                  ? "text-yellow-400 hover:text-yellow-300"
-                  : "text-yellow-700 hover:text-yellow-800"
-              )}
-            >
-              Entrar
-            </Link>
-          </p>
-        </div>
+            <div className="mt-6 text-center">
+              <p className={cn(
+                "text-sm",
+                theme === 'dark' ? "text-gray-400" : "text-gray-600"
+              )}>
+                Já tem uma conta?{' '}
+                <Link
+                  href="/aluno/login"
+                  className={cn(
+                    "font-medium transition-colors",
+                    theme === 'dark'
+                      ? "text-yellow-400 hover:text-yellow-300"
+                      : "text-yellow-700 hover:text-yellow-800"
+                  )}
+                >
+                  Entrar
+                </Link>
+              </p>
+            </div>
+          </>
+        )}
       </motion.div>
     </div>
   )
