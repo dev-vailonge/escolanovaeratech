@@ -32,6 +32,8 @@ interface MeuDesafio {
   atribuido_em: string
   submission?: DatabaseDesafioSubmission
   status: 'pendente_envio' | 'aguardando_aprovacao' | 'aprovado' | 'rejeitado' | 'desistiu'
+  dataConclusao?: string // Data/hora de conclusão (aprovado)
+  tentativas: number // Número de tentativas (submissões)
 }
 
 export default function DesafiosPage() {
@@ -222,12 +224,13 @@ export default function DesafiosPage() {
         console.log('📚 [loadMeusDesafios] Desafios encontrados:', desafios?.length || 0)
       }
 
-      // Buscar submissions do usuário
+      // Buscar submissions do usuário (todas, não só a última, para contar tentativas)
       const { data: submissions, error: submissionsError } = await supabase
         .from('desafio_submissions')
         .select('*')
         .eq('user_id', authUser.id)
         .in('desafio_id', desafioIds)
+        .order('created_at', { ascending: true }) // Ordenar por data para contar tentativas
 
       if (submissionsError) {
         console.error('❌ [loadMeusDesafios] Erro ao buscar submissions:', submissionsError)
@@ -238,13 +241,36 @@ export default function DesafiosPage() {
       // Montar lista de "Meus Desafios"
       const meusDesafiosList: MeuDesafio[] = atribuicoes.map(atrib => {
         const desafio = desafios?.find(d => d.id === atrib.desafio_id)
-        const submission = submissions?.find(s => s.desafio_id === atrib.desafio_id)
+        
+        // Buscar todas as submissões para este desafio (para contar tentativas)
+        const todasSubmissions = submissions?.filter(s => s.desafio_id === atrib.desafio_id) || []
+        
+        // A submissão atual é a última (mais recente)
+        const submission = todasSubmissions.length > 0 
+          ? todasSubmissions[todasSubmissions.length - 1] 
+          : undefined
+
+        // Contar tentativas: número total de submissões (pendente, aprovado, rejeitado)
+        // Desistir não conta como tentativa, apenas submissões reais
+        const tentativas = todasSubmissions.filter(s => 
+          s.status === 'pendente' || s.status === 'aprovado' || s.status === 'rejeitado'
+        ).length
 
         let status: MeuDesafio['status'] = 'pendente_envio'
+        let dataConclusao: string | undefined = undefined
+        
         if (submission) {
           if (submission.status === 'pendente') status = 'aguardando_aprovacao'
-          else if (submission.status === 'aprovado') status = 'aprovado'
-          else if (submission.status === 'rejeitado') status = 'rejeitado'
+          else if (submission.status === 'aprovado') {
+            status = 'aprovado'
+            // Data de conclusão é a data de aprovação (reviewed_at) ou created_at se não tiver reviewed_at
+            dataConclusao = submission.reviewed_at || submission.created_at
+          }
+          else if (submission.status === 'rejeitado') {
+            status = 'rejeitado'
+            // Para rejeitados, dataConclusao será a data de submissão (created_at)
+            dataConclusao = submission.created_at
+          }
           else if (submission.status === 'desistiu') status = 'desistiu'
         }
 
@@ -253,7 +279,9 @@ export default function DesafiosPage() {
           desafio: desafio as DatabaseDesafio,
           atribuido_em: atrib.created_at,
           submission,
-          status
+          status,
+          dataConclusao,
+          tentativas: tentativas || 0
         }
       }).filter(d => {
         // Filtrar desafios que existem
@@ -1316,13 +1344,46 @@ export default function DesafiosPage() {
                         "flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm",
                         theme === 'dark' ? "text-gray-400" : "text-gray-600"
                       )}>
-                        <span className="capitalize">{meuDesafio.desafio.dificuldade}</span>
                         <span className={cn(
                           "font-semibold",
                           theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                         )}>
-                          +{meuDesafio.desafio.xp} XP
+                          Vale {meuDesafio.desafio.xp} XP
                         </span>
+                        {/* Data de conclusão e tentativas para desafios aprovados */}
+                        {meuDesafio.status === 'aprovado' && meuDesafio.dataConclusao && (
+                          <>
+                            <span className="flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 md:w-4 md:h-4" />
+                              Concluído em: {new Date(meuDesafio.dataConclusao).toLocaleDateString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                            {meuDesafio.tentativas > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                                Tentativas: {meuDesafio.tentativas}
+                              </span>
+                            )}
+                          </>
+                        )}
+                        {/* Data de submissão para desafios rejeitados */}
+                        {meuDesafio.status === 'rejeitado' && meuDesafio.dataConclusao && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                            Submetido em: {new Date(meuDesafio.dataConclusao).toLocaleDateString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        )}
                       </div>
 
                       {meuDesafio.submission?.github_url && (

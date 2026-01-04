@@ -3,6 +3,7 @@ import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/
 import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 const AVATAR_BUCKET = 'avatars'
 
@@ -108,9 +109,44 @@ export async function PATCH(request: Request) {
         })
 
       if (uploadError) {
-        console.error('Erro upload avatar:', uploadError)
+        console.error('❌ [API] Erro upload avatar:', {
+          message: uploadError.message,
+          error: uploadError,
+          bucket: AVATAR_BUCKET,
+          objectPath,
+          userId,
+        })
+        
+        const errorMessage = uploadError?.message || 'Erro desconhecido'
+        
+        // Verificar se é erro de bucket não encontrado
+        if (errorMessage.includes('Bucket') || errorMessage.includes('bucket') || errorMessage.includes('not found')) {
+          return NextResponse.json(
+            {
+              error: `Bucket '${AVATAR_BUCKET}' não encontrado. Verifique se o bucket existe no Supabase.`,
+              details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+            },
+            { status: 500 }
+          )
+        }
+        
+        // Verificar se é erro de permissão
+        if (errorMessage.includes('permission') || errorMessage.includes('policy') || errorMessage.includes('403') || errorMessage.toLowerCase().includes('forbidden') || errorMessage.includes('row-level security') || errorMessage.includes('RLS')) {
+          return NextResponse.json(
+            {
+              error: 'Permissão negada para fazer upload. O bucket precisa ter políticas RLS que permitam usuários autenticados fazerem upload no diretório próprio (avatars/{user_id}/*).',
+              details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+              hint: 'Configure políticas RLS no bucket "avatars" no Supabase Storage: INSERT permitido para authenticated no próprio diretório'
+            },
+            { status: 403 }
+          )
+        }
+        
         return NextResponse.json(
-          { error: `Falha ao enviar avatar. Verifique se o bucket '${AVATAR_BUCKET}' existe.` },
+          {
+            error: `Falha ao enviar avatar: ${errorMessage}`,
+            details: process.env.NODE_ENV === 'development' ? uploadError : undefined
+          },
           { status: 500 }
         )
       }
