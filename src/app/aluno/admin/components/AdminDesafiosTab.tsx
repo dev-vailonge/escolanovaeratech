@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
