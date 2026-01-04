@@ -55,7 +55,7 @@ export default function QuizPage() {
   const [isGerando, setIsGerando] = useState(false)
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
   
-  // Mensagens animadas e provocativas para o loading
+  // Mensagens animadas e provocativas para o loading (20 mensagens para cobrir 60s)
   const loadingMessages = [
     {
       title: "Nossa IA está criando um quiz para você!",
@@ -73,14 +73,89 @@ export default function QuizPage() {
       emoji: "🔥"
     },
     {
+      title: "Pensando nas melhores questões...",
+      subtitle: "Nossa IA está analisando o nível escolhido",
+      emoji: "🤔"
+    },
+    {
+      title: "Criando perguntas desafiadoras!",
+      subtitle: "Garantindo que o quiz seja interessante",
+      emoji: "💡"
+    },
+    {
       title: "Quase lá!",
       subtitle: "Últimos ajustes para garantir que o quiz seja perfeito",
       emoji: "🎯"
     },
     {
+      title: "Validando cada questão...",
+      subtitle: "Garantindo qualidade e relevância",
+      emoji: "✅"
+    },
+    {
       title: "Faltam só alguns segundos...",
       subtitle: "Nossa IA está finalizando as questões",
       emoji: "🚀"
+    },
+    {
+      title: "Quase pronto!",
+      subtitle: "Organizando as perguntas de forma inteligente",
+      emoji: "📝"
+    },
+    {
+      title: "Criando as alternativas...",
+      subtitle: "Garantindo que cada opção seja relevante",
+      emoji: "🎲"
+    },
+    {
+      title: "Adicionando explicações...",
+      subtitle: "Para que você aprenda com cada resposta",
+      emoji: "📚"
+    },
+    {
+      title: "Revisando tudo...",
+      subtitle: "Garantindo que está tudo perfeito para você",
+      emoji: "🔍"
+    },
+    {
+      title: "Quase finalizando!",
+      subtitle: "Ajustando os últimos detalhes",
+      emoji: "⚙️"
+    },
+    {
+      title: "Preparando o quiz...",
+      subtitle: "Organizando tudo para sua experiência",
+      emoji: "🎨"
+    },
+    {
+      title: "Últimos toques!",
+      subtitle: "Deixando tudo perfeito para você",
+      emoji: "🌟"
+    },
+    {
+      title: "Quase terminando...",
+      subtitle: "Só mais alguns segundos",
+      emoji: "⏳"
+    },
+    {
+      title: "Finalizando!",
+      subtitle: "O quiz está quase pronto",
+      emoji: "🎊"
+    },
+    {
+      title: "Está quase pronto!",
+      subtitle: "Só mais um pouquinho",
+      emoji: "💫"
+    },
+    {
+      title: "Quase acabando!",
+      subtitle: "Últimos ajustes finais",
+      emoji: "⚡"
+    },
+    {
+      title: "Está saindo do forno!",
+      subtitle: "Seu quiz personalizado está quase pronto",
+      emoji: "🔥"
     }
   ]
   
@@ -533,9 +608,9 @@ export default function QuizPage() {
                 "text-xs text-center mt-4 animate-pulse",
                 theme === 'dark' ? "text-gray-500" : "text-gray-500"
               )}>
-                {loadingMessageIndex < 2 
+                {loadingMessageIndex < 6 
                   ? "Isso pode levar alguns segundos..." 
-                  : loadingMessageIndex < 4
+                  : loadingMessageIndex < 14
                   ? "Quase terminando..."
                   : "Finalizando..."}
               </p>
