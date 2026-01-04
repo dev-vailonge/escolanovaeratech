@@ -478,7 +478,7 @@ export default function QuizPage() {
           <div className="space-y-6 py-8">
             <div className="flex flex-col items-center justify-center">
               <div className={cn(
-                "relative w-20 h-20 rounded-full flex items-center justify-center mb-6 transition-all duration-500",
+                "w-20 h-20 rounded-full flex items-center justify-center mb-6 transition-all duration-500",
                 theme === 'dark'
                   ? "bg-yellow-500/20"
                   : "bg-yellow-100"
@@ -487,16 +487,16 @@ export default function QuizPage() {
                   "w-10 h-10 animate-pulse",
                   theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                 )} />
-                <span className="absolute text-2xl animate-bounce" style={{ animationDelay: '0.5s' }}>
-                  {loadingMessages[loadingMessageIndex]?.emoji || '✨'}
-                </span>
               </div>
               
               <h3 className={cn(
-                "text-xl font-bold mb-2 text-center transition-all duration-300 animate-fade-in",
+                "text-xl font-bold mb-2 text-center transition-all duration-300 flex items-center justify-center gap-2",
                 theme === 'dark' ? "text-white" : "text-gray-900"
               )} key={loadingMessageIndex}>
-                {loadingMessages[loadingMessageIndex]?.title || 'Gerando quiz...'}
+                <span className="text-2xl animate-bounce" style={{ animationDelay: '0.5s' }}>
+                  {loadingMessages[loadingMessageIndex]?.emoji || '✨'}
+                </span>
+                <span>{loadingMessages[loadingMessageIndex]?.title || 'Gerando quiz...'}</span>
               </h3>
               
               <p className={cn(
