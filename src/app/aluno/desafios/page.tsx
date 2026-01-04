@@ -1347,6 +1347,27 @@ export default function DesafiosPage() {
                         )}>
                           +{meuDesafio.desafio.xp} XP
                         </span>
+                        {/* Data de conclusão e tentativas para desafios aprovados */}
+                        {meuDesafio.status === 'aprovado' && meuDesafio.dataConclusao && (
+                          <>
+                            <span className="flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 md:w-4 md:h-4" />
+                              Concluído em: {new Date(meuDesafio.dataConclusao).toLocaleDateString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                            {meuDesafio.tentativas > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                                Tentativas: {meuDesafio.tentativas}
+                              </span>
+                            )}
+                          </>
+                        )}
                       </div>
 
                       {meuDesafio.submission?.github_url && (
