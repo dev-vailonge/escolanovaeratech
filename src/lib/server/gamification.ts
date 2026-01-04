@@ -146,6 +146,33 @@ export async function insertHotmartXpEntry(params: {
 export async function completarDesafio(params: { userId: string; desafioId: string; accessToken?: string }) {
   const supabase = await getSupabaseClient(params.accessToken)
 
+  // Tentar usar função SQL com SECURITY DEFINER primeiro (permite admins completarem desafios para alunos)
+  try {
+    const { data: rpcData, error: rpcError } = await supabase.rpc('complete_desafio_for_user', {
+      p_user_id: params.userId,
+      p_desafio_id: params.desafioId,
+    })
+
+    if (!rpcError && rpcData) {
+      console.log(`✅ [completarDesafio] Desafio completado com sucesso via RPC para usuário ${params.userId}`)
+      // Atualizar nível automaticamente após inserir XP
+      await syncUserLevel(params.userId, params.accessToken)
+      const xpDesafio = XP_CONSTANTS.desafio.completo
+      return { awarded: true as const, xp: xpDesafio }
+    }
+
+    // Se RPC falhar (função não existe), tentar método direto
+    console.log(`⚠️ [completarDesafio] RPC falhou, tentando método direto:`, rpcError?.message)
+  } catch (rpcError: any) {
+    // Se a função não existe ou retornar erro esperado (já recebeu XP), tratar
+    if (rpcError?.message?.includes('já recebeu XP')) {
+      console.log(`⚠️ [completarDesafio] Usuário já recebeu XP para este desafio`)
+      return { awarded: false as const, reason: 'already_received_xp' as const, xp: 0 }
+    }
+    console.log(`⚠️ [completarDesafio] Erro ao chamar RPC, tentando método direto:`, rpcError?.message)
+  }
+
+  // Fallback: método direto (funciona quando user_id = auth.uid())
   const { data: existing, error: existingError } = await supabase
     .from('user_desafio_progress')
     .select('id, completo')
@@ -209,6 +236,9 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
     console.error(`❌ [completarDesafio] Erro ao inserir XP:`, xpError)
     throw xpError // Relança o erro para que a rota de aprovação possa tratá-lo
   }
+
+  // Atualizar nível automaticamente após inserir XP
+  await syncUserLevel(params.userId, params.accessToken)
 
   return { awarded: true as const, xp: xpDesafio }
 }

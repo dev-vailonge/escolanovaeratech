@@ -167,19 +167,34 @@ export async function PUT(
       }).catch(err => console.error('Erro ao notificar aluno:', err))
     }
 
-    return NextResponse.json({
+    // Retornar informações detalhadas para debug no console do navegador
+    const responseData: any = {
       success: true,
       submission: updated,
       xpAwarded,
       xpAwardedSuccessfully,
-      xpError: xpError ? {
-        message: xpError.message || xpError.reason,
-        code: xpError.code,
-      } : null,
       message: status === 'aprovado' 
         ? `Submissão aprovada! Aluno recebeu ${xpAwarded} XP.`
         : 'Submissão rejeitada.'
-    })
+    }
+
+    // Incluir informações de erro/debug para log no console do navegador
+    if (status === 'aprovado') {
+      responseData.debug = {
+        xpAwarded,
+        xpAwardedSuccessfully,
+        xpError: xpError ? {
+          message: xpError.message || xpError.reason,
+          code: xpError.code,
+          details: xpError.details,
+        } : null,
+        userId: submission.user_id,
+        desafioId: submission.desafio_id,
+        submissionId: submissionId,
+      }
+    }
+
+    return NextResponse.json(responseData)
 
   } catch (error: any) {
     console.error('Erro ao atualizar submissão:', error)
