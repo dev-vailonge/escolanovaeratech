@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/requestAuth'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 
 /**
  * GET /api/admin/tokens
@@ -16,31 +16,18 @@ import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 export async function GET(request: NextRequest) {
   try {
     // Autenticar usuário
-    const adminId = await requireUserIdFromBearer(request)
-    
-    // Obter cliente Supabase Admin (pode falhar se SERVICE_ROLE_KEY não estiver configurada)
-    let supabase
-    try {
-      supabase = getSupabaseAdmin()
-    } catch (adminError: any) {
-      console.error('Erro ao obter Supabase Admin:', adminError)
-      if (adminError?.message?.includes('SUPABASE_SERVICE_ROLE_KEY')) {
-        return NextResponse.json(
-          { error: 'Configuração do servidor incompleta. Service role key não configurada.' },
-          { status: 500 }
-        )
-      }
-      throw adminError
-    }
+    const userId = await requireUserIdFromBearer(request)
+    const accessToken = getAccessTokenFromBearer(request)
+    const supabase = await getSupabaseClient(accessToken)
 
     // Verificar se é admin
-    const { data: admin, error: adminError } = await supabase
+    const { data: user, error: userError } = await supabase
       .from('users')
       .select('role')
-      .eq('id', adminId)
+      .eq('id', userId)
       .single()
 
-    if (adminError || admin?.role !== 'admin') {
+    if (userError || user?.role !== 'admin') {
       return NextResponse.json(
         { error: 'Acesso negado. Apenas administradores.' },
         { status: 403 }
@@ -51,7 +38,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
-    const userId = searchParams.get('userId')
+    const filterUserId = searchParams.get('userId')
 
     // ====================================================
     // BUSCAR REGISTROS DE TOKEN USAGE
@@ -81,8 +68,8 @@ export async function GET(request: NextRequest) {
     if (endDate) {
       query = query.lte('created_at', endDate)
     }
-    if (userId) {
-      query = query.eq('user_id', userId)
+    if (filterUserId) {
+      query = query.eq('user_id', filterUserId)
     }
 
     const { data: records, error } = await query
@@ -262,12 +249,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
     
-    if (error.message?.includes('SUPABASE_SERVICE_ROLE_KEY')) {
-      return NextResponse.json(
-        { error: 'Configuração do servidor incompleta. Service role key não configurada.' },
-        { status: 500 }
-      )
-    }
     
     // Retornar mensagem de erro mais detalhada em desenvolvimento
     const errorMessage = process.env.NODE_ENV === 'development' 
