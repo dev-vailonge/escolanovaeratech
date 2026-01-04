@@ -76,8 +76,8 @@ function AlunoSignUpContent() {
 
       const userId = data.user.id
 
-      // Criar usuário na tabela users via API server-side (contorna RLS)
-      // A API também confirma o email automaticamente
+      // Tentar criar usuário na tabela users via API (opcional - pode falhar se não tiver service role key)
+      // Se falhar, o AuthContext criará automaticamente ou um trigger do banco pode criar
       try {
         const response = await fetch('/api/users/create', {
           method: 'POST',
@@ -85,49 +85,37 @@ function AlunoSignUpContent() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            id: userId, // Usar o ID do auth.users
+            id: userId,
             email: formData.email,
             name: formData.name,
             role: 'aluno',
-            access_level: 'limited' // Usuários criados manualmente começam como limited
+            access_level: 'limited'
           }),
         })
 
         const result = await response.json()
 
-        if (!response.ok || !result.success) {
-          console.error('Erro ao criar usuário na tabela users:', result.error)
-          // Se o erro for que o usuário já existe, isso é OK (trigger pode ter criado)
-          if (result.error?.includes('já existe') || result.error?.includes('already exists')) {
-            console.log('✅ Usuário já existe na tabela users, continuando...')
-          } else {
-            setError('Conta criada, mas houve um erro ao configurar seu perfil. Por favor, tente fazer login.')
-            setIsLoading(false)
-            return
-          }
-        }
-
-        // Forçar refresh da sessão no AuthContext
-        await initializeAuth()
-
-        // Aguardar um pouco para o AuthContext atualizar
-        await new Promise(resolve => setTimeout(resolve, 500))
-
-        router.push('/aluno')
-      } catch (apiError: any) {
-        console.error('Erro ao chamar API de criar usuário:', apiError)
-        // Se o erro for que o usuário já existe, isso é OK
-        if (apiError?.message?.includes('já existe') || apiError?.message?.includes('already exists')) {
-          console.log('✅ Usuário já existe, continuando...')
-          await initializeAuth()
-          await new Promise(resolve => setTimeout(resolve, 500))
-          router.push('/aluno')
+        if (response.ok && result.success) {
+          console.log('✅ Usuário criado na tabela users via API')
         } else {
-          setError('Conta criada, mas houve um erro ao configurar seu perfil. Por favor, tente fazer login.')
-          setIsLoading(false)
-          return
+          // Se não tiver service role key ou outro erro, não bloquear - continuar normalmente
+          // O AuthContext ou trigger do banco criará o usuário
+          console.warn('⚠️ API de criar usuário não disponível (pode ser falta de service role key), continuando...')
+          console.warn('⚠️ O usuário será criado pelo AuthContext ou trigger do banco')
         }
+      } catch (apiError: any) {
+        // Não bloquear em caso de erro - continuar normalmente
+        console.warn('⚠️ Erro ao chamar API de criar usuário (não bloqueante):', apiError.message)
+        console.warn('⚠️ O usuário será criado pelo AuthContext ou trigger do banco')
       }
+
+      // Forçar refresh da sessão no AuthContext (que criará o usuário se necessário)
+      await initializeAuth()
+
+      // Aguardar um pouco para o AuthContext atualizar
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      router.push('/aluno')
     } catch (err: any) {
       console.error('Erro no signup:', err)
       if (err?.message?.includes('User already registered') || err?.message?.includes('already registered')) {
