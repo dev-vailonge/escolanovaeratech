@@ -84,13 +84,14 @@ export async function POST(
       }
     } else {
       // Se não existe submissão, criar uma com status 'desistiu'
+      // Usar string vazia ao invés de null para github_url (coluna não aceita null)
       const { error: insertError } = await supabase
         .from('desafio_submissions')
         .insert({
           user_id: userId,
           desafio_id: desafioId,
           status: 'desistiu',
-          github_url: null
+          github_url: '' // String vazia ao invés de null
         })
 
       if (insertError) {
