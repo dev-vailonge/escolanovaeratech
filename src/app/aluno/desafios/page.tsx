@@ -491,8 +491,27 @@ export default function DesafiosPage() {
 
       const json = await res.json()
       if (!res.ok) {
+        // Log de debug no console do navegador
+        console.error('❌ [DEBUG DESISTIR] Erro ao desistir do desafio:', {
+          error: json.error,
+          debug: json.debug,
+        })
+        if (json.debug) {
+          console.error('🔍 [DEBUG DESISTIR] Detalhes do erro:', {
+            message: json.debug.message,
+            code: json.debug.code,
+            details: json.debug.details,
+            hint: json.debug.hint,
+          })
+          if (json.debug.code === '42501') {
+            console.error('💡 Dica: Verifique se a política RLS para desistir foi criada no banco')
+          }
+        }
         throw new Error(json?.error || 'Erro ao desistir')
       }
+      
+      // Log de sucesso
+      console.log('✅ [DEBUG DESISTIR] Desistência realizada com sucesso:', json)
 
       // Fechar modal e mostrar feedback imediatamente
       setSuccess('⚠️ Você desistiu do desafio e perdeu 20 XP.')

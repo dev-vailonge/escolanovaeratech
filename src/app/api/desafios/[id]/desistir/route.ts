@@ -70,7 +70,15 @@ export async function POST(
       if (updateError) {
         console.error('Erro ao atualizar submissão para desistiu:', updateError)
         return NextResponse.json(
-          { error: 'Erro ao atualizar submissão' },
+          { 
+            error: 'Erro ao atualizar submissão',
+            debug: {
+              message: updateError.message,
+              code: updateError.code,
+              details: updateError.details,
+              hint: updateError.hint,
+            }
+          },
           { status: 500 }
         )
       }
@@ -88,7 +96,15 @@ export async function POST(
       if (insertError) {
         console.error('Erro ao criar submissão de desistência:', insertError)
         return NextResponse.json(
-          { error: 'Erro ao registrar desistência' },
+          { 
+            error: 'Erro ao registrar desistência',
+            debug: {
+              message: insertError.message,
+              code: insertError.code,
+              details: insertError.details,
+              hint: insertError.hint,
+            }
+          },
           { status: 500 }
         )
       }
@@ -151,16 +167,24 @@ export async function POST(
       xp_atual: novoXp
     })
 
-  } catch (error: any) {
-    console.error('Erro ao desistir do desafio:', error)
-    
-    if (error.message === 'Não autenticado') {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-    }
+      } catch (error: any) {
+        console.error('Erro ao desistir do desafio:', error)
+        
+        // Retornar informações de debug para o console do navegador
+        const errorResponse: any = {
+          error: error.message || 'Erro ao desistir do desafio',
+          debug: {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+          }
+        }
+        
+        if (error.message === 'Não autenticado') {
+          return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+        }
 
-    return NextResponse.json(
-      { error: error.message || 'Erro ao desistir do desafio' },
-      { status: 500 }
-    )
-  }
+        return NextResponse.json(errorResponse, { status: 500 })
+      }
 }
