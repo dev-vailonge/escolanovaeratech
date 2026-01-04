@@ -266,7 +266,11 @@ export default function DesafiosPage() {
             // Data de conclusão é a data de aprovação (reviewed_at) ou created_at se não tiver reviewed_at
             dataConclusao = submission.reviewed_at || submission.created_at
           }
-          else if (submission.status === 'rejeitado') status = 'rejeitado'
+          else if (submission.status === 'rejeitado') {
+            status = 'rejeitado'
+            // Para rejeitados, dataConclusao será a data de submissão (created_at)
+            dataConclusao = submission.created_at
+          }
           else if (submission.status === 'desistiu') status = 'desistiu'
         }
 
@@ -1340,12 +1344,11 @@ export default function DesafiosPage() {
                         "flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm",
                         theme === 'dark' ? "text-gray-400" : "text-gray-600"
                       )}>
-                        <span className="capitalize">{meuDesafio.desafio.dificuldade}</span>
                         <span className={cn(
                           "font-semibold",
                           theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                         )}>
-                          +{meuDesafio.desafio.xp} XP
+                          Vale {meuDesafio.desafio.xp} XP
                         </span>
                         {/* Data de conclusão e tentativas para desafios aprovados */}
                         {meuDesafio.status === 'aprovado' && meuDesafio.dataConclusao && (
@@ -1367,6 +1370,19 @@ export default function DesafiosPage() {
                               </span>
                             )}
                           </>
+                        )}
+                        {/* Data de submissão para desafios rejeitados */}
+                        {meuDesafio.status === 'rejeitado' && meuDesafio.dataConclusao && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 md:w-4 md:h-4" />
+                            Submetido em: {new Date(meuDesafio.dataConclusao).toLocaleDateString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
                         )}
                       </div>
 
