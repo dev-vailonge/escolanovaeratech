@@ -575,7 +575,7 @@ export default function QuizPlayer({
           )}
 
           {/* Informações da questão */}
-          {currentQuestion.penalty && (
+          {currentQuestion.penalty != null && currentQuestion.penalty > 0 && (
             <div className={cn(
               "mt-3 text-xs",
               theme === 'dark' ? "text-gray-500" : "text-gray-400"
