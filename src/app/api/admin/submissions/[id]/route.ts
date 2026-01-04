@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/requestAuth'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { completarDesafio } from '@/lib/server/gamification'
 import { notificarAlunoDesafioAprovado, notificarAlunoDesafioRejeitado } from '@/lib/server/desafioNotifications'
 
@@ -25,7 +25,8 @@ export async function PUT(
       )
     }
 
-    const supabase = getSupabaseAdmin()
+    const accessToken = getAccessTokenFromBearer(request)
+    const supabase = await getSupabaseClient(accessToken)
 
     // Verificar se é admin
     const { data: admin, error: adminError } = await supabase
@@ -112,7 +113,8 @@ export async function PUT(
       try {
         const result = await completarDesafio({
           userId: submission.user_id,
-          desafioId: submission.desafio_id
+          desafioId: submission.desafio_id,
+          accessToken
         })
         xpAwarded = result?.xp || desafio?.xp || 0
       } catch (xpError) {
