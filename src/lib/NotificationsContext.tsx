@@ -15,12 +15,14 @@ interface NotificationsContextType {
   markAllAsRead: () => void
   hasNewNotification: boolean
   clearNewNotificationFlag: () => void
+  isRead: (notificationId: string) => boolean
 }
 
 const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined)
 
-// Chave para armazenar IDs lidas no localStorage
-const STORAGE_KEY = 'ne_notifications_read'
+// Chave base para armazenar IDs lidas no localStorage (será combinada com userId)
+const STORAGE_KEY_BASE = 'ne_notifications_read'
+const getStorageKey = (userId: string) => `${STORAGE_KEY_BASE}_${userId}`
 
 // Verificar se Supabase está configurado
 const isSupabaseConfigured = () => {
@@ -38,10 +40,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [hasNewNotification, setHasNewNotification] = useState(false)
 
-  // Carregar IDs lidas do localStorage
+  // Carregar IDs lidas do localStorage quando o usuário mudar
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(STORAGE_KEY)
+    if (typeof window !== 'undefined' && user?.id) {
+      const storageKey = getStorageKey(user.id)
+      const stored = localStorage.getItem(storageKey)
       if (stored) {
         try {
           const parsed = JSON.parse(stored)
@@ -49,16 +52,25 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         } catch (e) {
           console.error('Erro ao parsear notificações lidas:', e)
         }
+      } else {
+        // Limpar readIds se não houver dados para este usuário
+        setReadIds(new Set())
       }
     }
-  }, [])
+  }, [user?.id])
 
   // Salvar IDs lidas no localStorage quando mudar
   useEffect(() => {
-    if (typeof window !== 'undefined' && readIds.size > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([...readIds]))
+    if (typeof window !== 'undefined' && user?.id) {
+      const storageKey = getStorageKey(user.id)
+      if (readIds.size > 0) {
+        localStorage.setItem(storageKey, JSON.stringify([...readIds]))
+      } else {
+        // Limpar localStorage se não houver notificações lidas
+        localStorage.removeItem(storageKey)
+      }
     }
-  }, [readIds])
+  }, [readIds, user?.id])
 
   // Função para buscar notificações ativas
   const fetchNotifications = useCallback(async () => {
@@ -106,10 +118,20 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       }
 
       // Filtrar notificações broadcast por público-alvo
+      // IMPORTANTE: Notificações individuais (target_user_id) já foram filtradas acima
       const filteredBroadcast = (broadcastNotifs || []).filter(notif => {
+        // Notificações com publico_alvo 'todos' são para todos os usuários
         if (notif.publico_alvo === 'todos') return true
-        if (notif.publico_alvo === 'alunos-full') return user?.accessLevel === 'full'
-        if (notif.publico_alvo === 'alunos-limited') return user?.accessLevel === 'limited'
+        
+        // Admins recebem todas as notificações broadcast
+        if (user?.role === 'admin') return true
+        
+        // Para alunos, filtrar por accessLevel
+        if (user?.role === 'aluno') {
+          if (notif.publico_alvo === 'alunos-full') return user?.accessLevel === 'full'
+          if (notif.publico_alvo === 'alunos-limited') return user?.accessLevel === 'limited'
+        }
+        
         return false
       })
 
@@ -121,7 +143,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Erro ao buscar notificações:', error)
     }
-  }, [user?.accessLevel, user?.id])
+  }, [user?.accessLevel, user?.id, user?.role])
 
   // Buscar notificações na montagem e quando o usuário mudar
   useEffect(() => {
@@ -164,10 +186,23 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
             }
 
             // Notificação broadcast (sem target_user_id) - verificar público-alvo
-            const isForUser = 
-              newNotification.publico_alvo === 'todos' ||
-              (user?.accessLevel === 'full' && newNotification.publico_alvo === 'alunos-full') ||
-              (user?.accessLevel === 'limited' && newNotification.publico_alvo === 'alunos-limited')
+            // IMPORTANTE: Notificações individuais (target_user_id) já foram verificadas acima
+            let isForUser = false
+            
+            if (newNotification.publico_alvo === 'todos') {
+              // Notificações 'todos' são para todos os usuários
+              isForUser = true
+            } else if (user?.role === 'admin') {
+              // Admins recebem todas as notificações broadcast
+              isForUser = true
+            } else if (user?.role === 'aluno') {
+              // Para alunos, filtrar por accessLevel
+              if (newNotification.publico_alvo === 'alunos-full' && user?.accessLevel === 'full') {
+                isForUser = true
+              } else if (newNotification.publico_alvo === 'alunos-limited' && user?.accessLevel === 'limited') {
+                isForUser = true
+              }
+            }
 
             if (isForUser) {
               setNotifications(prev => [newNotification, ...prev])
@@ -209,7 +244,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [user?.accessLevel, user?.id])
+  }, [user?.accessLevel, user?.id, user?.role])
 
   // Calcular contagem de não lidas
   const unreadCount = notifications.filter(n => !readIds.has(n.id)).length
@@ -242,6 +277,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     setHasNewNotification(false)
   }, [])
 
+  // Verificar se uma notificação está lida
+  const isRead = useCallback((notificationId: string) => {
+    return readIds.has(notificationId)
+  }, [readIds])
+
   return (
     <NotificationsContext.Provider
       value={{
@@ -254,6 +294,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         markAllAsRead,
         hasNewNotification,
         clearNewNotificationFlag,
+        isRead,
       }}
     >
       {children}
