@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       type,
       hotmart: {
         status: 'aguardando_permissao',
-        message: 'Progresso de aulas assistidas na Hotmart ainda não está liberado.',
+        message: 'As aulas assistidas no Hotmart Club ainda não estão sendo contabilizadas no ranking.',
       },
       ranking: ranking || [],
       currentUserPosition: currentUser?.position || null,

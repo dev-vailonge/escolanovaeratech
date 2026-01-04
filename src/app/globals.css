@@ -35,6 +35,16 @@
   animation: spotlight 2s ease 0.75s 1 forwards;
 }
 
+@keyframes tick {
+  0% { transform: translateX(-50%) rotate(0deg); }
+  100% { transform: translateX(-50%) rotate(360deg); }
+}
+
+.animate-tick {
+  animation: tick 2s linear infinite;
+  transform-origin: center top;
+}
+
 /* Scrollbar amarela - Modo Dark (padrão) */
 /* Webkit browsers (Chrome, Safari, Edge) */
 ::-webkit-scrollbar {
