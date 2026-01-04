@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
@@ -19,7 +20,12 @@ type StatusFilter = 'pendente' | 'aprovado' | 'rejeitado' | 'todos'
 export default function AdminDesafiosTab() {
   const { theme } = useTheme()
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState<TabType>('desafios')
+  const searchParams = useSearchParams()
+  
+  // Verificar se há parâmetro 'subtab' na URL para abrir submissions
+  const subtabFromUrl = searchParams.get('subtab')
+  const initialTab: TabType = subtabFromUrl === 'submissions' ? 'submissions' : 'desafios'
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab)
   
   // Estados para desafios
   const [desafios, setDesafios] = useState<DatabaseDesafio[]>([])
