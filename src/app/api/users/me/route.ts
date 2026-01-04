@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
-import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
+import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/requestAuth'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 
 export const runtime = 'nodejs'
 
@@ -18,7 +18,11 @@ function safeFileExt(filename: string): string {
 export async function GET(request: Request) {
   try {
     const userId = await requireUserIdFromBearer(request)
-    const supabase = getSupabaseAdmin()
+    const accessToken = getAccessTokenFromBearer(request)
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Token de acesso não fornecido' }, { status: 401 })
+    }
+    const supabase = await getSupabaseClient(accessToken)
 
     const { data, error } = await supabase
       .from('users')
@@ -43,7 +47,11 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const userId = await requireUserIdFromBearer(request)
-    const supabase = getSupabaseAdmin()
+    const accessToken = getAccessTokenFromBearer(request)
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Token de acesso não fornecido' }, { status: 401 })
+    }
+    const supabase = await getSupabaseClient(accessToken)
 
     const contentType = request.headers.get('content-type') || ''
     let name: string | null = null
