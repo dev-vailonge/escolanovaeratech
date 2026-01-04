@@ -486,7 +486,8 @@ export default function QuizPlayer({
             {currentQuestion.options.map((option) => {
               const isSelected = selectedAnswer === option.id
               const isCorrectOption = option.id === currentQuestion.correctOptionId
-              const showCorrect = isReviewing && isCorrectOption
+              // Só mostra resposta correta se o usuário acertou (para evitar trapaça)
+              const showCorrect = isReviewing && isCorrectOption && isCorrect
               const showWrong = isReviewing && isSelected && !isCorrectOption
               
               return (
@@ -533,8 +534,8 @@ export default function QuizPlayer({
             })}
           </div>
 
-          {/* Explicação (em revisão) */}
-          {isReviewing && currentQuestion.explanation && (
+          {/* Explicação (em revisão) - Só mostra se acertou (para evitar trapaça) */}
+          {isReviewing && currentQuestion.explanation && isCorrect && (
             <div className={cn(
               "mt-4 p-3 rounded-lg border",
               theme === 'dark' 
@@ -552,6 +553,23 @@ export default function QuizPlayer({
                 theme === 'dark' ? "text-blue-300" : "text-blue-600"
               )}>
                 {currentQuestion.explanation}
+              </p>
+            </div>
+          )}
+          
+          {/* Mensagem para questões erradas (sem mostrar resposta correta) */}
+          {isReviewing && !isCorrect && (
+            <div className={cn(
+              "mt-4 p-3 rounded-lg border",
+              theme === 'dark' 
+                ? "bg-amber-500/10 border-amber-500/30" 
+                : "bg-amber-50 border-amber-200"
+            )}>
+              <p className={cn(
+                "text-sm font-medium",
+                theme === 'dark' ? "text-amber-400" : "text-amber-700"
+              )}>
+                ⚠️ Resposta incorreta. Revise o conteúdo antes de refazer o quiz.
               </p>
             </div>
           )}
