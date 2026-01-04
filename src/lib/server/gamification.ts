@@ -156,7 +156,7 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
       p_desafio_id: params.desafioId,
     })
 
-    console.log(`📊 [completarDesafio] Resposta RPC - data:`, rpcData, `error:`, rpcError)
+    console.log(`📊 [completarDesafio] Resposta RPC - data:`, rpcData, `error:`, rpcError, `data type:`, typeof rpcData, `error type:`, typeof rpcError)
 
     if (!rpcError && rpcData) {
       console.log(`✅ [completarDesafio] Desafio completado com sucesso via RPC para usuário ${params.userId}`)
@@ -167,14 +167,22 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
     }
 
     // Se RPC falhar (função não existe ou erro), tentar método direto
-    rpcErrorInfo = {
-      message: rpcError?.message,
-      code: rpcError?.code,
-      details: rpcError?.details,
-      hint: rpcError?.hint,
+    // IMPORTANTE: Se rpcError existe OU se rpcData é null/undefined, a função falhou
+    if (rpcError || !rpcData) {
+      rpcErrorInfo = rpcError ? {
+        message: rpcError?.message || 'Função RPC retornou erro',
+        code: rpcError?.code,
+        details: rpcError?.details,
+        hint: rpcError?.hint,
+      } : {
+        message: 'Função RPC retornou null/undefined (função não existe ou não retornou valor)',
+        code: 'RPC_NO_DATA',
+        details: `rpcData: ${rpcData}, rpcError: ${rpcError}`,
+        hint: 'Verifique se a função complete_desafio_for_user existe no banco de dados',
+      }
+      console.error(`❌ [completarDesafio] RPC falhou - error:`, rpcErrorInfo)
+      console.log(`⚠️ [completarDesafio] RPC falhou, tentando método direto`)
     }
-    console.error(`❌ [completarDesafio] RPC falhou - error:`, rpcErrorInfo)
-    console.log(`⚠️ [completarDesafio] RPC falhou, tentando método direto:`, rpcError?.message)
   } catch (rpcError: any) {
     // Se a função não existe ou retornar erro esperado (já recebeu XP), tratar
     rpcErrorInfo = {
@@ -244,7 +252,14 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
     { onConflict: 'user_id,desafio_id' }
   )
 
-  if (upsertError) throw upsertError
+  if (upsertError) {
+    // Incluir informações do RPC se disponível
+    const errorToThrow: any = upsertError
+    if (rpcErrorInfo) {
+      errorToThrow.rpcError = rpcErrorInfo
+    }
+    throw errorToThrow
+  }
 
   // Usar valor oficial de XP para desafios (40 XP)
   const xpDesafio = XP_CONSTANTS.desafio.completo
