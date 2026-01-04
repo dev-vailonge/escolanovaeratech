@@ -854,7 +854,7 @@ E: A propriedade 'color' define a cor do texto`
                   onFocus={() => setShowTechSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowTechSuggestions(false), 200)}
                   className={inputClass}
-                  placeholder="Digite ou selecione..."
+                  placeholder="Digite qualquer tecnologia ou selecione uma sugestão..."
                 />
                 {showTechSuggestions && (
                   <div className={cn(
@@ -863,7 +863,14 @@ E: A propriedade 'color' define a cor do texto`
                       ? "bg-black/95 border-white/10" 
                       : "bg-white border-gray-200"
                   )}>
-                    {['HTML', 'CSS', 'JavaScript', 'React', 'Android', 'Web Development', 'TypeScript', 'Node.js', 'Python', 'Java', 'Kotlin'].map((tech) => (
+                    {Object.values({
+                      'Frontend Web': ['HTML', 'CSS', 'JavaScript', 'TypeScript', 'React', 'Next.js', 'Tailwind CSS'],
+                      'Backend': ['Node.js', 'Express', 'APIs REST', 'PostgreSQL', 'MongoDB'],
+                      'Mobile Android': ['Kotlin', 'Jetpack Compose', 'Android'],
+                      'Mobile iOS': ['Swift', 'SwiftUI'],
+                      'Análise de Dados': ['Python', 'Pandas', 'SQL', 'Data Visualization'],
+                      'Fundamentos': ['Lógica de Programação', 'Algoritmos', 'Estrutura de Dados', 'Git'],
+                    }).flat().map((tech) => (
                       <button
                         key={tech}
                         type="button"

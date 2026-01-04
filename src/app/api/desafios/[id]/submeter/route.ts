@@ -42,6 +42,12 @@ export async function POST(
 
     // Obter accessToken e criar cliente Supabase
     const accessToken = getAccessTokenFromBearer(request)
+    if (!accessToken) {
+      return NextResponse.json(
+        { error: 'Token de acesso não fornecido' },
+        { status: 401 }
+      )
+    }
     const supabase = await getSupabaseClient(accessToken)
 
     // Verificar se o desafio existe
@@ -107,7 +113,8 @@ export async function POST(
         alunoNome: aluno?.name || 'Aluno',
         desafioTitulo: desafio.titulo,
         desafioId: desafio.id,
-        submissionId: updated.id
+        submissionId: updated.id,
+        accessToken
       }).catch(err => console.error('Erro ao notificar admins:', err))
 
       return NextResponse.json({
@@ -145,7 +152,8 @@ export async function POST(
       alunoNome: aluno?.name || 'Aluno',
       desafioTitulo: desafio.titulo,
       desafioId: desafio.id,
-      submissionId: submission.id
+      submissionId: submission.id,
+      accessToken
     }).catch(err => console.error('Erro ao notificar admins:', err))
 
     return NextResponse.json({

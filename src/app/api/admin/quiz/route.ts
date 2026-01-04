@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
-import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
+import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/requestAuth'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 
 export const runtime = 'nodejs'
 
@@ -8,7 +8,8 @@ export const runtime = 'nodejs'
 export async function POST(request: NextRequest) {
   try {
     const userId = await requireUserIdFromBearer(request)
-    const supabase = getSupabaseAdmin()
+    const accessToken = getAccessTokenFromBearer(request)
+    const supabase = await getSupabaseClient(accessToken)
 
     // Verificar se é admin
     const { data: userData, error: userError } = await supabase
@@ -66,7 +67,8 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const userId = await requireUserIdFromBearer(request)
-    const supabase = getSupabaseAdmin()
+    const accessToken = getAccessTokenFromBearer(request)
+    const supabase = await getSupabaseClient(accessToken)
 
     // Verificar se é admin
     const { data: userData, error: userError } = await supabase
@@ -124,7 +126,8 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const userId = await requireUserIdFromBearer(request)
-    const supabase = getSupabaseAdmin()
+    const accessToken = getAccessTokenFromBearer(request)
+    const supabase = await getSupabaseClient(accessToken)
 
     // Verificar se é admin
     const { data: userData, error: userError } = await supabase

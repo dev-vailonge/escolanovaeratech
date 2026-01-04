@@ -165,12 +165,21 @@ export default function CreateDesafioModal({ isOpen, onClose, onSave, desafio }:
               )}
               required
             >
-              <option value="HTML">HTML</option>
-              <option value="CSS">CSS</option>
-              <option value="JavaScript">JavaScript</option>
-              <option value="React">React</option>
-              <option value="Android">Android</option>
-              <option value="Web Development">Web Development</option>
+              <option value="">Selecione uma tecnologia</option>
+              {Object.entries({
+                'Frontend Web': ['HTML', 'CSS', 'JavaScript', 'TypeScript', 'React', 'Next.js', 'Tailwind CSS'],
+                'Backend': ['Node.js', 'Express', 'APIs REST', 'PostgreSQL', 'MongoDB'],
+                'Mobile Android': ['Kotlin', 'Jetpack Compose', 'Android'],
+                'Mobile iOS': ['Swift', 'SwiftUI'],
+                'Análise de Dados': ['Python', 'Pandas', 'SQL', 'Data Visualization'],
+                'Fundamentos': ['Lógica de Programação', 'Algoritmos', 'Estrutura de Dados', 'Git'],
+              }).map(([categoria, techs]) => (
+                <optgroup key={categoria} label={categoria}>
+                  {techs.map(tech => (
+                    <option key={tech} value={tech}>{tech}</option>
+                  ))}
+                </optgroup>
+              ))}
             </select>
           </div>
 
