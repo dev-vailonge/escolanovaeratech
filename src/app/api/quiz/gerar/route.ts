@@ -9,7 +9,23 @@ import { XP_CONSTANTS } from '@/lib/gamification/constants'
 // Hobby: 10s, Pro: 60s, Enterprise: 300s
 export const maxDuration = 60
 
-const TECNOLOGIAS_VALIDAS = ['HTML', 'CSS', 'JavaScript', 'TypeScript', 'React', 'Next.js', 'Node.js', 'Express', 'Android', 'Kotlin', 'Swift', 'Python', 'PostgreSQL', 'MongoDB', 'Tailwind CSS', 'Git', 'Algoritmos', 'Estrutura de Dados', 'Lógica de Programação', 'Web Development', 'APIs REST']
+// Tecnologias organizadas por categoria (mesma lista da página de quiz)
+const TECNOLOGIAS_VALIDAS = [
+  // Frontend Web
+  'HTML', 'CSS', 'JavaScript', 'TypeScript', 'React', 'Next.js', 'Tailwind CSS',
+  // Backend
+  'Node.js', 'Express', 'APIs REST', 'PostgreSQL', 'MongoDB',
+  // Mobile Android
+  'Kotlin', 'Jetpack Compose', 'Android',
+  // Mobile iOS
+  'Swift', 'SwiftUI',
+  // Análise de Dados
+  'Python', 'Pandas', 'SQL', 'Data Visualization',
+  // Fundamentos
+  'Lógica de Programação', 'Algoritmos', 'Estrutura de Dados', 'Git',
+  // Legacy (compatibilidade)
+  'Web Development'
+]
 const NIVEIS_VALIDOS = ['iniciante', 'intermediario', 'avancado'] as const
 
 const XP_QUIZ = XP_CONSTANTS.quiz.maximo // 20 XP
