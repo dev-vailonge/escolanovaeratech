@@ -53,6 +53,111 @@ export default function DesafiosPage() {
   const [selectedNivel, setSelectedNivel] = useState<'iniciante' | 'intermediario' | 'avancado' | ''>('')
   const [selectionError, setSelectionError] = useState<string>('')
   const [isGerando, setIsGerando] = useState(false)
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
+  
+  // Mensagens animadas e provocativas para o loading (20 mensagens para cobrir 60s)
+  const loadingMessages = [
+    {
+      title: "Nossa IA está criando um desafio para você!",
+      subtitle: "Aguarde um momento enquanto geramos",
+      emoji: "✨"
+    },
+    {
+      title: "Espere mais um pouco...",
+      subtitle: "Estamos gerando seu desafio personalizado",
+      emoji: "⚡"
+    },
+    {
+      title: "Se prepare heim!",
+      subtitle: "O desafio está sendo criado especialmente para você",
+      emoji: "🔥"
+    },
+    {
+      title: "Pensando no melhor desafio...",
+      subtitle: "Nossa IA está analisando o nível escolhido",
+      emoji: "🤔"
+    },
+    {
+      title: "Criando um desafio desafiador!",
+      subtitle: "Garantindo que seja interessante e educativo",
+      emoji: "💡"
+    },
+    {
+      title: "Quase lá!",
+      subtitle: "Últimos ajustes para garantir que o desafio seja perfeito",
+      emoji: "🎯"
+    },
+    {
+      title: "Definindo os requisitos...",
+      subtitle: "Garantindo qualidade e relevância",
+      emoji: "✅"
+    },
+    {
+      title: "Faltam só alguns segundos...",
+      subtitle: "Nossa IA está finalizando o desafio",
+      emoji: "🚀"
+    },
+    {
+      title: "Quase pronto!",
+      subtitle: "Organizando os detalhes de forma inteligente",
+      emoji: "📝"
+    },
+    {
+      title: "Criando a descrição...",
+      subtitle: "Garantindo que cada detalhe seja claro",
+      emoji: "🎲"
+    },
+    {
+      title: "Adicionando instruções...",
+      subtitle: "Para que você entenda o que precisa fazer",
+      emoji: "📚"
+    },
+    {
+      title: "Revisando tudo...",
+      subtitle: "Garantindo que está tudo perfeito para você",
+      emoji: "🔍"
+    },
+    {
+      title: "Quase finalizando!",
+      subtitle: "Ajustando os últimos detalhes",
+      emoji: "⚙️"
+    },
+    {
+      title: "Preparando o desafio...",
+      subtitle: "Organizando tudo para sua experiência",
+      emoji: "🎨"
+    },
+    {
+      title: "Últimos toques!",
+      subtitle: "Deixando tudo perfeito para você",
+      emoji: "🌟"
+    },
+    {
+      title: "Quase terminando...",
+      subtitle: "Só mais alguns segundos",
+      emoji: "⏳"
+    },
+    {
+      title: "Finalizando!",
+      subtitle: "O desafio está quase pronto",
+      emoji: "🎊"
+    },
+    {
+      title: "Está quase pronto!",
+      subtitle: "Só mais um pouquinho",
+      emoji: "💫"
+    },
+    {
+      title: "Quase acabando!",
+      subtitle: "Últimos ajustes finais",
+      emoji: "⚡"
+    },
+    {
+      title: "Está saindo do forno!",
+      subtitle: "Seu desafio personalizado está quase pronto",
+      emoji: "🔥"
+    }
+  ]
 
   // Estados para submeter GitHub
   const [showSubmitModal, setShowSubmitModal] = useState(false)
@@ -165,6 +270,23 @@ export default function DesafiosPage() {
   useEffect(() => {
     loadMeusDesafios(true) // Primeiro carregamento com loading completo
   }, [loadMeusDesafios])
+
+  // Rotacionar mensagens de loading a cada 3 segundos (20 mensagens = 60 segundos)
+  useEffect(() => {
+    if (!isGerando) {
+      setLoadingMessageIndex(0)
+      return
+    }
+
+    const interval = setInterval(() => {
+      setLoadingMessageIndex((prev) => {
+        // Ciclar pelas mensagens (20 mensagens x 3s = 60s total)
+        return (prev + 1) % loadingMessages.length
+      })
+    }, 3000) // Mudar mensagem a cada 3 segundos
+
+    return () => clearInterval(interval)
+  }, [isGerando, loadingMessages.length])
 
   // Verificar se pode gerar novo desafio
   const podeGerarNovo = meusDesafios.every(d => d.status === 'aprovado' || d.status === 'rejeitado' || d.status === 'desistiu')
