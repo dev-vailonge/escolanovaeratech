@@ -396,6 +396,6 @@
 
 ---
 
-**Última atualização:** 2026-01-03  
-**Status geral:** ✅ **Todos os itens críticos corrigidos!** Sistemas de desafios e quiz completos funcionando. Geração de quiz com IA implementada. Admin submissions corrigido. Melhorias significativas de UX (modal de loading animada).  
+**Última atualização:** 2026-01-04  
+**Status geral:** ✅ **Todos os itens críticos corrigidos e testados em produção!** Sistemas de desafios e quiz completos funcionando. XP sendo concedido corretamente quando admin aprova submissões de alunos (usando função SQL com SECURITY DEFINER). Notificações corrigidas e melhoradas (abrem diretamente na sub-aba submissions). Filtro de desafios desistidos implementado. Melhorias significativas de UX (modal de loading animada).  
 **Próxima ação:** Decidir sobre admin criar/editar quiz manualmente (manter service role key OU corrigir). Avaliar endpoints de baixa prioridade.
