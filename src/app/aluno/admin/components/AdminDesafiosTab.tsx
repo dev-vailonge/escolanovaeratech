@@ -130,10 +130,16 @@ export default function AdminDesafiosTab() {
             message: json.debug.xpError.message,
             code: json.debug.xpError.code,
             details: json.debug.xpError.details,
+            rpcError: json.debug.xpError.rpcError, // Erro da função SQL RPC
             userId: json.debug.userId,
             desafioId: json.debug.desafioId,
           })
-          console.error('💡 Dica: Verifique se a função SQL complete_desafio_for_user foi criada no banco')
+          if (json.debug.xpError.rpcError) {
+            console.error('🔍 [DEBUG XP] Erro da função SQL RPC:', json.debug.xpError.rpcError)
+            console.error('💡 Dica: A função SQL complete_desafio_for_user existe mas está falhando. Verifique os logs do servidor ou execute o SQL novamente.')
+          } else {
+            console.error('💡 Dica: Verifique se a função SQL complete_desafio_for_user foi criada no banco')
+          }
         } else if (json.xpAwardedSuccessfully) {
           console.log(`✅ [DEBUG XP] XP concedido com SUCESSO: ${json.xpAwarded} XP`)
           console.log(`👤 Usuário: ${json.debug?.userId}`)

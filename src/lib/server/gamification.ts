@@ -147,32 +147,52 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
   const supabase = await getSupabaseClient(params.accessToken)
 
   // Tentar usar função SQL com SECURITY DEFINER primeiro (permite admins completarem desafios para alunos)
+  console.log(`🔍 [completarDesafio] Tentando chamar função SQL complete_desafio_for_user para userId=${params.userId}, desafioId=${params.desafioId}`)
+  
+  let rpcErrorInfo: any = null
   try {
     const { data: rpcData, error: rpcError } = await supabase.rpc('complete_desafio_for_user', {
       p_user_id: params.userId,
       p_desafio_id: params.desafioId,
     })
 
+    console.log(`📊 [completarDesafio] Resposta RPC - data:`, rpcData, `error:`, rpcError)
+
     if (!rpcError && rpcData) {
       console.log(`✅ [completarDesafio] Desafio completado com sucesso via RPC para usuário ${params.userId}`)
       // Atualizar nível automaticamente após inserir XP
       await syncUserLevel(params.userId, params.accessToken)
       const xpDesafio = XP_CONSTANTS.desafio.completo
-      return { awarded: true as const, xp: xpDesafio }
+      return { awarded: true as const, xp: xpDesafio, rpcUsed: true }
     }
 
-    // Se RPC falhar (função não existe), tentar método direto
+    // Se RPC falhar (função não existe ou erro), tentar método direto
+    rpcErrorInfo = {
+      message: rpcError?.message,
+      code: rpcError?.code,
+      details: rpcError?.details,
+      hint: rpcError?.hint,
+    }
+    console.error(`❌ [completarDesafio] RPC falhou - error:`, rpcErrorInfo)
     console.log(`⚠️ [completarDesafio] RPC falhou, tentando método direto:`, rpcError?.message)
   } catch (rpcError: any) {
     // Se a função não existe ou retornar erro esperado (já recebeu XP), tratar
+    rpcErrorInfo = {
+      message: rpcError?.message,
+      code: rpcError?.code,
+      stack: rpcError?.stack,
+    }
+    console.error(`❌ [completarDesafio] Exceção ao chamar RPC:`, rpcErrorInfo)
     if (rpcError?.message?.includes('já recebeu XP')) {
       console.log(`⚠️ [completarDesafio] Usuário já recebeu XP para este desafio`)
-      return { awarded: false as const, reason: 'already_received_xp' as const, xp: 0 }
+      return { awarded: false as const, reason: 'already_received_xp' as const, xp: 0, rpcError: rpcErrorInfo }
     }
     console.log(`⚠️ [completarDesafio] Erro ao chamar RPC, tentando método direto:`, rpcError?.message)
   }
 
   // Fallback: método direto (funciona quando user_id = auth.uid())
+  // Se chegou aqui, a função RPC falhou - tentar método direto
+  console.log(`⚠️ [completarDesafio] Usando fallback (método direto) - RPC não funcionou`)
   const { data: existing, error: existingError } = await supabase
     .from('user_desafio_progress')
     .select('id, completo')
@@ -180,7 +200,14 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
     .eq('desafio_id', params.desafioId)
     .maybeSingle()
 
-  if (existingError) throw existingError
+  if (existingError) {
+    // Se falhar, lançar erro com informações do RPC se disponível
+    const errorToThrow: any = existingError
+    if (rpcErrorInfo) {
+      errorToThrow.rpcError = rpcErrorInfo
+    }
+    throw errorToThrow
+  }
   
   // Verificar se o usuário já recebeu XP deste desafio específico
   const { data: xpHistory, error: xpHistoryError } = await supabase
