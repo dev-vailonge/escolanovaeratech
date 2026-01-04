@@ -3,6 +3,7 @@ import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/
 import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 const AVATAR_BUCKET = 'avatars'
 
