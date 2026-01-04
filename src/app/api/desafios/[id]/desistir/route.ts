@@ -33,12 +33,16 @@ export async function POST(
     }
 
     // Verificar se já tem submissão
-    const { data: submissaoExistente } = await supabase
+    const { data: submissaoExistente, error: submissaoError } = await supabase
       .from('desafio_submissions')
       .select('id, status')
       .eq('user_id', userId)
       .eq('desafio_id', desafioId)
-      .single()
+      .maybeSingle()
+
+    if (submissaoError && submissaoError.code !== 'PGRST116') {
+      console.error('Erro ao verificar submissão:', submissaoError)
+    }
 
     // Se já foi aprovado, não pode desistir
     if (submissaoExistente?.status === 'aprovado') {
@@ -50,12 +54,44 @@ export async function POST(
       return NextResponse.json({ error: 'Você já desistiu deste desafio' }, { status: 400 })
     }
 
-    // Deletar a submissão se existir (limpa histórico)
+    // Criar ou atualizar submissão com status 'desistiu'
     if (submissaoExistente) {
-      await supabase
+      // Se existe submissão (pendente ou rejeitado), atualizar para 'desistiu'
+      const { error: updateError } = await supabase
         .from('desafio_submissions')
-        .delete()
+        .update({ 
+          status: 'desistiu',
+          admin_notes: null,
+          reviewed_by: null,
+          reviewed_at: null
+        })
         .eq('id', submissaoExistente.id)
+
+      if (updateError) {
+        console.error('Erro ao atualizar submissão para desistiu:', updateError)
+        return NextResponse.json(
+          { error: 'Erro ao atualizar submissão' },
+          { status: 500 }
+        )
+      }
+    } else {
+      // Se não existe submissão, criar uma com status 'desistiu'
+      const { error: insertError } = await supabase
+        .from('desafio_submissions')
+        .insert({
+          user_id: userId,
+          desafio_id: desafioId,
+          status: 'desistiu',
+          github_url: null
+        })
+
+      if (insertError) {
+        console.error('Erro ao criar submissão de desistência:', insertError)
+        return NextResponse.json(
+          { error: 'Erro ao registrar desistência' },
+          { status: 500 }
+        )
+      }
     }
 
     // Remover atribuição do desafio ao usuário (sai da lista "Meus Desafios")
