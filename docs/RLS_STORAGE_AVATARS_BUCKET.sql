@@ -7,7 +7,7 @@
 
 -- Política 1: INSERT (Upload)
 -- Permite que usuários autenticados façam upload de avatares no próprio diretório
-DO $$
+DO $policy1$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies 
@@ -15,7 +15,7 @@ BEGIN
     AND tablename = 'objects' 
     AND policyname = 'Usuários podem fazer upload de avatares próprios'
   ) THEN
-    EXECUTE $$
+    EXECUTE $policy1_sql$
     CREATE POLICY "Usuários podem fazer upload de avatares próprios"
     ON storage.objects
     FOR INSERT
@@ -23,13 +23,14 @@ BEGIN
     WITH CHECK (
       bucket_id = 'avatars' 
       AND (storage.foldername(name))[1] = auth.uid()::text
-    )$$;
+    )
+    $policy1_sql$;
   END IF;
-END $$;
+END $policy1$;
 
 -- Política 2: UPDATE (Upsert)
 -- Permite que usuários autenticados atualizem seus próprios avatares
-DO $$
+DO $policy2$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies 
@@ -37,7 +38,7 @@ BEGIN
     AND tablename = 'objects' 
     AND policyname = 'Usuários podem atualizar avatares próprios'
   ) THEN
-    EXECUTE $$
+    EXECUTE $policy2_sql$
     CREATE POLICY "Usuários podem atualizar avatares próprios"
     ON storage.objects
     FOR UPDATE
@@ -49,13 +50,14 @@ BEGIN
     WITH CHECK (
       bucket_id = 'avatars' 
       AND (storage.foldername(name))[1] = auth.uid()::text
-    )$$;
+    )
+    $policy2_sql$;
   END IF;
-END $$;
+END $policy2$;
 
 -- Política 3: DELETE
 -- Permite que usuários autenticados deletem seus próprios avatares
-DO $$
+DO $policy3$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies 
@@ -63,7 +65,7 @@ BEGIN
     AND tablename = 'objects' 
     AND policyname = 'Usuários podem deletar avatares próprios'
   ) THEN
-    EXECUTE $$
+    EXECUTE $policy3_sql$
     CREATE POLICY "Usuários podem deletar avatares próprios"
     ON storage.objects
     FOR DELETE
@@ -71,13 +73,14 @@ BEGIN
     USING (
       bucket_id = 'avatars' 
       AND (storage.foldername(name))[1] = auth.uid()::text
-    )$$;
+    )
+    $policy3_sql$;
   END IF;
-END $$;
+END $policy3$;
 
 -- Política 4: SELECT (Download/Leitura)
 -- Permite que qualquer pessoa leia avatares (para exibição)
-DO $$
+DO $policy4$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies 
@@ -85,14 +88,15 @@ BEGIN
     AND tablename = 'objects' 
     AND policyname = 'Avatares são públicos para leitura'
   ) THEN
-    EXECUTE $$
+    EXECUTE $policy4_sql$
     CREATE POLICY "Avatares são públicos para leitura"
     ON storage.objects
     FOR SELECT
     TO public
-    USING (bucket_id = 'avatars')$$;
+    USING (bucket_id = 'avatars')
+    $policy4_sql$;
   END IF;
-END $$;
+END $policy4$;
 
 -- ============================================================================
 -- ALTERNATIVA: Se o SQL acima não funcionar, configure via Dashboard
