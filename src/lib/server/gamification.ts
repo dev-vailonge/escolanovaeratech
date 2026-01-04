@@ -147,11 +147,14 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
   const supabase = await getSupabaseClient(params.accessToken)
 
   // Tentar usar função SQL com SECURITY DEFINER primeiro (permite admins completarem desafios para alunos)
+  console.log(`🔍 [completarDesafio] Tentando chamar função SQL complete_desafio_for_user para userId=${params.userId}, desafioId=${params.desafioId}`)
   try {
     const { data: rpcData, error: rpcError } = await supabase.rpc('complete_desafio_for_user', {
       p_user_id: params.userId,
       p_desafio_id: params.desafioId,
     })
+
+    console.log(`📊 [completarDesafio] Resposta RPC - data:`, rpcData, `error:`, rpcError)
 
     if (!rpcError && rpcData) {
       console.log(`✅ [completarDesafio] Desafio completado com sucesso via RPC para usuário ${params.userId}`)
@@ -161,10 +164,21 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
       return { awarded: true as const, xp: xpDesafio }
     }
 
-    // Se RPC falhar (função não existe), tentar método direto
+    // Se RPC falhar (função não existe ou erro), tentar método direto
+    console.error(`❌ [completarDesafio] RPC falhou - error:`, {
+      message: rpcError?.message,
+      code: rpcError?.code,
+      details: rpcError?.details,
+      hint: rpcError?.hint,
+    })
     console.log(`⚠️ [completarDesafio] RPC falhou, tentando método direto:`, rpcError?.message)
   } catch (rpcError: any) {
     // Se a função não existe ou retornar erro esperado (já recebeu XP), tratar
+    console.error(`❌ [completarDesafio] Exceção ao chamar RPC:`, {
+      message: rpcError?.message,
+      code: rpcError?.code,
+      stack: rpcError?.stack,
+    })
     if (rpcError?.message?.includes('já recebeu XP')) {
       console.log(`⚠️ [completarDesafio] Usuário já recebeu XP para este desafio`)
       return { awarded: false as const, reason: 'already_received_xp' as const, xp: 0 }

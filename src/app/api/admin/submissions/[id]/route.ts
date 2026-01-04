@@ -142,10 +142,16 @@ export async function PUT(
           details: xpErrorCaught?.details,
           code: xpErrorCaught?.code,
         }
-        console.error('❌ Erro ao dar XP:', xpErrorCaught)
+        console.error('❌ [API] Erro ao dar XP - detalhes completos:', {
+          message: xpErrorCaught?.message,
+          code: xpErrorCaught?.code,
+          details: xpErrorCaught?.details,
+          hint: xpErrorCaught?.hint,
+          stack: xpErrorCaught?.stack,
+        })
         // Em caso de erro, ainda mostrar o XP padrão na notificação
         xpAwarded = XP_CONSTANTS.desafio.completo
-        console.log(`⚠️ Erro ao dar XP, usando XP padrão: ${xpAwarded}`)
+        console.log(`⚠️ [API] Erro ao dar XP, usando XP padrão: ${xpAwarded}`)
       }
 
       // Notificar aluno sobre aprovação
