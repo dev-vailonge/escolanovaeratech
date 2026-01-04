@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from './supabaseAdmin'
+import { getSupabaseClient } from './getSupabaseClient'
 
 /**
  * Cria notificação para admins quando aluno submete desafio
@@ -8,53 +8,32 @@ export async function notificarAdminsNovaSubmissao(params: {
   desafioTitulo: string
   desafioId: string
   submissionId: string
+  accessToken: string
 }) {
-  const supabase = getSupabaseAdmin()
+  try {
+    const supabase = await getSupabaseClient(params.accessToken)
   
-  console.log('🔔 Iniciando notificação para admins...')
-  
-  // Buscar todos os admins
-  const { data: admins, error: adminError } = await supabase
-    .from('users')
-    .select('id')
-    .eq('role', 'admin')
-
-  if (adminError) {
-    console.error('❌ Erro ao buscar admins:', adminError)
-    return
-  }
-
-  if (!admins || admins.length === 0) {
-    console.log('⚠️ Nenhum admin encontrado para notificar')
-    return
-  }
-
-  console.log(`📋 Encontrados ${admins.length} admin(s) para notificar`)
-
-  const agora = new Date()
-  const dataFim = new Date()
-  dataFim.setDate(dataFim.getDate() + 7)
-
-  // Criar notificação para cada admin
-  for (const admin of admins) {
-    const { error: insertError } = await supabase.from('notificacoes').insert({
-      titulo: '📥 Nova Submissão de Desafio',
-      mensagem: `${params.alunoNome} enviou uma solução para o desafio "${params.desafioTitulo}". Revise e aprove ou rejeite.`,
-      tipo: 'info',
-      data_inicio: agora.toISOString(),
-      data_fim: dataFim.toISOString(),
-      publico_alvo: 'todos', // Será filtrado pelo target_user_id
-      target_user_id: admin.id,
-      related_desafio_id: params.desafioId,
-      action_url: '/aluno/admin?tab=desafios',
-      created_by: null
+    console.log('🔔 Iniciando notificação para admins...')
+    
+    // Usar função SQL segura que não expõe IDs dos admins
+    // A função notify_admins_new_submission usa SECURITY DEFINER para executar com privilégios elevados
+    const { error: functionError } = await supabase.rpc('notify_admins_new_submission', {
+      p_aluno_nome: params.alunoNome,
+      p_desafio_titulo: params.desafioTitulo,
+      p_desafio_id: params.desafioId,
+      p_submission_id: params.submissionId
     })
 
-    if (insertError) {
-      console.error(`❌ Erro ao criar notificação para admin ${admin.id}:`, insertError)
-    } else {
-      console.log(`✅ Notificação criada para admin ${admin.id}`)
+    if (functionError) {
+      console.error('❌ Erro ao notificar admins via função SQL:', functionError)
+      console.error('⚠️ Verifique se a função notify_admins_new_submission existe no banco')
+      return
     }
+
+    console.log('✅ Notificações criadas para todos os admins')
+  } catch (error: any) {
+    // Falhar silenciosamente (não deve bloquear a submissão do desafio)
+    console.error('❌ Erro ao notificar admins:', error?.message || error)
   }
 }
 

@@ -107,7 +107,8 @@ export async function POST(
         alunoNome: aluno?.name || 'Aluno',
         desafioTitulo: desafio.titulo,
         desafioId: desafio.id,
-        submissionId: updated.id
+        submissionId: updated.id,
+        accessToken
       }).catch(err => console.error('Erro ao notificar admins:', err))
 
       return NextResponse.json({
@@ -145,7 +146,8 @@ export async function POST(
       alunoNome: aluno?.name || 'Aluno',
       desafioTitulo: desafio.titulo,
       desafioId: desafio.id,
-      submissionId: submission.id
+      submissionId: submission.id,
+      accessToken
     }).catch(err => console.error('Erro ao notificar admins:', err))
 
     return NextResponse.json({
