@@ -626,13 +626,84 @@ export default function DesafiosPage() {
       <Modal 
         isOpen={showSelectionModal} 
         onClose={() => {
-          setShowSelectionModal(false)
-          setSelectionError('')
+          if (!isGerando) {
+            setShowSelectionModal(false)
+            setSelectionError('')
+          }
         }} 
-        title="Selecione Tecnologia e Nível" 
+        title={isGerando ? "Gerando Desafio" : "Selecione Tecnologia e Nível"} 
         size="md"
       >
-        <div className="space-y-4">
+        {isGerando ? (
+          // Loading interativo com mensagens dinâmicas
+          <div className="space-y-6 py-8">
+            <div className="flex flex-col items-center justify-center">
+              <div className={cn(
+                "w-20 h-20 rounded-full flex items-center justify-center mb-6 transition-all duration-500",
+                theme === 'dark'
+                  ? "bg-yellow-500/20"
+                  : "bg-yellow-100"
+              )}>
+                <Sparkles className={cn(
+                  "w-10 h-10 animate-pulse",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )} />
+              </div>
+              
+              <h3 className={cn(
+                "text-xl font-bold mb-2 text-center transition-all duration-300 flex items-center justify-center gap-2",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )} key={loadingMessageIndex}>
+                <span className="text-2xl animate-bounce" style={{ animationDelay: '0.5s' }}>
+                  {loadingMessages[loadingMessageIndex]?.emoji || '✨'}
+                </span>
+                <span>{loadingMessages[loadingMessageIndex]?.title || 'Gerando desafio...'}</span>
+              </h3>
+              
+              <p className={cn(
+                "text-sm text-center max-w-md mb-4 transition-all duration-300",
+                theme === 'dark' ? "text-gray-400" : "text-gray-600"
+              )} key={`subtitle-${loadingMessageIndex}`}>
+                {loadingMessages[loadingMessageIndex]?.subtitle || 'Aguarde um momento...'}
+                {selectedTecnologia && (
+                  <> de <strong className={cn(
+                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                  )}>{selectedTecnologia}</strong> no nível <strong className={cn(
+                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                  )}>{selectedNivel === 'iniciante' ? 'Iniciante' : selectedNivel === 'intermediario' ? 'Intermediário' : 'Avançado'}</strong></>
+                )}
+              </p>
+              
+              <div className={cn(
+                "w-full max-w-xs h-2 rounded-full overflow-hidden",
+                theme === 'dark' ? "bg-white/10" : "bg-gray-200"
+              )}>
+                <div 
+                  className={cn(
+                    "h-full rounded-full transition-all duration-500",
+                    theme === 'dark' ? "bg-yellow-500" : "bg-yellow-600"
+                  )} 
+                  style={{
+                    width: `${Math.min(50 + (loadingMessageIndex * 2.5), 95)}%`,
+                    animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                  }} 
+                />
+              </div>
+              
+              <p className={cn(
+                "text-xs text-center mt-4 animate-pulse",
+                theme === 'dark' ? "text-gray-500" : "text-gray-500"
+              )}>
+                {loadingMessageIndex < 6 
+                  ? "Isso pode levar alguns segundos..." 
+                  : loadingMessageIndex < 14
+                  ? "Quase terminando..."
+                  : "Finalizando..."}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
           {selectionError && (
             <div className={cn(
               'border rounded-lg p-3 text-sm',
