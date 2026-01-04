@@ -68,6 +68,30 @@ export async function insertXpEntry(params: {
   
   console.log(`📤 [insertXpEntry] Inserindo XP: userId=${params.userId}, source=${params.source}, amount=${params.amount}, sourceId=${params.sourceId}`)
   
+  // Tentar usar função SQL com SECURITY DEFINER primeiro (permite admins concederem XP a outros usuários)
+  try {
+    const { data: rpcData, error: rpcError } = await supabase.rpc('award_xp_to_user', {
+      p_user_id: params.userId,
+      p_source: params.source,
+      p_source_id: params.sourceId,
+      p_amount: params.amount,
+      p_description: params.description || null,
+    })
+
+    if (!rpcError && rpcData) {
+      console.log(`✅ [insertXpEntry] XP inserido com sucesso via RPC:`, rpcData)
+      // Atualizar nível automaticamente após inserir XP
+      await syncUserLevel(params.userId, params.accessToken)
+      return
+    }
+
+    // Se RPC falhar, tentar INSERT direto (fallback para caso a função não exista)
+    console.log(`⚠️ [insertXpEntry] RPC falhou, tentando INSERT direto:`, rpcError?.message)
+  } catch (rpcError: any) {
+    console.log(`⚠️ [insertXpEntry] Erro ao chamar RPC, tentando INSERT direto:`, rpcError?.message)
+  }
+  
+  // Fallback: INSERT direto (funciona quando user_id = auth.uid())
   const { data, error } = await supabase.from('user_xp_history').insert({
     user_id: params.userId,
     source: params.source,
