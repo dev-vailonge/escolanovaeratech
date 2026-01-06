@@ -243,8 +243,22 @@ const OrbitingCircles = memo(function OrbitingCircles({
   radius = 50,
   path = true,
 }: OrbitingCirclesProps) {
+  // Criar keyframes dinamicamente para cada raio
+  const animationId = `orbit-${radius}-${duration}`;
+  const keyframes = `
+    @keyframes ${animationId} {
+      from {
+        transform: rotate(0deg) translateY(${radius}px) rotate(0deg);
+      }
+      to {
+        transform: rotate(360deg) translateY(${radius}px) rotate(-360deg);
+      }
+    }
+  `;
+
   return (
     <>
+      <style dangerouslySetInnerHTML={{ __html: keyframes }} />
       {path && (
         <svg
           xmlns='http://www.w3.org/2000/svg'
@@ -271,12 +285,7 @@ const OrbitingCircles = memo(function OrbitingCircles({
       <section
         style={
           {
-            '--radius': `${radius}px`,
-            animationName: 'orbit',
-            animationDuration: `${duration}s`,
-            animationTimingFunction: 'linear',
-            animationDelay: `${-delay}s`,
-            animationIterationCount: 'infinite',
+            animation: `${animationId} ${duration}s linear ${-delay}s infinite`,
             animationDirection: reverse ? 'reverse' : 'normal',
             transformOrigin: 'center center',
           } as React.CSSProperties
