@@ -28,9 +28,8 @@ Cole o código abaixo no campo "Body" (aba Source) da configuração "Reset pass
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                 <tr>
                   <td align="center" style="padding-bottom: 20px;">
-                    <!-- Logo SVG circular - usar URL hospedada do logo_light_circle.svg -->
-                    <!-- Nota: Para produção, substitua pela URL completa do logo hospedado no seu servidor -->
-                    <img src="https://www.escolanovaeratech.com.br/logo_light_circle.svg" alt="Escola Nova Era Tech" width="96" height="96" style="display: block; margin: 0 auto; max-width: 96px; height: auto;" />
+                    <!-- Logo SVG circular hospedado no Supabase Storage -->
+                    <img src="https://dotyjpdafxwkmmgmxlrz.supabase.co/storage/v1/object/public/oficial%20logo/5dfeb3b7-5e2d-4632-8f88-35542bb0e9b1/logo_light_circle.svg" alt="Escola Nova Era Tech" width="96" height="96" style="display: block; margin: 0 auto; max-width: 96px; height: auto;" />
                   </td>
                 </tr>
                 <tr>
