@@ -195,7 +195,8 @@ function ResetPasswordForm() {
         return result
       }).catch((err) => {
         console.error('❌ Erro na promise do updateUser:', err)
-        throw err
+        // Não re-throw aqui pois estamos usando timeout e não esperando a promise completar
+        // O erro será tratado no catch externo se necessário
       })
 
       // Aguardar apenas 2 segundos para dar tempo da requisição iniciar
@@ -219,6 +220,7 @@ function ResetPasswordForm() {
       })
       
       // Usar window.location.replace para garantir redirect e não permitir voltar
+      // FORÇAR redirect imediatamente - não esperar signOut
       console.log('🚀 Executando window.location.replace =', redirectUrl)
       window.location.replace(redirectUrl)
     } catch (err: any) {

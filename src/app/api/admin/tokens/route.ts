@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/requestAuth'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 
 /**
  * GET /api/admin/tokens
@@ -16,17 +16,18 @@ import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 export async function GET(request: NextRequest) {
   try {
     // Autenticar usuário
-    const adminId = await requireUserIdFromBearer(request)
-    const supabase = getSupabaseAdmin()
+    const userId = await requireUserIdFromBearer(request)
+    const accessToken = getAccessTokenFromBearer(request)
+    const supabase = await getSupabaseClient(accessToken)
 
     // Verificar se é admin
-    const { data: admin, error: adminError } = await supabase
+    const { data: user, error: userError } = await supabase
       .from('users')
       .select('role')
-      .eq('id', adminId)
+      .eq('id', userId)
       .single()
 
-    if (adminError || admin?.role !== 'admin') {
+    if (userError || user?.role !== 'admin') {
       return NextResponse.json(
         { error: 'Acesso negado. Apenas administradores.' },
         { status: 403 }
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
-    const userId = searchParams.get('userId')
+    const filterUserId = searchParams.get('userId')
 
     // ====================================================
     // BUSCAR REGISTROS DE TOKEN USAGE
@@ -67,16 +68,25 @@ export async function GET(request: NextRequest) {
     if (endDate) {
       query = query.lte('created_at', endDate)
     }
-    if (userId) {
-      query = query.eq('user_id', userId)
+    if (filterUserId) {
+      query = query.eq('user_id', filterUserId)
     }
 
     const { data: records, error } = await query
 
     if (error) {
       console.error('Erro ao buscar tokens:', error)
+      console.error('Detalhes do erro:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      })
       return NextResponse.json(
-        { error: 'Erro ao buscar dados de tokens' },
+        { 
+          error: 'Erro ao buscar dados de tokens',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        },
         { status: 500 }
       )
     }
@@ -99,6 +109,12 @@ export async function GET(request: NextRequest) {
 
       if (usersError) {
         console.error('Erro ao buscar usuários:', usersError)
+        console.error('Detalhes do erro de usuários:', {
+          message: usersError.message,
+          details: usersError.details,
+          hint: usersError.hint,
+          code: usersError.code
+        })
         // Continuar mesmo se falhar, usando valores padrão
       } else if (users) {
         users.forEach((user) => {
@@ -223,11 +239,24 @@ export async function GET(request: NextRequest) {
     })
   } catch (error: any) {
     console.error('Erro na API de tokens:', error)
+    console.error('Erro detalhado:', {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name
+    })
+    
     if (error.message?.includes('Não autenticado')) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
+    
+    
+    // Retornar mensagem de erro mais detalhada em desenvolvimento
+    const errorMessage = process.env.NODE_ENV === 'development' 
+      ? `Erro ao buscar estatísticas de tokens: ${error?.message || 'Erro desconhecido'}`
+      : 'Erro ao buscar estatísticas de tokens'
+    
     return NextResponse.json(
-      { error: 'Erro ao buscar estatísticas de tokens' },
+      { error: errorMessage },
       { status: 500 }
     )
   }

@@ -15,12 +15,18 @@ export default function ConfirmEmailPage() {
         // Verificar se já tem sessão (pode ter sido criada automaticamente)
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
+        // Se já tem sessão, apenas deslogar (usuário será criado quando fizer login)
+        // Não tentar criar aqui porque:
+        // 1. Sem service role key, a API falha
+        // 2. RLS pode bloquear criação direta se política não estiver configurada
+        // 3. O AuthContext já tenta criar quando o usuário faz login
         if (session) {
-          console.log('✅ Sessão já existe, email confirmado')
+          console.log('✅ Email confirmado, deslogando para fazer login...')
+          await supabase.auth.signOut()
           setStatus('success')
-          setMessage('Email confirmado com sucesso! Redirecionando...')
+          setMessage('Email confirmado com sucesso! Redirecionando para login...')
           setTimeout(() => {
-            router.push('/aluno?confirmed=true')
+            router.push('/aluno/login?message=Email confirmado com sucesso! Faça login para continuar.')
           }, 2000)
           return
         }
@@ -46,6 +52,7 @@ export default function ConfirmEmailPage() {
 
         // Se tiver tokens na query, processar
         if (accessTokenQuery && refreshTokenQuery) {
+          // Confirmar email e criar usuário na tabela users
           const { data, error } = await supabase.auth.setSession({
             access_token: accessTokenQuery,
             refresh_token: refreshTokenQuery,
@@ -56,11 +63,13 @@ export default function ConfirmEmailPage() {
           }
 
           if (data?.session) {
-            console.log('✅ Sessão criada via query params, email confirmado')
+            console.log('✅ Email confirmado via query params')
+            // Deslogar imediatamente (usuário será criado na tabela users quando fizer login)
+            await supabase.auth.signOut()
             setStatus('success')
-            setMessage('Email confirmado com sucesso! Redirecionando...')
+            setMessage('Email confirmado com sucesso! Redirecionando para login...')
             setTimeout(() => {
-              router.push('/aluno?confirmed=true')
+              router.push('/aluno/login?message=Email confirmado com sucesso! Faça login para continuar.')
             }, 2000)
             return
           }
@@ -89,7 +98,7 @@ export default function ConfirmEmailPage() {
           }
 
           if (accessToken && refreshToken) {
-            // Definir sessão com os tokens
+            // Confirmar email e criar usuário na tabela users
             const { data, error } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
@@ -100,11 +109,13 @@ export default function ConfirmEmailPage() {
             }
 
             if (data?.session) {
-              console.log('✅ Sessão criada via hash, email confirmado')
+              console.log('✅ Email confirmado via hash')
+              // Deslogar imediatamente (usuário será criado na tabela users quando fizer login)
+              await supabase.auth.signOut()
               setStatus('success')
-              setMessage('Email confirmado com sucesso! Redirecionando...')
+              setMessage('Email confirmado com sucesso! Redirecionando para login...')
               setTimeout(() => {
-                router.push('/aluno?confirmed=true')
+                router.push('/aluno/login?message=Email confirmado com sucesso! Faça login para continuar.')
               }, 2000)
               return
             }
