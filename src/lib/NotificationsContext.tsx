@@ -37,25 +37,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [notifications, setNotifications] = useState<DatabaseNotificacao[]>([])
   
-  // Inicializar readIds do localStorage de forma síncrona se possível
-  const getInitialReadIds = (): Set<string> => {
-    if (typeof window !== 'undefined' && user?.id) {
-      try {
-        const storageKey = getStorageKey(user.id)
-        const stored = localStorage.getItem(storageKey)
-        if (stored) {
-          const parsed = JSON.parse(stored) as string[]
-          console.log('📖 [NotificationsContext] IDs lidos carregados do localStorage (inicial):', parsed.length)
-          return new Set<string>(parsed)
-        }
-      } catch (e) {
-        console.error('Erro ao carregar IDs lidos inicialmente:', e)
-      }
-    }
-    return new Set<string>()
-  }
-  
-  const [readIds, setReadIds] = useState<Set<string>>(getInitialReadIds())
+  const [readIds, setReadIds] = useState<Set<string>>(new Set())
+  const [readIdsLoaded, setReadIdsLoaded] = useState(false) // Flag para garantir que IDs foram carregados
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [hasNewNotification, setHasNewNotification] = useState(false)
 
@@ -69,26 +52,24 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         try {
           const parsed = JSON.parse(stored) as string[]
           const storedSet = new Set<string>(parsed)
-          // Só atualizar se for diferente do estado atual
-          setReadIds(prev => {
-            if (prev.size !== storedSet.size || [...prev].some(id => !storedSet.has(id)) || [...storedSet].some(id => !prev.has(id))) {
-              console.log('📖 [NotificationsContext] IDs lidos atualizados do localStorage:', storedSet.size)
-              return storedSet
-            }
-            return prev
-          })
+          setReadIds(storedSet)
+          setReadIdsLoaded(true)
+          console.log('📖 [NotificationsContext] IDs lidos carregados do localStorage:', storedSet.size)
         } catch (e) {
           console.error('Erro ao parsear notificações lidas:', e)
           setReadIds(new Set())
+          setReadIdsLoaded(true)
         }
       } else {
         // Limpar readIds se não houver dados para este usuário
         setReadIds(new Set())
+        setReadIdsLoaded(true)
         console.log('📖 [NotificationsContext] Nenhum ID lido encontrado no localStorage')
       }
     } else if (!user?.id) {
       // Limpar quando não há usuário
       setReadIds(new Set())
+      setReadIdsLoaded(false)
     }
   }, [user?.id])
 
@@ -180,11 +161,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   // Buscar notificações na montagem e quando o usuário mudar
   // IMPORTANTE: Este useEffect roda DEPOIS do que carrega os IDs lidos
+  // Só buscar notificações depois que os IDs lidos foram carregados
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && readIdsLoaded) {
       fetchNotifications()
     }
-  }, [fetchNotifications, user?.id])
+  }, [fetchNotifications, user?.id, readIdsLoaded])
 
   // Configurar Supabase Realtime para notificações
   useEffect(() => {
