@@ -47,9 +47,7 @@ export default function PerfilPage() {
   const limparDescricao = (descricao: string | null | undefined): string => {
     if (!descricao) return ''
     return descricao
-      // Remove no final: "- Avancado", "- Avançado", etc
-      .replace(/\s*-\s*(Iniciante|Intermediário|Intermediario|Avançado|Avancado)(\s|$)/gi, ' ')
-      // Remove no meio: "Quiz de X - Avancado"
+      // Remove padrão: " - Avancado" ou " - Avançado" em qualquer lugar
       .replace(/\s*-\s*(Iniciante|Intermediário|Intermediario|Avançado|Avancado)\s*/gi, ' ')
       // Remove entre parênteses: "(Avancado)"
       .replace(/\s*\(Iniciante|Intermediário|Intermediario|Avançado|Avancado\)/gi, '')
