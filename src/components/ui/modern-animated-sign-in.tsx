@@ -272,7 +272,11 @@ const OrbitingCircles = memo(function OrbitingCircles({
         style={
           {
             '--radius': `${radius}px`,
-            animation: `orbit ${duration}s linear ${-delay}s infinite`,
+            animationName: 'orbit',
+            animationDuration: `${duration}s`,
+            animationTimingFunction: 'linear',
+            animationDelay: `${-delay}s`,
+            animationIterationCount: 'infinite',
             animationDirection: reverse ? 'reverse' : 'normal',
             transformOrigin: 'center center',
           } as React.CSSProperties
