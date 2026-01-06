@@ -351,7 +351,8 @@ const TechOrbitDisplay = memo(function TechOrbitDisplay({
         </span>
       </span>
 
-      {iconsArray.map((icon, index) => (
+      {/* Temporariamente desabilitado para resolver problemas de build na Vercel */}
+      {/* {iconsArray.map((icon, index) => (
         <OrbitingCircles
           key={index}
           className={icon.className}
@@ -363,7 +364,7 @@ const TechOrbitDisplay = memo(function TechOrbitDisplay({
         >
           {icon.component()}
         </OrbitingCircles>
-      ))}
+      ))} */}
     </section>
   );
 });
