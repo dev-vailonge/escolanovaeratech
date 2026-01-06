@@ -65,18 +65,33 @@ export async function getUserById(userId: string): Promise<DatabaseUser | null> 
 }
 
 export async function getUserByEmail(email: string): Promise<DatabaseUser | null> {
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('email', email)
-    .single()
-
-  if (error) {
-    console.error('Error fetching user by email:', error)
+  if (!isSupabaseConfigured()) {
+    console.warn('Supabase não configurado - getUserByEmail retornando null')
     return null
   }
 
-  return data
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single()
+
+    if (error) {
+      // Se o erro for "no rows returned" (PGRST116), não logar como erro
+      // pois o usuário será criado automaticamente
+      if (error.code === 'PGRST116') {
+        return null
+      }
+      console.error('Error fetching user by email:', error)
+      return null
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error in getUserByEmail:', error)
+    return null
+  }
 }
 
 export async function updateUserAccessLevel(userId: string, accessLevel: 'full' | 'limited'): Promise<boolean> {
