@@ -22,41 +22,123 @@ function ResetPasswordForm() {
   useEffect(() => {
     // Check if we have a session and handle the email link
     const handleEmailLink = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession()
-      
-      if (error) {
-        console.error('Error getting session:', error)
-        return
-      }
-
-      // If we have a session, we're good to go
-      if (session) {
-        setIsValid(true)
-        return
-      }
-
-      // If no session, check for hash in URL
-      const hash = window.location.hash
-      if (!hash) {
-        // No session and no hash means user accessed the page directly
-        setError('Acesso inválido. Por favor, use o link enviado por email.')
-        return
-      }
-
       try {
-        const { data, error } = await supabase.auth.verifyOtp({
-          token_hash: hash.substring(1),
-          type: 'recovery'
-        })
-
-        if (error) throw error
-
-        if (data?.session) {
-          setIsValid(true)
+        // Verificar se já tem sessão (pode ter sido criada automaticamente)
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError) {
+          console.error('Error getting session:', sessionError)
         }
-      } catch (error) {
-        console.error('Error verifying OTP:', error)
-        setError('Link inválido ou expirado. Por favor, solicite um novo link de recuperação.')
+
+        // If we have a session, we're good to go
+        if (session) {
+          console.log('✅ Sessão já existe, pode redefinir senha')
+          setIsValid(true)
+          return
+        }
+
+        // Verificar query params primeiro (Supabase pode enviar tokens na query)
+        const urlParams = new URLSearchParams(window.location.search)
+        const accessTokenQuery = urlParams.get('access_token')
+        const refreshTokenQuery = urlParams.get('refresh_token')
+        const error = urlParams.get('error')
+        const errorDescription = urlParams.get('error_description')
+
+        // Se tiver erro na query, processar erro
+        if (error) {
+          if (error === 'access_denied' && (errorDescription?.includes('expired') || errorDescription?.includes('invalid'))) {
+            setError('O link de recuperação expirou ou é inválido. Por favor, solicite um novo link.')
+          } else {
+            setError(errorDescription || 'Erro ao processar link de recuperação. Tente solicitar um novo link.')
+          }
+          return
+        }
+
+        // Se tiver tokens na query, processar
+        if (accessTokenQuery && refreshTokenQuery) {
+          const { data, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessTokenQuery,
+            refresh_token: refreshTokenQuery,
+          })
+
+          if (sessionError) {
+            throw sessionError
+          }
+
+          if (data?.session) {
+            console.log('✅ Sessão criada via query params, pode redefinir senha')
+            setIsValid(true)
+            return
+          }
+        }
+
+        // Verificar hash fragment na URL (Supabase pode enviar tokens no hash)
+        const hash = window.location.hash
+        if (hash) {
+          // Extrair tokens do hash
+          const hashParams = new URLSearchParams(hash.substring(1))
+          const accessToken = hashParams.get('access_token')
+          const refreshToken = hashParams.get('refresh_token')
+          const hashError = hashParams.get('error')
+          const hashErrorDescription = hashParams.get('error_description')
+
+          // Se tiver erro no hash, processar erro
+          if (hashError) {
+            if (hashError === 'access_denied' && (hashErrorDescription?.includes('expired') || hashErrorDescription?.includes('invalid'))) {
+              setError('O link de recuperação expirou ou é inválido. Por favor, solicite um novo link.')
+            } else {
+              setError(hashErrorDescription || 'Erro ao processar link de recuperação. Tente solicitar um novo link.')
+            }
+            return
+          }
+
+          if (accessToken && refreshToken) {
+            // Definir sessão com os tokens
+            const { data, error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            })
+
+            if (sessionError) {
+              throw sessionError
+            }
+
+            if (data?.session) {
+              console.log('✅ Sessão criada via hash, pode redefinir senha')
+              setIsValid(true)
+              return
+            }
+          } else {
+            // Tentar verificar OTP se tiver token_hash no hash
+            const tokenHash = hashParams.get('token_hash') || hash.substring(1)
+            if (tokenHash) {
+              const { data, error: otpError } = await supabase.auth.verifyOtp({
+                token_hash: tokenHash,
+                type: 'recovery'
+              })
+
+              if (otpError) {
+                throw otpError
+              }
+
+              if (data?.session) {
+                console.log('✅ Sessão criada via OTP, pode redefinir senha')
+                setIsValid(true)
+                return
+              }
+            }
+          }
+        }
+
+        // Se chegou aqui sem tokens nem sessão, pode ser que o link já foi usado ou é inválido
+        setError('Acesso inválido. Por favor, use o link enviado por email ou solicite um novo link.')
+      } catch (error: any) {
+        console.error('Error verifying recovery link:', error)
+        if (error?.message?.includes('expired') || error?.message?.includes('invalid')) {
+          setError('Link inválido ou expirado. Por favor, solicite um novo link de recuperação.')
+        } else {
+          setError(error?.message || 'Erro ao processar link de recuperação. Tente solicitar um novo link.')
+        }
       }
     }
 
