@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
 import { calculateLevel } from '@/lib/gamification'
 import { XP_CONSTANTS } from '@/lib/gamification/constants'
@@ -19,6 +18,11 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  // Variáveis para uso no catch
+  let isAdmin = false
+  let isAuthor = false
+  let perguntaId = params.id
+  
   try {
     const userId = await requireUserIdFromBearer(request)
     
@@ -28,7 +32,7 @@ export async function DELETE(
     
     // Usar getSupabaseClient inicialmente para verificar permissões
     const supabase = await getSupabaseClient(accessToken)
-    const perguntaId = params.id
+    perguntaId = params.id
 
     if (!perguntaId) {
       return NextResponse.json({ error: 'ID da pergunta inválido' }, { status: 400 })
@@ -62,28 +66,17 @@ export async function DELETE(
       return NextResponse.json({ error: 'Pergunta não encontrada' }, { status: 404 })
     }
 
-    const isAdmin = user.role === 'admin'
-    const isAuthor = pergunta.autor_id === userId
+    isAdmin = user.role === 'admin'
+    isAuthor = pergunta.autor_id === userId
 
     // Se não é admin nem autor, negar acesso
     if (!isAdmin && !isAuthor) {
       return NextResponse.json({ error: 'Você não tem permissão para deletar esta pergunta' }, { status: 403 })
     }
 
-    // Se for admin, usar SupabaseAdmin para garantir que a deleção funcione mesmo com RLS
-    // Se não for admin, usar o supabase normal (que já tem o token do usuário)
-    let supabaseForDelete = supabase
-    if (isAdmin) {
-      try {
-        supabaseForDelete = getSupabaseAdmin()
-      } catch (adminError: any) {
-        console.error('❌ Erro ao obter SupabaseAdmin:', adminError)
-        // Se não tiver SERVICE_ROLE_KEY configurado, usar supabase normal
-        // Mas avisar que pode falhar por RLS
-        console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY não configurado. Usando cliente normal (pode falhar por RLS)')
-        supabaseForDelete = supabase
-      }
-    }
+    // Usar sempre o supabase normal (com token do usuário)
+    // As políticas RLS devem permitir que admins deletem perguntas de outros usuários
+    const supabaseForDelete = supabase
 
     // Buscar todas as respostas da pergunta
     // Usar supabaseForDelete para garantir acesso mesmo com RLS (admin) ou usar token normal (autor)
@@ -199,11 +192,22 @@ export async function DELETE(
           code: deleteRespostasError.code,
         })
         
-        // Se for erro de RLS, dar mensagem específica
+        // Se for erro de RLS, dar mensagem específica com detalhes
         if (deleteRespostasError.message?.includes('permission') || deleteRespostasError.message?.includes('policy') || deleteRespostasError.code === '42501') {
           return NextResponse.json({ 
             error: 'Erro de permissão ao deletar respostas. Verifique as políticas RLS no Supabase.',
-            details: process.env.NODE_ENV === 'development' ? deleteRespostasError.message : undefined
+            details: {
+              message: deleteRespostasError.message,
+              code: deleteRespostasError.code,
+              hint: deleteRespostasError.hint,
+            },
+            logs: [
+              `❌ Erro de permissão (RLS) ao deletar respostas`,
+              `Código: ${deleteRespostasError.code || 'N/A'}`,
+              `Mensagem: ${deleteRespostasError.message}`,
+              deleteRespostasError.hint ? `Dica: ${deleteRespostasError.hint}` : null,
+              `💡 Solução: Verifique se as políticas RLS no Supabase permitem que admins deletem respostas.`,
+            ].filter(Boolean)
           }, { status: 403 })
         }
         
@@ -215,7 +219,6 @@ export async function DELETE(
     }
 
     // Deletar a pergunta (operação principal)
-    // Usar supabaseForDelete (admin usa SupabaseAdmin, autor usa supabase normal)
     const { error: deletePerguntaError } = await supabaseForDelete
       .from('perguntas')
       .delete()
@@ -234,11 +237,31 @@ export async function DELETE(
         isAuthor,
       })
       
-      // Se for erro de RLS, dar mensagem específica
+      // Se for erro de RLS, dar mensagem específica com detalhes no console
       if (deletePerguntaError.message?.includes('permission') || deletePerguntaError.message?.includes('policy') || deletePerguntaError.code === '42501') {
         return NextResponse.json({ 
           error: 'Erro de permissão ao deletar pergunta. Verifique as políticas RLS no Supabase.',
-          details: process.env.NODE_ENV === 'development' ? deletePerguntaError.message : undefined
+          details: {
+            message: deletePerguntaError.message,
+            code: deletePerguntaError.code,
+            hint: deletePerguntaError.hint,
+            isAdmin,
+            isAuthor,
+            perguntaId,
+            userId,
+          },
+          logs: [
+            `❌ Erro de permissão (RLS) ao deletar pergunta`,
+            `Código: ${deletePerguntaError.code || 'N/A'}`,
+            `Mensagem: ${deletePerguntaError.message}`,
+            deletePerguntaError.hint ? `Dica: ${deletePerguntaError.hint}` : null,
+            `É admin: ${isAdmin}`,
+            `É autor: ${isAuthor}`,
+            `Pergunta ID: ${perguntaId}`,
+            `Usuário ID: ${userId}`,
+            ``,
+            `💡 Solução: Verifique se as políticas RLS no Supabase permitem que usuários com role='admin' deletem perguntas de outros usuários.`,
+          ].filter(Boolean)
         }, { status: 403 })
       }
       
@@ -310,11 +333,21 @@ export async function DELETE(
     // Invalidar cache do ranking para refletir mudanças imediatamente
     invalidateRankingCache()
 
+    // Preparar logs detalhados para o console do navegador
+    const logs = [
+      `✅ Pergunta ${perguntaId} deletada com sucesso`,
+      `📊 ${usuariosAtualizados.length} usuário(s) tiveram XP revertido:`,
+      ...usuariosAtualizados.map(u => 
+        `  • ${u.nome}: ${u.xpAnterior} XP → ${u.novoXp} XP (perdeu ${u.xpPerdido} XP)`
+      )
+    ]
+
     return NextResponse.json({
       success: true,
       message: 'Pergunta deletada e XP revertido com sucesso',
       usuariosAfetados: usuariosAtualizados.length,
       detalhes: usuariosAtualizados,
+      logs: logs, // Logs para aparecer no console do navegador
     })
   } catch (error: any) {
     console.error('❌ Erro ao deletar pergunta:', error)
@@ -331,14 +364,6 @@ export async function DELETE(
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
     
-    // Erro específico: SERVICE_ROLE_KEY não configurado
-    if (String(error?.message || '').includes('SUPABASE_SERVICE_ROLE_KEY') || String(error?.message || '').includes('Supabase admin não configurado')) {
-      console.error('❌ SUPABASE_SERVICE_ROLE_KEY não configurado em produção!')
-      return NextResponse.json({ 
-        error: 'Configuração do servidor incompleta. Entre em contato com o suporte.',
-        details: 'SERVICE_ROLE_KEY não configurado'
-      }, { status: 500 })
-    }
     
     // Erros de permissão
     if (String(error?.message || '').includes('permission') || String(error?.message || '').includes('RLS') || error?.code === '42501') {
@@ -348,27 +373,33 @@ export async function DELETE(
       }, { status: 403 })
     }
     
-    // Outros erros - sempre logar detalhes no servidor, mas retornar mensagem genérica em prod
-    const errorMessage = process.env.NODE_ENV === 'development' 
-      ? error?.message || 'Erro ao deletar pergunta'
-      : 'Erro ao deletar pergunta. Tente novamente mais tarde.'
-    
-    // Em produção, sempre logar o erro completo no servidor para diagnóstico
-    console.error('❌ [PRODUÇÃO] Erro completo:', JSON.stringify({
-      message: error?.message,
+    // Outros erros - retornar detalhes no JSON para aparecer no console do navegador
+    const errorDetails = {
+      message: error?.message || 'Erro desconhecido',
       code: error?.code,
       details: error?.details,
       hint: error?.hint,
-      stack: error?.stack?.substring(0, 500), // Limitar stack trace nos logs
-    }, null, 2))
+      // Informações úteis para diagnóstico
+      isAdmin,
+      isAuthor,
+      perguntaId,
+    }
+    
+    // Logar no servidor também
+    console.error('❌ Erro completo:', JSON.stringify(errorDetails, null, 2))
     
     return NextResponse.json({ 
-      error: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? {
-        message: error?.message,
-        code: error?.code,
-        stack: error?.stack
-      } : undefined
+      error: 'Erro ao deletar pergunta. Verifique o console para detalhes.',
+      // Sempre retornar detalhes para aparecer no console do navegador
+      details: errorDetails,
+      logs: [
+        `❌ Erro ao deletar pergunta: ${error?.message || 'Erro desconhecido'}`,
+        `Código: ${error?.code || 'N/A'}`,
+        error?.details ? `Detalhes: ${error?.details}` : null,
+        error?.hint ? `Dica: ${error?.hint}` : null,
+        `É admin: ${isAdmin}`,
+        `É autor: ${isAuthor}`,
+      ].filter(Boolean)
     }, { status: 500 })
   }
 }
