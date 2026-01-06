@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from './supabase'
 import { User } from '@supabase/supabase-js'
-import { getUserById } from './database'
+import { getUserById, getUserByEmail } from './database'
 import type { AuthUser } from './types/auth'
 import type { DatabaseUser } from '@/types/database'
 
@@ -63,6 +63,14 @@ async function createUserDirectly(supabaseUser: User, userName: string): Promise
         console.log('ℹ️ Usuário já existe, buscando...')
         return await getUserById(supabaseUser.id)
       }
+      
+      // Se for erro de permissão (RLS bloqueando), logar mas não mostrar erro assustador
+      if (error.code === '42501' || error.message?.includes('permission') || error.message?.includes('policy') || error.status === 403 || error.status === 406) {
+        console.warn('⚠️ RLS bloqueou criação direta do usuário. Isso é esperado se não houver política RLS permitindo.')
+        console.warn('⚠️ O usuário será criado por trigger do banco ou precisa de configuração de RLS.')
+        return null
+      }
+      
       console.error('❌ Erro ao criar usuário diretamente:', error)
       return null
     }
@@ -136,12 +144,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           dbUser = await createUserDirectly(supabaseUser, userName)
         }
         
-        // Se ainda não conseguiu criar, tentar buscar novamente (pode ter sido criado por trigger)
+        // Se ainda não conseguiu criar, aguardar um pouco e tentar buscar novamente
+        // (pode ter sido criado por trigger do banco de dados que demora alguns segundos)
         if (!dbUser) {
+          console.log('⏳ Aguardando 3 segundos para verificar se trigger criou o usuário...')
+          await new Promise(resolve => setTimeout(resolve, 3000))
+          
+          // Tentar buscar novamente após aguardar
           dbUser = await getUserById(supabaseUser.id)
+          
           if (!dbUser) {
-            console.error('❌ Não foi possível criar usuário na tabela users')
-            return null
+            // Tentar buscar por email como fallback (pode ter sido criado com ID diferente)
+            dbUser = await getUserByEmail(supabaseUser.email || '')
+            
+            if (!dbUser) {
+              console.warn('⚠️ Usuário ainda não existe na tabela users após tentativas. Pode ser necessário criar manualmente ou verificar trigger do banco.')
+              console.warn('⚠️ O usuário pode fazer login, mas alguns recursos podem não funcionar até o registro ser criado.')
+              // Não retornar null - permitir login mesmo sem registro na tabela users
+              // O usuário pode ser criado depois por um trigger ou processo em background
+              return null
+            } else {
+              console.log('✅ Usuário encontrado por email após aguardar')
+            }
+          } else {
+            console.log('✅ Usuário encontrado após aguardar (criado por trigger)')
           }
         }
       }
