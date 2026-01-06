@@ -1553,7 +1553,7 @@ export default function ComunidadePage() {
           className={cn(
             "backdrop-blur-md border rounded-xl p-3 md:p-4",
             theme === 'dark'
-              ? "bg-black/20 border-white/10"
+              ? "bg-gray-800/30 border-white/10"
               : "bg-white border-yellow-400/90 shadow-md"
           )}
         >
@@ -1579,7 +1579,7 @@ export default function ComunidadePage() {
           className={cn(
             "backdrop-blur-md border rounded-xl p-3 md:p-4",
             theme === 'dark'
-              ? "bg-black/20 border-white/10"
+              ? "bg-gray-800/30 border-white/10"
               : "bg-white border-yellow-400/90 shadow-md"
           )}
         >
@@ -1605,7 +1605,7 @@ export default function ComunidadePage() {
           className={cn(
             "backdrop-blur-md border rounded-xl p-3 md:p-4",
             theme === 'dark'
-              ? "bg-black/20 border-white/10"
+              ? "bg-gray-800/30 border-white/10"
               : "bg-white border-yellow-400/90 shadow-md"
           )}
         >
