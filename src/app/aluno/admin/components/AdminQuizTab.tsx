@@ -23,7 +23,8 @@ export default function AdminQuizTab() {
     carregarQuizzes()
   }, [])
 
-  const carregarQuizzes = async () => {
+  const carregarQuizzes = async (retryCount = 0) => {
+    const maxRetries = 2
     try {
       setLoading(true)
       setError('')
@@ -31,6 +32,12 @@ export default function AdminQuizTab() {
       setQuizzes(dados)
     } catch (err) {
       console.error('Erro ao carregar quizzes:', err)
+      // Retry logic
+      if (retryCount < maxRetries) {
+        console.log(`🔄 Tentando novamente (tentativa ${retryCount + 1}/${maxRetries})...`)
+        setTimeout(() => carregarQuizzes(retryCount + 1), 1000 * (retryCount + 1))
+        return
+      }
       setError('Erro ao carregar quizzes. Tente novamente.')
     } finally {
       setLoading(false)

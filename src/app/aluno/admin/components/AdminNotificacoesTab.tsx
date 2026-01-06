@@ -22,7 +22,8 @@ export default function AdminNotificacoesTab() {
     carregarNotificacoes()
   }, [])
 
-  const carregarNotificacoes = async () => {
+  const carregarNotificacoes = async (retryCount = 0) => {
+    const maxRetries = 2
     try {
       setLoading(true)
       setError('')
@@ -30,6 +31,12 @@ export default function AdminNotificacoesTab() {
       setNotificacoes(dados)
     } catch (err) {
       console.error('Erro ao carregar notificações:', err)
+      // Retry logic
+      if (retryCount < maxRetries) {
+        console.log(`🔄 Tentando novamente (tentativa ${retryCount + 1}/${maxRetries})...`)
+        setTimeout(() => carregarNotificacoes(retryCount + 1), 1000 * (retryCount + 1))
+        return
+      }
       setError('Erro ao carregar notificações. Tente novamente.')
     } finally {
       setLoading(false)

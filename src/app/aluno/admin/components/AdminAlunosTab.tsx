@@ -24,13 +24,20 @@ export default function AdminAlunosTab() {
     carregarUsersLocal()
   }, [])
   
-  const carregarUsersLocal = async () => {
+  const carregarUsersLocal = async (retryCount = 0) => {
+    const maxRetries = 2
     try {
       setLoadingLocal(true)
       const users = await getAllUsers()
       setUsersLocal(users)
     } catch (err: any) {
       console.error('Erro ao carregar usuários locais:', err)
+      // Retry logic
+      if (retryCount < maxRetries) {
+        console.log(`🔄 Tentando novamente (tentativa ${retryCount + 1}/${maxRetries})...`)
+        setTimeout(() => carregarUsersLocal(retryCount + 1), 1000 * (retryCount + 1))
+        return
+      }
     } finally {
       setLoadingLocal(false)
     }

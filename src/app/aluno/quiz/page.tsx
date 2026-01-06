@@ -187,111 +187,112 @@ export default function QuizPage() {
     return () => clearInterval(interval)
   }, [isGerando, loadingMessages.length])
 
+  // Função para carregar quizzes (extraída para reutilização)
+  const fetchQuizzes = async (showLoading = true) => {
+    try {
+      if (showLoading) setLoading(true)
+      
+      // Buscar quizzes, progresso e XP ganho em paralelo para melhor performance
+      const [dbQuizzes, progressResult, xpHistoryResult] = await Promise.allSettled([
+        getAllQuizzes(),
+        // Buscar progresso do usuário se logado
+        authUser?.id
+          ? supabase
+              .from('user_quiz_progress')
+              .select('quiz_id, tentativas, melhor_pontuacao, completo, updated_at')
+              .eq('user_id', authUser.id)
+              .then(({ data, error }) => {
+                if (error) {
+                  console.error('❌ Erro ao buscar progresso:', error)
+                  return []
+                }
+                return data || []
+              })
+          : Promise.resolve([]),
+        // Buscar histórico de XP ganho em quizzes
+        authUser?.id
+          ? supabase
+              .from('user_xp_history')
+              .select('source_id, amount')
+              .eq('user_id', authUser.id)
+              .eq('source', 'quiz')
+              .then(({ data, error }) => {
+                if (error) {
+                  console.error('❌ Erro ao buscar histórico de XP:', error)
+                  return []
+                }
+                return data || []
+              })
+          : Promise.resolve([])
+      ])
+      
+      // Processar quizzes
+      if (dbQuizzes.status !== 'fulfilled') {
+        throw new Error('Erro ao carregar quizzes')
+      }
+      
+      // Processar progresso
+      let userProgress: Record<string, { tentativas: number; melhor_pontuacao: number | null; completo: boolean; dataConclusao?: string }> = {}
+      if (progressResult.status === 'fulfilled' && Array.isArray(progressResult.value)) {
+        progressResult.value.forEach((p: any) => {
+          userProgress[p.quiz_id] = {
+            tentativas: p.tentativas || 0,
+            melhor_pontuacao: p.melhor_pontuacao,
+            completo: p.completo || false,
+            dataConclusao: p.completo ? p.updated_at : undefined
+          }
+        })
+      }
+
+      // Processar XP ganho por quiz
+      let xpGanhoPorQuiz: Record<string, number> = {}
+      if (xpHistoryResult.status === 'fulfilled' && Array.isArray(xpHistoryResult.value)) {
+        xpHistoryResult.value.forEach((entry: any) => {
+          if (entry.source_id) {
+            xpGanhoPorQuiz[entry.source_id] = (xpGanhoPorQuiz[entry.source_id] || 0) + (entry.amount || 0)
+          }
+        })
+      }
+      
+      // Converter para formato UI
+      const quizzesUI: QuizUI[] = dbQuizzes.value
+        .filter(q => q.disponivel) // Só mostrar disponíveis
+        .map(q => {
+          const progress = userProgress[q.id]
+          const questoesArray = Array.isArray(q.questoes) ? q.questoes as QuizQuestion[] : []
+          const numQuestoes = questoesArray.length
+          
+          return {
+            id: q.id,
+            titulo: q.titulo,
+            descricao: q.descricao,
+            tecnologia: q.tecnologia,
+            nivel: q.nivel,
+            questoes: questoesArray,
+            numQuestoes,
+            tempoEstimado: Math.max(5, Math.ceil(numQuestoes * 1.5)), // ~1.5 min por questão
+            xpGanho: q.xp,
+            completo: progress?.completo || false,
+            pontuacao: progress?.melhor_pontuacao ?? undefined,
+            tentativas: progress?.tentativas || 0,
+            melhorPontuacao: progress?.melhor_pontuacao ?? undefined,
+            disponivel: q.disponivel,
+            xpTotalGanho: xpGanhoPorQuiz[q.id] || 0,
+            dataConclusao: progress?.dataConclusao
+          }
+        })
+      
+      setQuizes(quizzesUI)
+    } catch (err) {
+      console.error('Erro ao carregar quizzes:', err)
+      setError('Erro ao carregar quizzes. Tente novamente.')
+    } finally {
+      if (showLoading) setLoading(false)
+    }
+  }
+
   // Carregar quizzes do Supabase
   useEffect(() => {
-    const fetchQuizzes = async () => {
-      try {
-        setLoading(true)
-        
-        // Buscar quizzes, progresso e XP ganho em paralelo para melhor performance
-        const [dbQuizzes, progressResult, xpHistoryResult] = await Promise.allSettled([
-          getAllQuizzes(),
-          // Buscar progresso do usuário se logado
-          authUser?.id
-            ? supabase
-                .from('user_quiz_progress')
-                .select('quiz_id, tentativas, melhor_pontuacao, completo, updated_at')
-                .eq('user_id', authUser.id)
-                .then(({ data, error }) => {
-                  if (error) {
-                    console.error('❌ Erro ao buscar progresso:', error)
-                    return []
-                  }
-                  return data || []
-                })
-            : Promise.resolve([]),
-          // Buscar histórico de XP ganho em quizzes
-          authUser?.id
-            ? supabase
-                .from('user_xp_history')
-                .select('source_id, amount')
-                .eq('user_id', authUser.id)
-                .eq('source', 'quiz')
-                .then(({ data, error }) => {
-                  if (error) {
-                    console.error('❌ Erro ao buscar histórico de XP:', error)
-                    return []
-                  }
-                  return data || []
-                })
-            : Promise.resolve([])
-        ])
-        
-        // Processar quizzes
-        if (dbQuizzes.status !== 'fulfilled') {
-          throw new Error('Erro ao carregar quizzes')
-        }
-        
-        // Processar progresso
-        let userProgress: Record<string, { tentativas: number; melhor_pontuacao: number | null; completo: boolean; dataConclusao?: string }> = {}
-        if (progressResult.status === 'fulfilled' && Array.isArray(progressResult.value)) {
-          progressResult.value.forEach((p: any) => {
-            userProgress[p.quiz_id] = {
-              tentativas: p.tentativas || 0,
-              melhor_pontuacao: p.melhor_pontuacao,
-              completo: p.completo || false,
-              dataConclusao: p.completo ? p.updated_at : undefined
-            }
-          })
-        }
-
-        // Processar XP ganho por quiz
-        let xpGanhoPorQuiz: Record<string, number> = {}
-        if (xpHistoryResult.status === 'fulfilled' && Array.isArray(xpHistoryResult.value)) {
-          xpHistoryResult.value.forEach((entry: any) => {
-            if (entry.source_id) {
-              xpGanhoPorQuiz[entry.source_id] = (xpGanhoPorQuiz[entry.source_id] || 0) + (entry.amount || 0)
-            }
-          })
-        }
-        
-        // Converter para formato UI
-        const quizzesUI: QuizUI[] = dbQuizzes.value
-          .filter(q => q.disponivel) // Só mostrar disponíveis
-          .map(q => {
-            const progress = userProgress[q.id]
-            const questoesArray = Array.isArray(q.questoes) ? q.questoes as QuizQuestion[] : []
-            const numQuestoes = questoesArray.length
-            
-            return {
-              id: q.id,
-              titulo: q.titulo,
-              descricao: q.descricao,
-              tecnologia: q.tecnologia,
-              nivel: q.nivel,
-              questoes: questoesArray,
-              numQuestoes,
-              tempoEstimado: Math.max(5, Math.ceil(numQuestoes * 1.5)), // ~1.5 min por questão
-              xpGanho: q.xp,
-              completo: progress?.completo || false,
-              pontuacao: progress?.melhor_pontuacao ?? undefined,
-              tentativas: progress?.tentativas || 0,
-              melhorPontuacao: progress?.melhor_pontuacao ?? undefined,
-              disponivel: q.disponivel,
-              xpTotalGanho: xpGanhoPorQuiz[q.id] || 0,
-              dataConclusao: progress?.dataConclusao
-            }
-          })
-        
-        setQuizes(quizzesUI)
-      } catch (err) {
-        console.error('Erro ao carregar quizzes:', err)
-        setError('Erro ao carregar quizzes. Tente novamente.')
-      } finally {
-        setLoading(false)
-      }
-    }
-    
     fetchQuizzes()
   }, [authUser?.id])
 
@@ -474,6 +475,21 @@ export default function QuizPage() {
       } else {
         setSuccess(`✅ Quiz concluído! Você já atingiu o limite máximo de XP deste quiz (${selectedQuiz.xpGanho} XP).`)
       }
+
+      // Fechar modal do quiz
+      setIsPlaying(false)
+      setSelectedQuiz(null)
+
+      // Disparar evento para atualizar dados do usuário (XP, nível)
+      if (awarded && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('xpGained'))
+      }
+
+      // Recarregar dados para atualizar histórico e XP
+      // Aguardar um pouco para garantir que o backend processou
+      setTimeout(() => {
+        fetchQuizzes(false) // Recarregar sem mostrar loading
+      }, 500)
     } catch (e: any) {
       console.error('Erro ao registrar quiz:', e)
       setError(e?.message || 'Erro ao registrar resultado')

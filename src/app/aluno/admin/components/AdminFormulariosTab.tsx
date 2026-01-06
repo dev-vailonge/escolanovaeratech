@@ -25,7 +25,8 @@ export default function AdminFormulariosTab() {
     carregarFormularios()
   }, [])
 
-  const carregarFormularios = async () => {
+  const carregarFormularios = async (retryCount = 0) => {
+    const maxRetries = 2
     try {
       setLoading(true)
       setError('')
@@ -51,6 +52,12 @@ export default function AdminFormulariosTab() {
       }
     } catch (err) {
       console.error('Erro ao carregar formulários:', err)
+      // Retry logic
+      if (retryCount < maxRetries) {
+        console.log(`🔄 Tentando novamente (tentativa ${retryCount + 1}/${maxRetries})...`)
+        setTimeout(() => carregarFormularios(retryCount + 1), 1000 * (retryCount + 1))
+        return
+      }
       setError('Erro ao carregar formulários. Tente novamente.')
     } finally {
       setLoading(false)

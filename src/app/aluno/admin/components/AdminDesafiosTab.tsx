@@ -54,7 +54,8 @@ export default function AdminDesafiosTab() {
     }
   }, [activeTab, statusFilter])
 
-  const carregarDesafios = async () => {
+  const carregarDesafios = async (retryCount = 0) => {
+    const maxRetries = 2
     try {
       setLoading(true)
       setError('')
@@ -62,13 +63,20 @@ export default function AdminDesafiosTab() {
       setDesafios(dados)
     } catch (err) {
       console.error('Erro ao carregar desafios:', err)
+      // Retry logic
+      if (retryCount < maxRetries) {
+        console.log(`🔄 Tentando novamente (tentativa ${retryCount + 1}/${maxRetries})...`)
+        setTimeout(() => carregarDesafios(retryCount + 1), 1000 * (retryCount + 1))
+        return
+      }
       setError('Erro ao carregar desafios. Tente novamente.')
     } finally {
       setLoading(false)
     }
   }
 
-  const carregarSubmissions = useCallback(async () => {
+  const carregarSubmissions = useCallback(async (retryCount = 0) => {
+    const maxRetries = 2
     try {
       setLoadingSubmissions(true)
       setError('')
@@ -77,9 +85,16 @@ export default function AdminDesafiosTab() {
       const token = session?.access_token
       if (!token) throw new Error('Não autenticado')
 
+      // Timeout de 10 segundos
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
+
       const res = await fetch(`/api/admin/submissions?status=${statusFilter}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal
       })
+
+      clearTimeout(timeoutId)
 
       const json = await res.json()
       if (!res.ok) {
@@ -89,6 +104,12 @@ export default function AdminDesafiosTab() {
       setSubmissions(json.submissions || [])
     } catch (err: any) {
       console.error('Erro ao carregar submissions:', err)
+      // Retry logic
+      if (retryCount < maxRetries && !err?.message?.includes('abort')) {
+        console.log(`🔄 Tentando novamente (tentativa ${retryCount + 1}/${maxRetries})...`)
+        setTimeout(() => carregarSubmissions(retryCount + 1), 1000 * (retryCount + 1))
+        return
+      }
       setError(err?.message || 'Erro ao carregar submissions')
     } finally {
       setLoadingSubmissions(false)
