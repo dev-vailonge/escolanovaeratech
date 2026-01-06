@@ -268,33 +268,24 @@ const OrbitingCircles = memo(function OrbitingCircles({
           />
         </svg>
       )}
-      <motion.div
-        className="absolute inset-0 flex items-center justify-center"
-        animate={{
-          rotate: reverse ? -360 : 360,
-        }}
-        transition={{
-          duration: duration,
-          repeat: Infinity,
-          ease: 'linear',
-          delay: delay > 0 ? -delay : 0,
-        }}
-        style={{
-          transformOrigin: 'center center',
-        }}
+      <section
+        style={
+          {
+            '--duration': duration,
+            '--radius': radius,
+            '--delay': -delay,
+            animation: `orbit ${duration}s linear ${-delay}s infinite`,
+            animationDirection: reverse ? 'reverse' : 'normal',
+            transformOrigin: 'center center',
+          } as React.CSSProperties
+        }
+        className={cn(
+          'absolute flex size-full transform-gpu items-center justify-center rounded-full border bg-black/10 dark:bg-white/10 z-10 animate-orbit',
+          className
+        )}
       >
-        <motion.section
-          className={cn(
-            'absolute flex size-full transform-gpu items-center justify-center rounded-full border bg-black/10 dark:bg-white/10 z-10',
-            className
-          )}
-          style={{
-            y: radius,
-          }}
-        >
-          {children}
-        </motion.section>
-      </motion.div>
+        {children}
+      </section>
     </>
   );
 });
