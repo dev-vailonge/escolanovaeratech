@@ -65,7 +65,15 @@ async function createUserDirectly(supabaseUser: User, userName: string): Promise
       }
       
       // Se for erro de permissão (RLS bloqueando), logar mas não mostrar erro assustador
-      if (error.code === '42501' || error.message?.includes('permission') || error.message?.includes('policy') || error.status === 403 || error.status === 406) {
+      // Verificar código de erro ou mensagem que indica problema de permissão
+      const errorMessage = error.message?.toLowerCase() || ''
+      const isPermissionError = error.code === '42501' || 
+                               errorMessage.includes('permission') || 
+                               errorMessage.includes('policy') ||
+                               errorMessage.includes('forbidden') ||
+                               errorMessage.includes('not acceptable')
+      
+      if (isPermissionError) {
         console.warn('⚠️ RLS bloqueou criação direta do usuário. Isso é esperado se não houver política RLS permitindo.')
         console.warn('⚠️ O usuário será criado por trigger do banco ou precisa de configuração de RLS.')
         return null
