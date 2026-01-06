@@ -958,17 +958,37 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
             <div
               key={resposta.id}
               className={cn(
-                'backdrop-blur-md border rounded-xl p-4 md:p-6',
+                'backdrop-blur-md border rounded-xl p-4 md:p-6 relative',
                 resposta.melhorResposta
                   ? theme === 'dark'
-                    ? 'bg-gray-800/30 border-green-500/30'
-                    : 'bg-green-50 border-green-300'
+                    ? 'bg-gray-800/30 border-green-500/50 shadow-lg shadow-green-500/10'
+                    : 'bg-green-50 border-green-400 shadow-md'
                   : theme === 'dark'
                     ? 'bg-gray-800/30 border-white/10'
                     : 'bg-white border-yellow-400/90 shadow-md'
               )}
             >
-              <div className="flex gap-3 md:gap-4">
+              {/* Badge de Resposta Certa - Destaque no topo */}
+              {resposta.melhorResposta && (
+                <div className={cn(
+                  'absolute top-0 left-0 right-0 flex items-center justify-center py-1.5 px-3 rounded-t-xl border-b',
+                  theme === 'dark'
+                    ? 'bg-green-500/20 border-green-500/50'
+                    : 'bg-green-100 border-green-300'
+                )}>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    <span className={cn(
+                      'text-xs font-bold',
+                      theme === 'dark' ? 'text-green-400' : 'text-green-700'
+                    )}>
+                      ✓ RESPOSTA CERTA
+                    </span>
+                  </div>
+                </div>
+              )}
+              
+              <div className={cn("flex gap-3 md:gap-4", resposta.melhorResposta && "mt-6")}>
                 <div className="flex flex-col items-center gap-1 flex-shrink-0">
                   <ThumbsUp className={cn(
                     'w-4 h-4',
@@ -977,7 +997,7 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
                       : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                   )} />
                   {resposta.melhorResposta && (
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    <CheckCircle2 className="w-5 h-5 text-green-500" />
                   )}
                 </div>
 
