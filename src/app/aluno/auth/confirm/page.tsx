@@ -15,12 +15,14 @@ export default function ConfirmEmailPage() {
         // Verificar se já tem sessão (pode ter sido criada automaticamente)
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
+        // Se já tem sessão, deslogar primeiro para garantir que o usuário faça login novamente
         if (session) {
-          console.log('✅ Sessão já existe, email confirmado')
+          console.log('✅ Sessão já existe, deslogando para fazer login novamente...')
+          await supabase.auth.signOut()
           setStatus('success')
-          setMessage('Email confirmado com sucesso! Redirecionando...')
+          setMessage('Email confirmado com sucesso! Redirecionando para login...')
           setTimeout(() => {
-            router.push('/aluno?confirmed=true')
+            router.push('/aluno/login?message=Email confirmado com sucesso! Faça login para continuar.')
           }, 2000)
           return
         }
@@ -45,26 +47,30 @@ export default function ConfirmEmailPage() {
         }
 
         // Se tiver tokens na query, processar
-        if (accessTokenQuery && refreshTokenQuery) {
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessTokenQuery,
-            refresh_token: refreshTokenQuery,
-          })
+          if (accessTokenQuery && refreshTokenQuery) {
+            // Confirmar email mas não fazer login automático
+            // Apenas verificar se a confirmação foi bem-sucedida
+            const { data, error } = await supabase.auth.setSession({
+              access_token: accessTokenQuery,
+              refresh_token: refreshTokenQuery,
+            })
 
-          if (error) {
-            throw error
-          }
+            if (error) {
+              throw error
+            }
 
-          if (data?.session) {
-            console.log('✅ Sessão criada via query params, email confirmado')
-            setStatus('success')
-            setMessage('Email confirmado com sucesso! Redirecionando...')
-            setTimeout(() => {
-              router.push('/aluno?confirmed=true')
-            }, 2000)
-            return
+            if (data?.session) {
+              console.log('✅ Email confirmado via query params')
+              // Deslogar imediatamente após confirmar
+              await supabase.auth.signOut()
+              setStatus('success')
+              setMessage('Email confirmado com sucesso! Redirecionando para login...')
+              setTimeout(() => {
+                router.push('/aluno/login?message=Email confirmado com sucesso! Faça login para continuar.')
+              }, 2000)
+              return
+            }
           }
-        }
 
         // Verificar hash fragment na URL (Supabase pode enviar tokens no hash)
         const hash = window.location.hash
@@ -89,7 +95,7 @@ export default function ConfirmEmailPage() {
           }
 
           if (accessToken && refreshToken) {
-            // Definir sessão com os tokens
+            // Confirmar email mas não fazer login automático
             const { data, error } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
@@ -100,11 +106,13 @@ export default function ConfirmEmailPage() {
             }
 
             if (data?.session) {
-              console.log('✅ Sessão criada via hash, email confirmado')
+              console.log('✅ Email confirmado via hash')
+              // Deslogar imediatamente após confirmar
+              await supabase.auth.signOut()
               setStatus('success')
-              setMessage('Email confirmado com sucesso! Redirecionando...')
+              setMessage('Email confirmado com sucesso! Redirecionando para login...')
               setTimeout(() => {
-                router.push('/aluno?confirmed=true')
+                router.push('/aluno/login?message=Email confirmado com sucesso! Faça login para continuar.')
               }, 2000)
               return
             }
