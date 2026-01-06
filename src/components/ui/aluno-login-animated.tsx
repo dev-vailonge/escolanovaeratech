@@ -81,7 +81,7 @@ const iconsArray: OrbitIcon[] = [
         height={100}
         src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg'
         alt='JavaScript'
-        className='w-10 h-10'
+        className='w-10 h-10 invert'
       />
     ),
     className: 'size-[50px] border-none bg-transparent',
