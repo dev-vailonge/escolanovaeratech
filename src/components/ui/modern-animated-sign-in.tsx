@@ -243,22 +243,8 @@ const OrbitingCircles = memo(function OrbitingCircles({
   radius = 50,
   path = true,
 }: OrbitingCirclesProps) {
-  // Criar keyframes dinamicamente para cada raio
-  const animationId = `orbit-${radius}-${duration}`;
-  const keyframes = `
-    @keyframes ${animationId} {
-      from {
-        transform: rotate(0deg) translateY(${radius}px) rotate(0deg);
-      }
-      to {
-        transform: rotate(360deg) translateY(${radius}px) rotate(-360deg);
-      }
-    }
-  `;
-
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: keyframes }} />
       {path && (
         <svg
           xmlns='http://www.w3.org/2000/svg'
@@ -282,21 +268,33 @@ const OrbitingCircles = memo(function OrbitingCircles({
           />
         </svg>
       )}
-      <section
-        style={
-          {
-            animation: `${animationId} ${duration}s linear ${-delay}s infinite`,
-            animationDirection: reverse ? 'reverse' : 'normal',
-            transformOrigin: 'center center',
-          } as React.CSSProperties
-        }
-        className={cn(
-          'absolute flex size-full transform-gpu items-center justify-center rounded-full border bg-black/10 dark:bg-white/10 z-10',
-          className
-        )}
+      <motion.div
+        className="absolute inset-0 flex items-center justify-center"
+        animate={{
+          rotate: reverse ? -360 : 360,
+        }}
+        transition={{
+          duration: duration,
+          repeat: Infinity,
+          ease: 'linear',
+          delay: -delay,
+        }}
+        style={{
+          transformOrigin: 'center center',
+        }}
       >
-        {children}
-      </section>
+        <section
+          className={cn(
+            'absolute flex size-full transform-gpu items-center justify-center rounded-full border bg-black/10 dark:bg-white/10 z-10',
+            className
+          )}
+          style={{
+            transform: `translateY(${radius}px)`,
+          }}
+        >
+          {children}
+        </section>
+      </motion.div>
     </>
   );
 });
