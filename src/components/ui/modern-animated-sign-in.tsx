@@ -324,9 +324,9 @@ const TechOrbitDisplay = memo(function TechOrbitDisplay({
       <span 
         className='pointer-events-none whitespace-pre-wrap text-center text-4xl md:text-5xl font-bold leading-tight relative z-50 px-6 py-1.5 md:px-8 md:py-2 rounded-xl border backdrop-blur-md' 
         style={{ 
-          borderColor: 'rgba(251, 191, 36, 0.15)',
+          borderColor: 'rgba(96, 95, 92, 0.15)',
           borderWidth: '2px',
-          backgroundColor: 'rgba(251, 191, 36, 0.25)',
+          backgroundColor: 'rgba(238, 201, 109, 0.25)',
           boxShadow: '0 4px 12px rgba(251, 191, 36, 0.2)'
         }}
       >
