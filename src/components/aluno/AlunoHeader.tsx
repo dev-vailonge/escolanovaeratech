@@ -40,6 +40,15 @@ export default function AlunoHeader() {
   // Calcular nível baseado no XP atual (pode ser diferente do user.level se estiver desatualizado)
   const currentLevel = calculateLevel(user.xp || 0)
 
+  // Função para limpar descrição removendo níveis de dificuldade
+  const limparDescricao = (descricao: string | null | undefined): string => {
+    if (!descricao) return ''
+    return descricao
+      .replace(/\s*-\s*(Iniciante|Intermediário|Intermediario|Avançado|Avancado)$/i, '')
+      .replace(/\s*\(Iniciante|Intermediário|Intermediario|Avançado|Avancado\)$/i, '')
+      .trim()
+  }
+
   // Buscar histórico de XP quando abrir a modal
   useEffect(() => {
     const fetchXpHistory = async () => {
@@ -427,7 +436,7 @@ export default function AlunoHeader() {
                           "text-xs truncate",
                           theme === 'dark' ? "text-gray-400" : "text-gray-600"
                         )}>
-                          {entry.description}
+                          {limparDescricao(entry.description)}
                         </p>
                       )}
                       <p className={cn(

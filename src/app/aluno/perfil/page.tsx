@@ -43,6 +43,15 @@ export default function PerfilPage() {
   const currentLevel = calculateLevel(user.xp || 0)
   const currentLevelCategory = getLevelCategory(currentLevel)
 
+  // Função para limpar descrição removendo níveis de dificuldade
+  const limparDescricao = (descricao: string | null | undefined): string => {
+    if (!descricao) return ''
+    return descricao
+      .replace(/\s*-\s*(Iniciante|Intermediário|Intermediario|Avançado|Avancado)$/i, '')
+      .replace(/\s*\(Iniciante|Intermediário|Intermediario|Avançado|Avancado\)$/i, '')
+      .trim()
+  }
+
   const [editOpen, setEditOpen] = useState(false)
   const [niveisModalOpen, setNiveisModalOpen] = useState(false)
   const [name, setName] = useState(user.name)
@@ -885,7 +894,7 @@ export default function PerfilPage() {
                               "text-sm",
                               theme === 'dark' ? "text-gray-300" : "text-gray-700"
                             )}>
-                              {entry.description}
+                              {limparDescricao(entry.description)}
                             </p>
                           )}
                         </div>
