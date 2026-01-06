@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
@@ -465,28 +466,50 @@ export default function AlunoSidebar() {
           !isExpanded && "px-4"
         )}>
           {isExpanded ? (
-            <>
-              <h2 className={cn(
-                "text-xl font-bold",
-                theme === 'dark' ? "text-white" : "text-gray-900"
-              )}>
-                Nova Era Tech
-              </h2>
-              <p className={cn(
-                "text-sm mt-1",
-                theme === 'dark' ? "text-gray-400" : "text-gray-700"
-              )}>
-                Área do Aluno
-              </p>
-            </>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-yellow-400/10 border-2 border-yellow-400/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+                <div className="relative w-full h-full flex items-center justify-center scale-150">
+                  <Image
+                    src="/logo light .svg"
+                    alt="Nova Era Tech"
+                    width={40}
+                    height={40}
+                    quality={100}
+                    priority
+                    unoptimized={true}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              </div>
+              <div>
+                <h2 className={cn(
+                  "text-xl font-bold",
+                  theme === 'dark' ? "text-white" : "text-gray-900"
+                )}>
+                  Nova Era Tech
+                </h2>
+                <p className={cn(
+                  "text-sm mt-1",
+                  theme === 'dark' ? "text-gray-400" : "text-gray-700"
+                )}>
+                  Área do Aluno
+                </p>
+              </div>
+            </div>
           ) : (
-            <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm mx-auto",
-              theme === 'dark'
-                ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
-                : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
-            )}>
-              NE
+            <div className="w-10 h-10 rounded-full bg-yellow-400/10 border-2 border-yellow-400/30 flex items-center justify-center overflow-hidden mx-auto">
+              <div className="relative w-full h-full flex items-center justify-center scale-150">
+                <Image
+                  src="/logo light .svg"
+                  alt="Nova Era Tech"
+                  width={40}
+                  height={40}
+                  quality={100}
+                  priority
+                  unoptimized={true}
+                  className="w-full h-full object-contain"
+                />
+              </div>
             </div>
           )}
           <button

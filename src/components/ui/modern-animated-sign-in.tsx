@@ -268,22 +268,34 @@ const OrbitingCircles = memo(function OrbitingCircles({
           />
         </svg>
       )}
-      <section
-        style={
-          {
-            '--duration': duration,
-            '--radius': radius,
-            '--delay': -delay,
-          } as React.CSSProperties
-        }
-        className={cn(
-          'absolute flex size-full transform-gpu animate-orbit items-center justify-center rounded-full border bg-black/10 [animation-delay:calc(var(--delay)*1000ms)] dark:bg-white/10 z-10',
-          { '[animation-direction:reverse]': reverse },
-          className
-        )}
+      <div
+        className="absolute inset-0 flex items-center justify-center"
+        style={{
+          transformOrigin: 'center center',
+        }}
       >
-        {children}
-      </section>
+        <motion.div
+          className={cn(
+            'absolute flex size-full transform-gpu items-center justify-center rounded-full border bg-black/10 dark:bg-white/10 z-10',
+            className
+          )}
+          animate={{
+            rotate: reverse ? -360 : 360,
+          }}
+          transition={{
+            duration: duration,
+            repeat: Infinity,
+            ease: 'linear',
+            delay: delay > 0 ? -delay : 0,
+          }}
+          style={{
+            y: radius,
+            transformOrigin: 'center center',
+          }}
+        >
+          {children}
+        </motion.div>
+      </div>
     </>
   );
 });
@@ -339,7 +351,8 @@ const TechOrbitDisplay = memo(function TechOrbitDisplay({
         </span>
       </span>
 
-      {iconsArray.map((icon, index) => (
+      {/* Temporariamente desabilitado para resolver problemas de build na Vercel */}
+      {/* {iconsArray.map((icon, index) => (
         <OrbitingCircles
           key={index}
           className={icon.className}
@@ -351,7 +364,7 @@ const TechOrbitDisplay = memo(function TechOrbitDisplay({
         >
           {icon.component()}
         </OrbitingCircles>
-      ))}
+      ))} */}
     </section>
   );
 });
@@ -679,9 +692,9 @@ const AuthTabs = memo(function AuthTabs({
 }: AuthTabsProps) {
   return (
     <div className='flex max-lg:justify-center w-full md:w-auto'>
-      <div className='w-full max-w-md h-full flex flex-col justify-center items-center pl-2 sm:pl-4 md:pl-6 lg:pl-8 xl:pl-10 2xl:pl-12 pr-4 sm:pr-8 md:pr-12 lg:pr-16 xl:pr-20 2xl:pr-24'>
+      <div className='w-full max-w-md h-full flex flex-col justify-center items-center pl-2 sm:pl-4 md:pl-6 lg:pl-8 xl:pl-10 2xl:pl-12 pr-4 sm:pr-8 md:pr-12 lg:pr-16 xl:pr-20 2xl:pr-24 overflow-hidden'>
         {logo && (
-          <div className='mb-6 z-10'>
+          <div className='mb-6 z-10 w-full flex justify-center overflow-hidden'>
             {logo}
           </div>
         )}

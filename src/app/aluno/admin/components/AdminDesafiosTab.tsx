@@ -248,8 +248,8 @@ export default function AdminDesafiosTab() {
             "px-4 py-2 rounded-t-lg font-medium transition-colors text-sm",
             activeTab === 'desafios'
               ? theme === 'dark'
-                ? "bg-yellow-400/20 text-yellow-400 border-b-2 border-yellow-400"
-                : "bg-yellow-50 text-yellow-700 border-b-2 border-yellow-500"
+                ? "bg-[#FFF420]/20 text-[#FFF420] border-b-2 border-[#FFF420]"
+                : "bg-[#FFF420] text-[#FFF420] border-b-2 border-[#FFF420]"
               : theme === 'dark'
                 ? "text-gray-400 hover:text-white"
                 : "text-gray-600 hover:text-gray-900"
@@ -264,8 +264,8 @@ export default function AdminDesafiosTab() {
             "px-4 py-2 rounded-t-lg font-medium transition-colors text-sm flex items-center gap-2",
             activeTab === 'submissions'
               ? theme === 'dark'
-                ? "bg-yellow-400/20 text-yellow-400 border-b-2 border-yellow-400"
-                : "bg-yellow-50 text-yellow-700 border-b-2 border-yellow-500"
+                ? "bg-[#FFF420]/20 text-[#FFF420] border-b-2 border-[#FFF420]"
+                : "bg-[#FFF420] text-[#FFF420] border-b-2 border-[#FFF420]"
               : theme === 'dark'
                 ? "text-gray-400 hover:text-white"
                 : "text-gray-600 hover:text-gray-900"
@@ -330,8 +330,8 @@ export default function AdminDesafiosTab() {
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors text-sm md:text-base",
                 theme === 'dark'
-                  ? "bg-yellow-400 text-black hover:bg-yellow-300"
-                  : "bg-yellow-500 text-white hover:bg-yellow-600"
+                  ? "bg-[#FFF420] text-black hover:bg-[#FFF420]"
+                  : "bg-[#FFF420] text-white hover:bg-[#FFF420]"
               )}
             >
               <Plus className="w-4 h-4" />
@@ -364,8 +364,8 @@ export default function AdminDesafiosTab() {
                 className={cn(
                   "px-3 py-1.5 rounded-lg border text-sm focus:outline-none focus:ring-2 transition-colors",
                   theme === 'dark'
-                    ? "bg-black/50 border-white/10 text-white focus:border-yellow-400 focus:ring-yellow-400/20"
-                    : "bg-white border-gray-300 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500/20"
+                    ? "bg-black/50 border-white/10 text-white focus:border-[#FFF420] focus:ring-[#FFF420]/20"
+                    : "bg-white border-gray-300 text-gray-900 focus:border-[#FFF420] focus:ring-[#FFF420]/20"
                 )}
               >
                 <option value="todos">Todos os cursos</option>
@@ -409,8 +409,8 @@ export default function AdminDesafiosTab() {
                   className={cn(
                     "p-4 rounded-lg border transition-colors",
                     theme === 'dark'
-                      ? "bg-black/30 border-white/10 hover:border-yellow-400/50"
-                      : "bg-gray-50 border-gray-200 hover:border-yellow-400"
+                      ? "bg-black/30 border-white/10 hover:border-[#FFF420]/50"
+                      : "bg-gray-50 border-gray-200 hover:border-[#FFF420]"
                   )}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -435,8 +435,8 @@ export default function AdminDesafiosTab() {
                         <span className={cn(
                           "px-2 py-1 text-xs rounded-full border capitalize",
                           theme === 'dark'
-                            ? "bg-yellow-400/20 text-yellow-400 border-yellow-400/30"
-                            : "bg-yellow-100 text-yellow-700 border-yellow-300"
+                            ? "bg-[#FFF420]/20 text-[#FFF420] border-[#FFF420]/30"
+                            : "bg-[#FFF420] text-[#FFF420] border-[#FFF420]"
                         )}>
                           {desafio.dificuldade}
                         </span>
@@ -462,7 +462,7 @@ export default function AdminDesafiosTab() {
                       <div className="flex items-center gap-4 text-xs">
                         <span className={cn(
                           "font-semibold",
-                          theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                          theme === 'dark' ? "text-[#FFF420]" : "text-[#FFF420]"
                         )}>
                           +{desafio.xp} XP
                         </span>
@@ -539,8 +539,8 @@ export default function AdminDesafiosTab() {
               className={cn(
                 "px-3 py-1.5 rounded-lg border text-sm focus:outline-none focus:ring-2 transition-colors",
                 theme === 'dark'
-                  ? "bg-black/50 border-white/10 text-white focus:border-yellow-400 focus:ring-yellow-400/20"
-                  : "bg-white border-gray-300 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500/20"
+                  ? "bg-black/50 border-white/10 text-white focus:border-[#FFF420] focus:ring-[#FFF420]/20"
+                  : "bg-white border-gray-300 text-gray-900 focus:border-[#FFF420] focus:ring-[#FFF420]/20"
               )}
             >
               <option value="pendente">Pendentes</option>
@@ -572,7 +572,7 @@ export default function AdminDesafiosTab() {
                   let levelBadgeBg = ''
                   let levelBadgeText = ''
                   if (levelCategory === 'iniciante') {
-                    levelBadgeBg = 'bg-yellow-500'
+                    levelBadgeBg = 'bg-[#FFF420]'
                     levelBadgeText = 'text-white'
                   } else if (levelCategory === 'intermediario') {
                     levelBadgeBg = 'bg-blue-500'
@@ -656,7 +656,7 @@ export default function AdminDesafiosTab() {
                 {/* Info do Desafio */}
                 <div className={cn(
                   "p-3 rounded-lg border",
-                  theme === 'dark' ? "bg-yellow-500/10 border-yellow-500/20" : "bg-yellow-50 border-yellow-200"
+                  theme === 'dark' ? "bg-[#FFF420]/10 border-[#FFF420]/20" : "bg-[#FFF420] border-rgba(255, 244, 32, 0.4)"
                 )}>
                   <p className={cn("text-sm font-medium", theme === 'dark' ? "text-white" : "text-gray-900")}>
                     {reviewingSubmission.desafio?.titulo}
@@ -794,7 +794,7 @@ export default function AdminDesafiosTab() {
                         {submission.status === 'pendente' && (
                           <span className={cn(
                             "px-2 py-0.5 text-xs rounded-full flex items-center gap-1",
-                            theme === 'dark' ? "bg-yellow-500/20 text-yellow-400" : "bg-yellow-100 text-yellow-700"
+                            theme === 'dark' ? "bg-[#FFF420]/20 text-[#FFF420]" : "bg-[#FFF420] text-[#FFF420]"
                           )}>
                             <Clock className="w-3 h-3" />
                             Pendente
@@ -860,8 +860,8 @@ export default function AdminDesafiosTab() {
                         className={cn(
                           "px-4 py-2 rounded-lg font-medium transition-colors text-sm",
                           theme === 'dark'
-                            ? "bg-yellow-400 text-black hover:bg-yellow-300"
-                            : "bg-yellow-500 text-white hover:bg-yellow-600"
+                            ? "bg-[#FFF420] text-black hover:bg-[#FFF420]"
+                            : "bg-[#FFF420] text-white hover:bg-[#FFF420]"
                         )}
                       >
                         Revisar

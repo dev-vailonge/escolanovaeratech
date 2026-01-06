@@ -25,9 +25,11 @@ function AlunoLoginContent() {
     if (message) {
       setSuccessMessage(message)
       // Remove message from URL
-      const url = new URL(window.location.href)
-      url.searchParams.delete('message')
-      router.replace(url.pathname + url.search, { scroll: false })
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('message')
+        router.replace(url.pathname + url.search, { scroll: false })
+      }
     }
   }, [searchParams, router])
 
@@ -106,9 +108,9 @@ function AlunoLoginContent() {
 
   // Logo component - usar logo light .svg dentro de um círculo, ocupando todo o espaço
   const logo = (
-    <div className="relative mb-4 flex items-center justify-center lg:translate-x-4">
-      <div className="w-24 h-24 rounded-full bg-yellow-400/10 border-2 border-yellow-400/30 flex items-center justify-center overflow-hidden">
-        <div className="relative w-full h-full flex items-center justify-center scale-150 translate-y-0.5">
+    <div className="relative mb-4 flex items-center justify-center lg:translate-x-4 max-w-full">
+      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-yellow-400/10 border-2 border-yellow-400/30 flex items-center justify-center overflow-hidden">
+        <div className="relative w-full h-full flex items-center justify-center scale-[1.3] sm:scale-150 translate-y-0.5">
           <Image
             src="/logo light .svg"
             alt="Nova Era Tech"

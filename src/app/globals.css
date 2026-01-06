@@ -6,17 +6,44 @@
 
 @layer base {
   :root {
+    --background: hsl(0, 0%, 100%);
+    --foreground: hsl(0, 0%, 0%);
+    --skeleton: hsl(0, 0%, 90%);
+    --border: hsl(220, 20%, 90%);
+    --btn-border: hsl(214deg, 31.8%, 91.4%);
+    --input: hsl(220, 20%, 90%);
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
+    --radius: 0.5rem;
   }
   
   .dark {
+    --background: hsl(0, 0%, 0%);
+    --foreground: hsl(0, 0%, 100%);
+    --skeleton: hsl(0, 0%, 10%);
+    --border: hsl(220, 20%, 90%);
+    --btn-border: hsl(217deg, 32.6%, 17.5%);
+    --input: hsl(0, 0%, 10%);
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
+    --radius: 0.5rem;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+  
+  html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
   }
 }
 
@@ -43,6 +70,15 @@
 .animate-tick {
   animation: tick 2s linear infinite;
   transform-origin: center top;
+}
+
+@keyframes ripple {
+  0%, 100% { 
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% { 
+    transform: translate(-50%, -50%) scale(0.9);
+  }
 }
 
 /* Scrollbar amarela - Modo Dark (padrão) */
@@ -90,6 +126,13 @@ body.theme-light ::-webkit-scrollbar-thumb:hover {
 /* Firefox - Modo Light */
 body.theme-light * {
   scrollbar-color: #facc15 #ffffff !important; /* thumb track branco */
+}
+
+@layer components {
+  .g-button {
+    @apply rounded-[var(--radius)] border;
+    border-color: var(--btn-border);
+  }
 }
 
 /* Botões customizados */
