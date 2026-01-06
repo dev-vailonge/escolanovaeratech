@@ -99,6 +99,7 @@ export async function DELETE(
 
     // 1. Autor da pergunta perde 10 XP
     usuariosAfetados.set(pergunta.autor_id, (usuariosAfetados.get(pergunta.autor_id) || 0) + XP_PERGUNTA)
+    console.log(`📊 [DELETE] Autor da pergunta (${pergunta.autor_id}) perderá ${XP_PERGUNTA} XP`)
 
     // 2. Para cada resposta, o autor perde 1 XP
     // 3. Se a resposta é a melhor resposta, o total é 100 XP (1 XP da resposta + 99 XP do bônus)
@@ -112,11 +113,18 @@ export async function DELETE(
           ? XP_MELHOR_RESPOSTA 
           : XP_RESPOSTA
 
+        const xpAnterior = usuariosAfetados.get(resposta.autor_id) || 0
         usuariosAfetados.set(
           resposta.autor_id,
-          (usuariosAfetados.get(resposta.autor_id) || 0) + totalXp
+          xpAnterior + totalXp
         )
+        console.log(`📊 [DELETE] Autor da resposta (${resposta.autor_id}) perderá ${totalXp} XP ${resposta.melhor_resposta ? '(melhor resposta)' : '(resposta normal)'}`)
       }
+    })
+
+    console.log(`📊 [DELETE] Total de usuários afetados: ${usuariosAfetados.size}`)
+    usuariosAfetados.forEach((xp, userId) => {
+      console.log(`📊 [DELETE] - Usuário ${userId}: perderá ${xp} XP`)
     })
 
     // Remover entradas de XP do histórico (não crítico se falhar - apenas logar)
@@ -271,8 +279,9 @@ export async function DELETE(
         .eq('id', usuarioId)
 
       if (updateError) {
-        console.error(`Erro ao atualizar usuário ${usuarioId}:`, updateError)
+        console.error(`❌ Erro ao atualizar usuário ${usuarioId}:`, updateError)
       } else {
+        console.log(`✅ Usuário ${usuarioId} (${usuario.name}) atualizado: ${usuario.xp} XP → ${novoXp} XP (perdeu ${xpPerdido} XP)`)
         usuariosAtualizados.push({
           id: usuarioId,
           nome: usuario.name,
