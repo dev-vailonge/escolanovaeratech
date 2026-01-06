@@ -86,7 +86,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
                   authUser.email?.split('@')[0] || 
                   'Usuário',
             role: 'aluno',
-            access_level: 'limited',
+            access_level: 'full',
           })
           .select('id, access_level, role, name, email')
           .single()

@@ -92,7 +92,7 @@ function AlunoSignUpContent() {
             email: formData.email,
             name: formData.name,
             role: 'aluno',
-            access_level: 'limited'
+            access_level: 'full'
           }),
         })
 

@@ -9,7 +9,7 @@ import type { DatabaseUser } from '@/types/database'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id, email, name, role = 'aluno', access_level = 'limited' } = body
+    const { id, email, name, role = 'aluno', access_level = 'full' } = body
 
     if (!id || !email || !name) {
       return NextResponse.json(

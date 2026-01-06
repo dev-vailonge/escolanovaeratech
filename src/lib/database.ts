@@ -165,7 +165,7 @@ export async function createUser(userData: {
       email: userData.email,
       name: userData.name,
       role: userData.role || 'aluno',
-      access_level: userData.access_level || 'limited',
+      access_level: userData.access_level || 'full',
     }
 
     // Se um ID foi fornecido, usar esse ID ao invés de gerar um novo

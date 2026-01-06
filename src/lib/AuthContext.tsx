@@ -52,7 +52,7 @@ async function createUserDirectly(supabaseUser: User, userName: string): Promise
         email: supabaseUser.email || '',
         name: userName,
         role: 'aluno',
-        access_level: 'limited'
+        access_level: 'full'
       })
       .select()
       .single()
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               email: supabaseUser.email || '',
               name: userName,
               role: 'aluno',
-              access_level: 'limited'
+              access_level: 'full'
             }),
           })
 
