@@ -460,7 +460,26 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
       const json = await res.json()
 
       if (!res.ok) {
+        // Exibir logs de erro no console do navegador
+        if (json.logs && Array.isArray(json.logs)) {
+          console.group('❌ Erro ao deletar pergunta')
+          json.logs.forEach((log: string) => console.error(log))
+          console.groupEnd()
+        }
+        
+        // Exibir detalhes completos no console
+        if (json.details) {
+          console.error('📋 Detalhes do erro:', json.details)
+        }
+        
         throw new Error(json?.error || 'Erro ao deletar pergunta')
+      }
+
+      // Exibir logs de sucesso no console do navegador
+      if (json.logs && Array.isArray(json.logs)) {
+        console.group('✅ Pergunta deletada com sucesso')
+        json.logs.forEach((log: string) => console.log(log))
+        console.groupEnd()
       }
 
       // Mostrar mensagem de sucesso
@@ -471,13 +490,14 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
           ? `Detalhes:\n${json.detalhes.map((d: any) => 
               `• ${d.nome}: ${d.xpAnterior} XP → ${d.novoXp} XP (perdeu ${d.xpPerdido} XP)`
             ).join('\n')}`
-          : '')
+          : '') +
+        `\n\n💡 Verifique o console do navegador (F12) para logs detalhados.`
       )
 
       // Voltar para a lista de perguntas
       router.push('/aluno/comunidade')
     } catch (e: any) {
-      console.error('Erro ao deletar pergunta:', e)
+      console.error('❌ Erro ao deletar pergunta:', e)
       setError(e?.message || 'Erro ao deletar pergunta')
     } finally {
       setIsDeleting(false)
