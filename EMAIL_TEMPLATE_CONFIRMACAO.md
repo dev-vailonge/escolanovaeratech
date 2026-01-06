@@ -24,9 +24,22 @@ Cole o código abaixo no campo "Body" (aba Source) da configuração "Confirm si
           <!-- Header com logo/branding -->
           <tr>
             <td align="center" style="padding-bottom: 40px;">
-              <h1 style="margin: 0; font-size: 32px; font-weight: bold; color: #facc15; letter-spacing: -0.5px;">
-                Nova Era Tech
-              </h1>
+              <!-- Logo circular (já vem em formato circular) -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td align="center" style="padding-bottom: 20px;">
+                    <!-- Logo SVG circular hospedado no Supabase Storage -->
+                    <img src="https://dotyjpdafxwkmmgmxlrz.supabase.co/storage/v1/object/public/oficial%20logo/5dfeb3b7-5e2d-4632-8f88-35542bb0e9b1/logo_light_circle.svg" alt="Escola Nova Era Tech" width="96" height="96" style="display: block; margin: 0 auto; max-width: 96px; height: auto;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <h1 style="margin: 0; font-size: 32px; font-weight: bold; color: #facc15; letter-spacing: -0.5px;">
+                      Escola Nova Era Tech
+                    </h1>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
