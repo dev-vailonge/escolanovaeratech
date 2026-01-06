@@ -1018,7 +1018,7 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
           'backdrop-blur-md border rounded-xl p-4 md:p-6',
           theme === 'dark'
             ? 'bg-gray-800/30 border-white/10'
-            : 'bg-white border-yellow-400/90 shadow-md'
+            : 'bg-yellow-500/10 border-yellow-400/90 shadow-md'
         )}>
           <h2 className={cn(
             'text-lg font-bold mb-3',
