@@ -15,9 +15,61 @@ export default function ConfirmEmailPage() {
         // Verificar se já tem sessão (pode ter sido criada automaticamente)
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
-        // Se já tem sessão, deslogar primeiro para garantir que o usuário faça login novamente
-        if (session) {
-          console.log('✅ Sessão já existe, deslogando para fazer login novamente...')
+        // Se já tem sessão, criar usuário na tabela users e deslogar
+        if (session && session.user) {
+          console.log('✅ Sessão já existe, criando usuário na tabela users...')
+          
+          // Criar usuário na tabela users
+          try {
+            const userName = session.user.user_metadata?.name || 
+                             session.user.user_metadata?.full_name || 
+                             session.user.user_metadata?.display_name ||
+                             session.user.email?.split('@')[0] || 
+                             'Usuário'
+            
+            // Tentar criar via API primeiro
+            const createResponse = await fetch('/api/users/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: session.user.id,
+                email: session.user.email || '',
+                name: userName,
+                role: 'aluno',
+                access_level: 'full'
+              }),
+            })
+            
+            const createResult = await createResponse.json()
+            
+            if (createResponse.ok && createResult.success) {
+              console.log('✅ Usuário criado na tabela users após confirmação de email')
+            } else if (createResult.code === 'MISSING_SERVICE_ROLE_KEY') {
+              // Se não tiver service role key, tentar criar diretamente
+              console.log('⚠️ Tentando criar usuário diretamente...')
+              const { error: insertError } = await supabase
+                .from('users')
+                .insert({
+                  id: session.user.id,
+                  email: session.user.email || '',
+                  name: userName,
+                  role: 'aluno',
+                  access_level: 'full'
+                })
+              
+              if (insertError) {
+                console.warn('⚠️ Não foi possível criar usuário diretamente (RLS pode estar bloqueando):', insertError.message)
+                console.warn('⚠️ O usuário será criado quando fizer login')
+              } else {
+                console.log('✅ Usuário criado diretamente na tabela users')
+              }
+            }
+          } catch (createError: any) {
+            console.warn('⚠️ Erro ao criar usuário na tabela users:', createError.message)
+            console.warn('⚠️ O usuário será criado quando fizer login')
+          }
+          
+          // Deslogar após criar usuário
           await supabase.auth.signOut()
           setStatus('success')
           setMessage('Email confirmado com sucesso! Redirecionando para login...')
@@ -47,30 +99,80 @@ export default function ConfirmEmailPage() {
         }
 
         // Se tiver tokens na query, processar
-          if (accessTokenQuery && refreshTokenQuery) {
-            // Confirmar email mas não fazer login automático
-            // Apenas verificar se a confirmação foi bem-sucedida
-            const { data, error } = await supabase.auth.setSession({
-              access_token: accessTokenQuery,
-              refresh_token: refreshTokenQuery,
-            })
+        if (accessTokenQuery && refreshTokenQuery) {
+          // Confirmar email e criar usuário na tabela users
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessTokenQuery,
+            refresh_token: refreshTokenQuery,
+          })
 
-            if (error) {
-              throw error
-            }
-
-            if (data?.session) {
-              console.log('✅ Email confirmado via query params')
-              // Deslogar imediatamente após confirmar
-              await supabase.auth.signOut()
-              setStatus('success')
-              setMessage('Email confirmado com sucesso! Redirecionando para login...')
-              setTimeout(() => {
-                router.push('/aluno/login?message=Email confirmado com sucesso! Faça login para continuar.')
-              }, 2000)
-              return
-            }
+          if (error) {
+            throw error
           }
+
+          if (data?.session && data?.user) {
+            console.log('✅ Email confirmado via query params')
+            
+            // Criar usuário na tabela users após confirmação
+            try {
+              const userName = data.user.user_metadata?.name || 
+                               data.user.user_metadata?.full_name || 
+                               data.user.user_metadata?.display_name ||
+                               data.user.email?.split('@')[0] || 
+                               'Usuário'
+              
+              // Tentar criar via API primeiro
+              const createResponse = await fetch('/api/users/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  id: data.user.id,
+                  email: data.user.email || '',
+                  name: userName,
+                  role: 'aluno',
+                  access_level: 'full'
+                }),
+              })
+              
+              const createResult = await createResponse.json()
+              
+              if (createResponse.ok && createResult.success) {
+                console.log('✅ Usuário criado na tabela users após confirmação de email')
+              } else if (createResult.code === 'MISSING_SERVICE_ROLE_KEY') {
+                // Se não tiver service role key, tentar criar diretamente
+                console.log('⚠️ Tentando criar usuário diretamente...')
+                const { error: insertError } = await supabase
+                  .from('users')
+                  .insert({
+                    id: data.user.id,
+                    email: data.user.email || '',
+                    name: userName,
+                    role: 'aluno',
+                    access_level: 'full'
+                  })
+                
+                if (insertError) {
+                  console.warn('⚠️ Não foi possível criar usuário diretamente (RLS pode estar bloqueando):', insertError.message)
+                  console.warn('⚠️ O usuário será criado quando fizer login')
+                } else {
+                  console.log('✅ Usuário criado diretamente na tabela users')
+                }
+              }
+            } catch (createError: any) {
+              console.warn('⚠️ Erro ao criar usuário na tabela users:', createError.message)
+              console.warn('⚠️ O usuário será criado quando fizer login')
+            }
+            
+            // Deslogar imediatamente após confirmar e criar usuário
+            await supabase.auth.signOut()
+            setStatus('success')
+            setMessage('Email confirmado com sucesso! Redirecionando para login...')
+            setTimeout(() => {
+              router.push('/aluno/login?message=Email confirmado com sucesso! Faça login para continuar.')
+            }, 2000)
+            return
+          }
+        }
 
         // Verificar hash fragment na URL (Supabase pode enviar tokens no hash)
         const hash = window.location.hash
@@ -95,7 +197,7 @@ export default function ConfirmEmailPage() {
           }
 
           if (accessToken && refreshToken) {
-            // Confirmar email mas não fazer login automático
+            // Confirmar email e criar usuário na tabela users
             const { data, error } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
@@ -105,9 +207,60 @@ export default function ConfirmEmailPage() {
               throw error
             }
 
-            if (data?.session) {
+            if (data?.session && data?.user) {
               console.log('✅ Email confirmado via hash')
-              // Deslogar imediatamente após confirmar
+              
+              // Criar usuário na tabela users após confirmação
+              try {
+                const userName = data.user.user_metadata?.name || 
+                                 data.user.user_metadata?.full_name || 
+                                 data.user.user_metadata?.display_name ||
+                                 data.user.email?.split('@')[0] || 
+                                 'Usuário'
+                
+                // Tentar criar via API primeiro
+                const createResponse = await fetch('/api/users/create', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    id: data.user.id,
+                    email: data.user.email || '',
+                    name: userName,
+                    role: 'aluno',
+                    access_level: 'full'
+                  }),
+                })
+                
+                const createResult = await createResponse.json()
+                
+                if (createResponse.ok && createResult.success) {
+                  console.log('✅ Usuário criado na tabela users após confirmação de email')
+                } else if (createResult.code === 'MISSING_SERVICE_ROLE_KEY') {
+                  // Se não tiver service role key, tentar criar diretamente
+                  console.log('⚠️ Tentando criar usuário diretamente...')
+                  const { error: insertError } = await supabase
+                    .from('users')
+                    .insert({
+                      id: data.user.id,
+                      email: data.user.email || '',
+                      name: userName,
+                      role: 'aluno',
+                      access_level: 'full'
+                    })
+                  
+                  if (insertError) {
+                    console.warn('⚠️ Não foi possível criar usuário diretamente (RLS pode estar bloqueando):', insertError.message)
+                    console.warn('⚠️ O usuário será criado quando fizer login')
+                  } else {
+                    console.log('✅ Usuário criado diretamente na tabela users')
+                  }
+                }
+              } catch (createError: any) {
+                console.warn('⚠️ Erro ao criar usuário na tabela users:', createError.message)
+                console.warn('⚠️ O usuário será criado quando fizer login')
+              }
+              
+              // Deslogar imediatamente após confirmar e criar usuário
               await supabase.auth.signOut()
               setStatus('success')
               setMessage('Email confirmado com sucesso! Redirecionando para login...')
