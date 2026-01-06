@@ -36,26 +36,59 @@ const isSupabaseConfigured = () => {
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [notifications, setNotifications] = useState<DatabaseNotificacao[]>([])
-  const [readIds, setReadIds] = useState<Set<string>>(new Set())
+  
+  // Inicializar readIds do localStorage de forma síncrona se possível
+  const getInitialReadIds = (): Set<string> => {
+    if (typeof window !== 'undefined' && user?.id) {
+      try {
+        const storageKey = getStorageKey(user.id)
+        const stored = localStorage.getItem(storageKey)
+        if (stored) {
+          const parsed = JSON.parse(stored) as string[]
+          console.log('📖 [NotificationsContext] IDs lidos carregados do localStorage (inicial):', parsed.length)
+          return new Set<string>(parsed)
+        }
+      } catch (e) {
+        console.error('Erro ao carregar IDs lidos inicialmente:', e)
+      }
+    }
+    return new Set<string>()
+  }
+  
+  const [readIds, setReadIds] = useState<Set<string>>(getInitialReadIds())
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [hasNewNotification, setHasNewNotification] = useState(false)
 
   // Carregar IDs lidas do localStorage quando o usuário mudar
+  // IMPORTANTE: Este deve ser o primeiro useEffect para garantir que os IDs sejam carregados antes de buscar notificações
   useEffect(() => {
     if (typeof window !== 'undefined' && user?.id) {
       const storageKey = getStorageKey(user.id)
       const stored = localStorage.getItem(storageKey)
       if (stored) {
         try {
-          const parsed = JSON.parse(stored)
-          setReadIds(new Set(parsed))
+          const parsed = JSON.parse(stored) as string[]
+          const storedSet = new Set<string>(parsed)
+          // Só atualizar se for diferente do estado atual
+          setReadIds(prev => {
+            if (prev.size !== storedSet.size || [...prev].some(id => !storedSet.has(id)) || [...storedSet].some(id => !prev.has(id))) {
+              console.log('📖 [NotificationsContext] IDs lidos atualizados do localStorage:', storedSet.size)
+              return storedSet
+            }
+            return prev
+          })
         } catch (e) {
           console.error('Erro ao parsear notificações lidas:', e)
+          setReadIds(new Set())
         }
       } else {
         // Limpar readIds se não houver dados para este usuário
         setReadIds(new Set())
+        console.log('📖 [NotificationsContext] Nenhum ID lido encontrado no localStorage')
       }
+    } else if (!user?.id) {
+      // Limpar quando não há usuário
+      setReadIds(new Set())
     }
   }, [user?.id])
 
@@ -146,31 +179,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, [user?.accessLevel, user?.id, user?.role])
 
   // Buscar notificações na montagem e quando o usuário mudar
-  // IMPORTANTE: Garantir que os IDs lidos sejam carregados antes de buscar notificações
+  // IMPORTANTE: Este useEffect roda DEPOIS do que carrega os IDs lidos
   useEffect(() => {
-    if (user?.id && typeof window !== 'undefined') {
-      // Primeiro, garantir que os IDs lidos estão carregados do localStorage
-      const storageKey = getStorageKey(user.id)
-      const stored = localStorage.getItem(storageKey)
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored) as string[]
-          // Só atualizar se ainda não foi carregado ou se mudou
-          setReadIds(prev => {
-            const storedSet = new Set<string>(parsed)
-            // Se os sets são diferentes, atualizar
-            if (prev.size !== storedSet.size || [...prev].some(id => !storedSet.has(id)) || [...storedSet].some(id => !prev.has(id))) {
-              return storedSet
-            }
-            return prev
-          })
-        } catch (e) {
-          console.error('Erro ao parsear notificações lidas:', e)
-        }
-      }
+    if (user?.id) {
+      fetchNotifications()
     }
-    // Depois buscar notificações
-    fetchNotifications()
   }, [fetchNotifications, user?.id])
 
   // Configurar Supabase Realtime para notificações
@@ -271,7 +284,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   // Calcular contagem de não lidas (usando useMemo para garantir recálculo)
   const unreadCount = useMemo(() => {
-    return notifications.filter(n => !readIds.has(n.id)).length
+    const count = notifications.filter(n => !readIds.has(n.id)).length
+    console.log('📊 [NotificationsContext] unreadCount calculado:', count, '| Total notificações:', notifications.length, '| IDs lidos:', readIds.size)
+    return count
   }, [notifications, readIds])
 
   // Marcar notificação como lida
