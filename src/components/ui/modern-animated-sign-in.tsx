@@ -654,7 +654,7 @@ const BottomGradient = () => {
 
 interface AuthTabsProps {
   formFields: {
-    header: string;
+    header: string | ReactNode;
     subHeader?: string;
     fields: Field[];
     submitButton: string;
