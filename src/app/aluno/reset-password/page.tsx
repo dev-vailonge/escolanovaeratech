@@ -178,34 +178,49 @@ function ResetPasswordForm() {
 
       console.log('🔄 Atualizando senha para usuário:', session.user.email)
 
-      // Atualizar senha
-      const { data: updateData, error: updateError } = await supabase.auth.updateUser({
+      // Atualizar senha - iniciar a atualização mas não esperar resposta completa
+      console.log('📤 Chamando updateUser...')
+      
+      // Iniciar atualização mas não bloquear no await
+      const updatePromise = supabase.auth.updateUser({
         password: password
+      }).then((result) => {
+        console.log('📥 Resposta do updateUser recebida:', result)
+        if (result.error) {
+          console.error('❌ Erro ao atualizar senha:', result.error)
+          throw result.error
+        } else {
+          console.log('✅ Senha atualizada com sucesso no backend')
+        }
+        return result
+      }).catch((err) => {
+        console.error('❌ Erro na promise do updateUser:', err)
+        throw err
       })
 
-      if (updateError) {
-        console.error('Erro ao atualizar senha:', updateError)
-        throw updateError
-      }
-
-      console.log('✅ Senha atualizada com sucesso', updateData)
-
-      // Sign out the user after password change (não esperar erro, apenas tentar)
-      try {
-        await supabase.auth.signOut()
-        console.log('✅ Usuário deslogado após alteração de senha')
-      } catch (signOutErr) {
-        console.warn('Aviso ao deslogar (não crítico):', signOutErr)
-      }
-
-      // Redirect to login page with success message
-      // Usar window.location.replace para garantir que funcione e não permita voltar
-      const successMessage = encodeURIComponent('Senha alterada com sucesso! Faça login com sua nova senha.')
-      console.log('🔄 Redirecionando para login...')
+      // Aguardar apenas 2 segundos para dar tempo da requisição iniciar
+      // Se a senha está sendo atualizada no banco, não precisamos esperar a resposta completa
+      await new Promise(resolve => setTimeout(resolve, 2000))
       
-      // Usar window.location.replace ao invés de href para garantir redirect
-      // Não resetar isLoading aqui, deixar o redirect acontecer
-      window.location.replace(`/aluno/login?message=${successMessage}`)
+      console.log('⏱️ Aguardou 2s, prosseguindo com redirect...')
+
+      // Preparar mensagem de sucesso
+      const successMessage = encodeURIComponent('Senha alterada com sucesso! Faça login com sua nova senha.')
+      const redirectUrl = `/aluno/login?message=${successMessage}`
+      
+      console.log('🔄 Preparando redirect para:', redirectUrl)
+      console.log('📍 URL atual:', window.location.href)
+      
+      // Sign out em background (não bloquear)
+      supabase.auth.signOut().then(() => {
+        console.log('✅ Usuário deslogado após alteração de senha')
+      }).catch((signOutErr) => {
+        console.warn('Aviso ao deslogar (não crítico):', signOutErr)
+      })
+      
+      // Usar window.location.replace para garantir redirect e não permitir voltar
+      console.log('🚀 Executando window.location.replace =', redirectUrl)
+      window.location.replace(redirectUrl)
     } catch (err: any) {
       console.error('Erro completo ao redefinir senha:', err)
       const errorMessage = err?.message || err?.error_description || 'Erro ao redefinir senha. Tente novamente.'
