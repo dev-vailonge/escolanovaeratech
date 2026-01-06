@@ -326,8 +326,8 @@ const TechOrbitDisplay = memo(function TechOrbitDisplay({
         style={{ 
           borderColor: 'rgba(96, 95, 92, 0.15)',
           borderWidth: '2px',
-          backgroundColor: 'rgba(238, 201, 109, 0.25)',
-          boxShadow: '0 4px 12px rgba(251, 191, 36, 0.2)'
+          backgroundColor: 'rgba(251, 191, 36, 0.25)',
+          boxShadow: 'inset 0px 4px 12px 0px rgba(251, 191, 36, 0.2), 0px 4px 12px 0px rgba(0, 0, 0, 0.15)'
         }}
       >
         <span 
@@ -370,7 +370,7 @@ type Field = {
 };
 
 type AnimatedFormProps = {
-  header: string;
+  header: string | ReactNode;
   subHeader?: string;
   fields: Field[];
   submitButton: string;
@@ -439,15 +439,15 @@ const AnimatedForm = memo(function AnimatedForm({
 
   return (
     <section className='max-md:w-full flex flex-col gap-4 w-96 mx-auto'>
-      <BoxReveal boxColor='#FBBF24' duration={0.6}>
-        <h2 className='font-bold text-3xl text-white'>
+      <BoxReveal boxColor='#FBBF24' duration={0.6} width='100%'>
+        <h2 className='font-bold text-3xl text-white text-center'>
           {header}
         </h2>
       </BoxReveal>
 
       {subHeader && (
-        <BoxReveal boxColor='#FBBF24' duration={0.6} className='pb-2'>
-          <p className='text-gray-300 text-sm max-w-sm'>
+        <BoxReveal boxColor='#FBBF24' duration={0.6} width='100%' className='pb-2'>
+          <p className='text-gray-300 text-sm max-w-sm text-center mx-auto'>
             {subHeader}
           </p>
         </BoxReveal>
@@ -654,7 +654,7 @@ const BottomGradient = () => {
 
 interface AuthTabsProps {
   formFields: {
-    header: string;
+    header: string | ReactNode;
     subHeader?: string;
     fields: Field[];
     submitButton: string;
@@ -681,7 +681,7 @@ const AuthTabs = memo(function AuthTabs({
     <div className='flex max-lg:justify-center w-full md:w-auto'>
       <div className='w-full max-w-md h-full flex flex-col justify-center items-center pl-2 sm:pl-4 md:pl-6 lg:pl-8 xl:pl-10 2xl:pl-12 pr-4 sm:pr-8 md:pr-12 lg:pr-16 xl:pr-20 2xl:pr-24 overflow-hidden'>
         {logo && (
-          <div className='mb-6 z-10 w-full flex justify-center overflow-hidden'>
+          <div className='mb-6 z-10 w-full flex justify-center items-center overflow-hidden -mx-2 sm:-mx-4 md:-mx-6 lg:-mx-8 xl:-mx-10 2xl:-mx-12'>
             {logo}
           </div>
         )}
