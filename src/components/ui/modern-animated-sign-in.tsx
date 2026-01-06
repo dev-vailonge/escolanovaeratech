@@ -271,14 +271,14 @@ const OrbitingCircles = memo(function OrbitingCircles({
       <section
         style={
           {
-            '--duration': duration,
-            '--radius': radius,
-            '--delay': -delay,
+            '--radius': `${radius}px`,
+            animation: `orbit ${duration}s linear ${-delay}s infinite`,
+            animationDirection: reverse ? 'reverse' : 'normal',
+            transformOrigin: 'center center',
           } as React.CSSProperties
         }
         className={cn(
-          'absolute flex size-full transform-gpu animate-orbit items-center justify-center rounded-full border bg-black/10 [animation-delay:calc(var(--delay)*1000ms)] dark:bg-white/10 z-10',
-          { '[animation-direction:reverse]': reverse },
+          'absolute flex size-full transform-gpu items-center justify-center rounded-full border bg-black/10 dark:bg-white/10 z-10',
           className
         )}
       >
