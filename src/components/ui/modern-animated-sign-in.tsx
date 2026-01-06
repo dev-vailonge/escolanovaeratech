@@ -439,14 +439,14 @@ const AnimatedForm = memo(function AnimatedForm({
 
   return (
     <section className='max-md:w-full flex flex-col gap-4 w-96 mx-auto'>
-      <BoxReveal boxColor='#FBBF24' duration={0.3}>
+      <BoxReveal boxColor='#FBBF24' duration={0.6}>
         <h2 className='font-bold text-3xl text-white'>
           {header}
         </h2>
       </BoxReveal>
 
       {subHeader && (
-        <BoxReveal boxColor='#FBBF24' duration={0.3} className='pb-2'>
+        <BoxReveal boxColor='#FBBF24' duration={0.6} className='pb-2'>
           <p className='text-gray-300 text-sm max-w-sm'>
             {subHeader}
           </p>
@@ -457,7 +457,7 @@ const AnimatedForm = memo(function AnimatedForm({
         <>
           <BoxReveal
             boxColor='#FBBF24'
-            duration={0.3}
+            duration={0.6}
             overflow='visible'
             width='unset'
           >
@@ -487,7 +487,7 @@ const AnimatedForm = memo(function AnimatedForm({
             </button>
           </BoxReveal>
 
-          <BoxReveal boxColor='#FBBF24' duration={0.3} width='100%'>
+          <BoxReveal boxColor='#FBBF24' duration={0.6} width='100%'>
             <section className='flex items-center gap-4'>
               <hr className='flex-1 border-1 border-dashed' style={{ borderColor: 'rgba(251, 191, 36, 0.2)' }} />
               <p className='text-gray-400 text-sm'>
@@ -505,7 +505,7 @@ const AnimatedForm = memo(function AnimatedForm({
         >
           {fields.map((field) => (
             <section key={field.label} className='flex flex-col gap-2'>
-              <BoxReveal boxColor='#FBBF24' duration={0.3}>
+              <BoxReveal boxColor='#FBBF24' duration={0.6}>
                 <Label htmlFor={field.label}>
                   {field.label} <span className='text-red-500'>*</span>
                 </Label>
@@ -514,7 +514,7 @@ const AnimatedForm = memo(function AnimatedForm({
               <BoxReveal
                 width='100%'
                 boxColor='#FBBF24'
-                duration={0.3}
+                duration={0.6}
                 className='flex flex-col space-y-2 w-full'
               >
                 <section className='relative'>
@@ -560,7 +560,7 @@ const AnimatedForm = memo(function AnimatedForm({
           ))}
         </section>
 
-        <BoxReveal width='100%' boxColor='#FBBF24' duration={0.3}>
+        <BoxReveal width='100%' boxColor='#FBBF24' duration={0.6}>
           {errorField && (
             <p className='text-red-500 text-sm mb-4'>{errorField}</p>
           )}
@@ -569,7 +569,7 @@ const AnimatedForm = memo(function AnimatedForm({
         <BoxReveal
           width='100%'
           boxColor='#FBBF24'
-          duration={0.3}
+          duration={0.6}
           overflow='visible'
         >
           <button
