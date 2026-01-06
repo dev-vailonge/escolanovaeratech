@@ -44,12 +44,9 @@ export default function RankingPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [historicoCampeoes, setHistoricoCampeoes] = useState<any[]>([])
   const [loadingHistorico, setLoadingHistorico] = useState(false)
-  
-  // Calcular mês atual - sempre começar no mês atual
-  const nowInit = new Date()
-  const mesAtualKeyInit = `${nowInit.getFullYear()}-${String(nowInit.getMonth() + 1).padStart(2, '0')}`
-  
-  const [mesAtivo, setMesAtivo] = useState<string>(mesAtualKeyInit)
+  const [tipoRanking, setTipoRanking] = useState<'mensal' | 'geral'>('geral')
+  const [tipoMural, setTipoMural] = useState<'mensal' | 'geral'>('mensal')
+  const [rankingGeral, setRankingGeral] = useState<any[] | null>(null)
   
   // Buscar ranking mensal para o Card Mural
   // Se o mês fechou (dia >= 2), busca o campeão do mês anterior que acabou de fechar
@@ -165,8 +162,8 @@ export default function RankingPage() {
           return
         }
 
-        // Busca ranking geral (all time) - sem cache para dados sempre frescos
-        const res = await fetch(`/api/ranking?type=geral&_t=${Date.now()}`, {
+        // Busca ranking conforme o tipo selecionado (mensal ou geral)
+        const res = await fetch(`/api/ranking?type=${tipoRanking}&_t=${Date.now()}`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store', // Forçar busca de dados frescos
         })
@@ -189,17 +186,52 @@ export default function RankingPage() {
       }
     }
 
-    // Executar imediatamente ao montar e quando refreshTrigger mudar
+    // Executar imediatamente ao montar e quando refreshTrigger ou tipoRanking mudar
     run()
     
     return () => {
       mounted = false
     }
-  }, [refreshTrigger, authUser]) // Adicionar authUser como dependência
+  }, [refreshTrigger, authUser, tipoRanking]) // Adicionar tipoRanking como dependência
 
   // Removido fallback para mock - ranking deve vir sempre da API
 
-  // Buscar histórico de campeões (excluindo o mês atual se ainda não fechou)
+  // Buscar ranking geral para o mural (quando tipoMural for 'geral')
+  useEffect(() => {
+    let mounted = true
+    const run = async () => {
+      if (tipoMural !== 'geral' || !authUser) {
+        if (mounted) setRankingGeral(null)
+        return
+      }
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+        if (!token) return
+
+        const res = await fetch(`/api/ranking?type=geral&_t=${Date.now()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        })
+        const json = await res.json().catch(() => ({}))
+
+        if (res.ok && mounted) {
+          setRankingGeral(json?.ranking || [])
+        }
+      } catch (e: any) {
+        console.error('Erro ao buscar ranking geral para mural:', e)
+        if (mounted) setRankingGeral(null)
+      }
+    }
+
+    run()
+    return () => {
+      mounted = false
+    }
+  }, [tipoMural, authUser])
+
+  // Buscar histórico de campeões para o mural (todos os meses do ano atual)
   useEffect(() => {
     let mounted = true
     const run = async () => {
@@ -218,20 +250,15 @@ export default function RankingPage() {
           return
         }
 
-        const res = await fetch(`/api/ranking/historico?limit=12&_t=${Date.now()}`, {
+        // Buscar histórico completo (sem limite para pegar todos os meses possíveis)
+        const res = await fetch(`/api/ranking/historico?limit=100&_t=${Date.now()}`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store',
         })
         const json = await res.json().catch(() => ({}))
         if (!res.ok || !mounted) return
 
-        // Se o mês fechou, remover o primeiro item do histórico (que é o mês atual)
-        // pois ele já está sendo mostrado no card "Campeão do Mês"
-        let historico = json?.historico || []
-        if (isMonthClosed() && historico.length > 0) {
-          historico = historico.slice(1) // Remover o primeiro (mês atual)
-        }
-        
+        const historico = json?.historico || []
         setHistoricoCampeoes(historico)
       } catch (e: any) {
         console.error('Erro ao buscar histórico:', e)
@@ -283,10 +310,10 @@ export default function RankingPage() {
   }, [rankingMensal, isDia1])
   
   
-  // Criar lista de meses (12 meses do ano atual: Jan a Dez de 2026)
-  const meses = useMemo(() => {
+  // Criar lista de meses (12 meses do ano atual: Jan a Dez)
+  const mesesAno = useMemo(() => {
     const lista: Array<{ key: string; nome: string; nomeAbreviado: string; date: Date }> = []
-    const anoAtual = now.getFullYear() // Pega o ano atual (2026)
+    const anoAtual = now.getFullYear()
     
     // Sempre mostrar os 12 meses do ano atual (janeiro a dezembro)
     for (let i = 0; i < 12; i++) {
@@ -305,9 +332,22 @@ export default function RankingPage() {
     return lista
   }, [])
   
-  // Criar mapa de campeões por mês
-  const campeoesPorMes = useMemo(() => {
+  // Criar mapa de posições no ranking geral por user_id
+  const posicoesGeral = useMemo(() => {
+    const mapa = new Map<string, number>()
+    if (rankingGeral && rankingGeral.length > 0) {
+      rankingGeral.forEach((user: any, index: number) => {
+        mapa.set(user.id, user.position ?? index + 1)
+      })
+    }
+    return mapa
+  }, [rankingGeral])
+
+  // Criar mapa de campeões por mês para o mural (12 meses do ano atual)
+  const campeoesMural = useMemo(() => {
     const mapa = new Map<string, any>()
+    const anoAtual = new Date().getFullYear()
+    
     // Adicionar campeão do mês anterior (se existir e estivermos no dia 1)
     if (isDia1 && campeaoMensal) {
       mapa.set(mesAnteriorKey, {
@@ -315,12 +355,17 @@ export default function RankingPage() {
         mesKey: mesAnteriorKey,
       })
     }
-    // Adicionar campeões do histórico
+    
+    // Adicionar campeões do histórico que pertencem ao ano atual
     historicoCampeoes.forEach(campeao => {
       if (campeao.mesKey) {
-        mapa.set(campeao.mesKey, campeao)
+        const [year] = campeao.mesKey.split('-')
+        if (parseInt(year) === anoAtual) {
+          mapa.set(campeao.mesKey, campeao)
+        }
       }
     })
+    
     return mapa
   }, [historicoCampeoes, campeaoMensal, isDia1, mesAnteriorKey])
 
@@ -330,13 +375,17 @@ export default function RankingPage() {
   // - Geral: ordenado por xp (maior pontuação all time primeiro)
   const filteredRanking = ranking ? ranking.map((u: any, idx: number) => {
     const xpTotal = u.xp || 0
-    const calculatedLevel = calculateLevel(xpTotal) // Calcular nível baseado no XP total
+    const xpMensal = u.xp_mensal || 0
+    // Para ranking mensal, usar XP mensal para calcular nível. Para geral, usar XP total
+    const xpParaNivel = tipoRanking === 'mensal' ? xpMensal : xpTotal
+    const calculatedLevel = calculateLevel(xpTotal) // Sempre calcular nível baseado no XP total (nível não muda por mês)
     return {
       id: u.id,
       name: u.name,
-      level: calculatedLevel, // Usar nível calculado
+      level: calculatedLevel, // Usar nível calculado (baseado em XP total)
       xp: xpTotal, // XP total (all time)
-      xpMensal: u.xp_mensal, // XP do mês
+      xpMensal: xpMensal, // XP do mês
+      xpExibido: tipoRanking === 'mensal' ? xpMensal : xpTotal, // XP a ser exibido conforme o tipo
       position: u.position ?? idx + 1,
       accessLevel: 'full',
       avatarUrl: u.avatar_url || null,
@@ -364,6 +413,22 @@ export default function RankingPage() {
           Ranking baseado em XP. Complete aulas, quizzes e desafios para subir de posição!
         </p>
 
+        {/* Link para informações sobre pontos */}
+        <div className="flex justify-center mb-4">
+          <button
+            onClick={() => setIsPontuacaoModalOpen(true)}
+            className={cn(
+              "flex items-center gap-2 text-xs md:text-sm transition-colors",
+              theme === 'dark'
+                ? "text-gray-400 hover:text-yellow-400"
+                : "text-gray-600 hover:text-yellow-600"
+            )}
+          >
+            <HelpCircle className="w-4 h-4" />
+            Como funcionam os pontos?
+          </button>
+        </div>
+
         {(loading || error) && (
           <div
             className={cn(
@@ -381,277 +446,6 @@ export default function RankingPage() {
             {!loading && error}
           </div>
         )}
-      </div>
-
-      {/* Card Mural - Campeão do Mês com Abas */}
-      <div className={cn(
-        "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
-        theme === 'dark'
-          ? "bg-gray-800/30 border-white/10"
-          : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
-      )}>
-        <h2 className={cn(
-          "text-lg md:text-xl font-bold mb-4 md:mb-6 text-center",
-          theme === 'dark' ? "text-white" : "text-gray-900"
-        )}>
-          Campeões Mensais
-        </h2>
-        
-        {/* Abas dos Meses */}
-        <div className={cn(
-          "backdrop-blur-sm border rounded-lg p-1.5 mb-4 transition-colors duration-300 overflow-x-auto",
-          theme === 'dark'
-            ? "bg-black/30 border-white/10"
-            : "bg-yellow-500/10 border-yellow-400/50"
-        )}>
-          <div className="flex gap-1.5 min-w-max justify-center md:justify-start">
-            {meses.map((mes) => {
-              const isActive = mesAtivo === mes.key
-              const isMesAtual = mes.key === mesAtualKey
-              
-              return (
-                <button
-                  key={mes.key}
-                  onClick={() => setMesAtivo(mes.key)}
-                  className={cn(
-                    "px-3 py-2 rounded-md font-medium transition-all text-xs md:text-sm whitespace-nowrap flex-shrink-0",
-                    "min-w-[50px] text-center",
-                    isActive
-                      ? theme === 'dark'
-                        ? "bg-yellow-400 text-black shadow-md"
-                        : "bg-yellow-500 text-white shadow-md"
-                      : theme === 'dark'
-                        ? "text-gray-400 hover:text-white hover:bg-white/5"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-yellow-500/20",
-                    isMesAtual && !isActive && "font-semibold"
-                  )}
-                  title={mes.nome}
-                >
-                  <span className="hidden md:inline">{mes.nome}</span>
-                  <span className="md:hidden">{mes.nomeAbreviado.split(' ')[0]}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Conteúdo da Aba Ativa */}
-        <div className="flex flex-col items-center justify-center w-full">
-          {(() => {
-            const isMesAtual = mesAtivo === mesAtualKey
-            
-            // Se estamos no dia 1 e visualizando o mês atual, mostrar campeão do mês anterior
-            // Se estamos nos dias 2-31 e visualizando o mês atual, mostrar cronômetro
-            // Se visualizando qualquer outro mês, mostrar campeão (se existir)
-            if (isMesAtual && !isDia1) {
-              // Mês Atual (dias 2-31) - Mostrar contagem regressiva
-              return (
-                <div className={cn(
-                  "backdrop-blur-sm border rounded-xl p-4 md:p-6 w-full transition-colors duration-300",
-                  theme === 'dark'
-                    ? "bg-black/30 border-yellow-400/50"
-                    : "bg-yellow-50 border-yellow-300"
-                )}>
-                  <div className="text-center w-full">
-                    <div className="w-full">
-                      <CountdownTimer targetDate={fimDoMes} theme={theme === 'dark' ? 'dark' : 'light'} />
-                    </div>
-                    <p className={cn(
-                      "text-sm md:text-base leading-relaxed mt-4",
-                      theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                    )}>
-                      restantes para o campeão do mês ser revelado
-                    </p>
-                  </div>
-                </div>
-              )
-            }
-            
-            // Para outros meses ou dia 1 do mês atual, mostrar campeão se existir
-            const campeao = campeoesPorMes.get(mesAtivo)
-            
-            if (campeao) {
-              // Mostrar campeão do mês
-              return (
-                <div className={cn(
-                  "backdrop-blur-sm border rounded-xl p-4 md:p-6 w-full transition-colors duration-300",
-                  theme === 'dark'
-                    ? "bg-black/30 border-yellow-400/50"
-                    : "bg-yellow-50 border-yellow-300"
-                )}>
-                  <Trophy className={cn(
-                    "w-8 h-8 md:w-12 md:h-12 mx-auto mb-3 md:mb-4",
-                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                  )} />
-                  {campeao.avatarUrl ? (
-                    <img
-                      src={campeao.avatarUrl}
-                      alt={campeao.name}
-                      className={cn(
-                        "w-20 h-20 md:w-24 md:h-24 rounded-full mx-auto mb-3 md:mb-4 object-cover border-[3px]",
-                        getLevelBorderColor(campeao.level, theme === 'dark')
-                      )}
-                    />
-                  ) : (
-                    <div className={cn(
-                      "w-20 h-20 md:w-24 md:h-24 rounded-full mx-auto mb-3 md:mb-4 flex items-center justify-center font-bold text-2xl md:text-3xl border-[3px]",
-                      theme === 'dark'
-                        ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
-                        : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white",
-                      getLevelBorderColor(campeao.level, theme === 'dark')
-                    )}>
-                      {campeao.name.charAt(0)}
-                    </div>
-                  )}
-                  <p className={cn(
-                    "font-semibold text-lg md:text-xl text-center mb-2",
-                    theme === 'dark' ? "text-white" : "text-gray-900"
-                  )}>
-                    {campeao.name}
-                  </p>
-                  <p className={cn(
-                    "text-sm md:text-base text-center mb-2",
-                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                  )}>
-                    Nível {campeao.level}
-                  </p>
-                  <p className={cn(
-                    "font-bold text-center text-base md:text-lg",
-                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                  )}>
-                    {campeao.xpMensal.toLocaleString('pt-BR')} XP
-                  </p>
-                </div>
-              )
-            } else {
-              // Mês sem campeão (sem dados históricos)
-              return (
-                <div className={cn(
-                  "backdrop-blur-sm border rounded-xl p-4 md:p-6 w-full transition-colors duration-300",
-                  theme === 'dark'
-                    ? "bg-black/30 border-yellow-400/50"
-                    : "bg-yellow-50 border-yellow-300"
-                )}>
-                  <Trophy className={cn(
-                    "w-8 h-8 md:w-12 md:h-12 mx-auto mb-3 md:mb-4",
-                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                  )} />
-                  <div className="text-center">
-                    <p className={cn(
-                      "text-sm md:text-base mb-1",
-                      theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                    )}>
-                      Sem dados deste mês
-                    </p>
-                    <p className={cn(
-                      "text-xs md:text-sm",
-                      theme === 'dark' ? "text-gray-500" : "text-gray-500"
-                    )}>
-                      Não há registro de campeão para este período
-                    </p>
-                  </div>
-                </div>
-              )
-            }
-          })()}
-        </div>
-      </div>
-
-      {/* Mural de Campeões Históricos */}
-      {historicoCampeoes.length > 0 && (
-        <div className={cn(
-          "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
-          theme === 'dark'
-            ? "bg-gray-800/30 border-white/10"
-            : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
-        )}>
-          <h2 className={cn(
-            "text-lg md:text-xl font-bold mb-4 md:mb-6 text-center",
-            theme === 'dark' ? "text-white" : "text-gray-900"
-          )}>
-            Mural de Campeões
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {historicoCampeoes.map((campeao, index) => (
-              <div
-                key={index}
-                className={cn(
-                  "backdrop-blur-sm border rounded-lg p-4 transition-colors duration-300",
-                  theme === 'dark'
-                    ? "bg-black/30 border-white/10 hover:border-yellow-400/50"
-                    : "bg-yellow-500/10 border-yellow-400/50 hover:border-yellow-300"
-                )}
-              >
-                <div className="text-center mb-2">
-                  <p className={cn(
-                    "text-xs md:text-sm font-semibold mb-1",
-                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                  )}>
-                    {campeao.mes}
-                  </p>
-                  <Trophy className={cn(
-                    "w-6 h-6 md:w-8 md:h-8 mx-auto mb-2",
-                    theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                  )} />
-                </div>
-                {campeao.avatarUrl ? (
-                  <img
-                    src={campeao.avatarUrl}
-                    alt={campeao.name}
-                    className={cn(
-                      "w-16 h-16 md:w-20 md:h-20 rounded-full mx-auto mb-2 object-cover border-2",
-                      getLevelBorderColor(campeao.level, theme === 'dark')
-                    )}
-                  />
-                ) : (
-                  <div className={cn(
-                    "w-16 h-16 md:w-20 md:h-20 rounded-full mx-auto mb-2 flex items-center justify-center font-bold text-xl md:text-2xl border-2",
-                    theme === 'dark'
-                      ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
-                      : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white",
-                    getLevelBorderColor(campeao.level, theme === 'dark')
-                  )}>
-                    {campeao.name.charAt(0)}
-                  </div>
-                )}
-                <p className={cn(
-                  "font-semibold text-sm md:text-base text-center mb-1 truncate",
-                  theme === 'dark' ? "text-white" : "text-gray-900"
-                )}>
-                  {campeao.name}
-                </p>
-                <p className={cn(
-                  "text-xs md:text-sm text-center mb-1",
-                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                )}>
-                  Nível {campeao.level}
-                </p>
-                <p className={cn(
-                  "font-bold text-xs md:text-sm text-center",
-                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                )}>
-                  {campeao.xpMensal.toLocaleString('pt-BR')} XP
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-        
-      {/* Link para informações sobre pontos */}
-      <div className="flex justify-center">
-        <button
-          onClick={() => setIsPontuacaoModalOpen(true)}
-          className={cn(
-            "flex items-center gap-2 text-xs md:text-sm transition-colors",
-            theme === 'dark'
-              ? "text-gray-400 hover:text-yellow-400"
-              : "text-gray-600 hover:text-yellow-600"
-          )}
-        >
-          <HelpCircle className="w-4 h-4" />
-          Como funcionam os pontos?
-        </button>
       </div>
 
       {/* Ranking Completo */}
@@ -690,6 +484,47 @@ export default function RankingPage() {
               <TrendingUp className="w-3 h-3 md:w-4 md:h-4" />
               Atualizado hoje
             </div>
+          </div>
+        </div>
+
+        {/* Seletor de Tipo de Ranking */}
+        <div className={cn(
+          "backdrop-blur-sm border rounded-lg p-1.5 mb-4 transition-colors duration-300",
+          theme === 'dark'
+            ? "bg-black/30 border-white/10"
+            : "bg-yellow-500/10 border-yellow-400/50"
+        )}>
+          <div className="flex gap-1.5 justify-center">
+            <button
+              onClick={() => setTipoRanking('mensal')}
+              className={cn(
+                "px-4 py-2 rounded-md font-medium transition-all text-sm flex-1",
+                tipoRanking === 'mensal'
+                  ? theme === 'dark'
+                    ? "bg-yellow-400 text-black shadow-md"
+                    : "bg-yellow-500 text-white shadow-md"
+                  : theme === 'dark'
+                    ? "text-gray-400 hover:text-white hover:bg-white/5"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-yellow-500/20"
+              )}
+            >
+              Mês
+            </button>
+            <button
+              onClick={() => setTipoRanking('geral')}
+              className={cn(
+                "px-4 py-2 rounded-md font-medium transition-all text-sm flex-1",
+                tipoRanking === 'geral'
+                  ? theme === 'dark'
+                    ? "bg-yellow-400 text-black shadow-md"
+                    : "bg-yellow-500 text-white shadow-md"
+                  : theme === 'dark'
+                    ? "text-gray-400 hover:text-white hover:bg-white/5"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-yellow-500/20"
+              )}
+            >
+              Geral
+            </button>
           </div>
         </div>
 
@@ -778,17 +613,235 @@ export default function RankingPage() {
                   "font-bold text-xs md:text-sm",
                   theme === 'dark' ? "text-white" : "text-gray-900"
                 )}>
-                  {user.xp.toLocaleString('pt-BR')} XP
+                  {user.xpExibido.toLocaleString('pt-BR')} XP
                 </p>
                 <p className={cn(
                   "text-xs hidden md:block",
                   theme === 'dark' ? "text-gray-400" : "text-gray-600"
                 )}>
-                  Nível {user.level}
+                  {tipoRanking === 'mensal' ? 'Este mês' : `Nível ${user.level}`}
                 </p>
               </div>
             </div>
           )))}
+        </div>
+      </div>
+
+      {/* Mural dos Campeões - 12 Meses */}
+      <div className={cn(
+        "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
+        theme === 'dark'
+          ? "bg-gray-800/30 border-white/10"
+          : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
+      )}>
+        <h2 className={cn(
+          "text-lg md:text-xl font-bold mb-4 md:mb-6 text-center",
+          theme === 'dark' ? "text-white" : "text-gray-900"
+        )}>
+          Mural dos Campeões
+        </h2>
+        
+        {/* Seletor de Tipo de Mural */}
+        <div className={cn(
+          "backdrop-blur-sm border rounded-lg p-1.5 mb-4 transition-colors duration-300",
+          theme === 'dark'
+            ? "bg-black/30 border-white/10"
+            : "bg-yellow-500/10 border-yellow-400/50"
+        )}>
+          <div className="flex gap-1.5 justify-center">
+            <button
+              onClick={() => setTipoMural('mensal')}
+              className={cn(
+                "px-4 py-2 rounded-md font-medium transition-all text-sm flex-1",
+                tipoMural === 'mensal'
+                  ? theme === 'dark'
+                    ? "bg-yellow-400 text-black shadow-md"
+                    : "bg-yellow-500 text-white shadow-md"
+                  : theme === 'dark'
+                    ? "text-gray-400 hover:text-white hover:bg-white/5"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-yellow-500/20"
+              )}
+            >
+              Mês
+            </button>
+            <button
+              onClick={() => setTipoMural('geral')}
+              className={cn(
+                "px-4 py-2 rounded-md font-medium transition-all text-sm flex-1",
+                tipoMural === 'geral'
+                  ? theme === 'dark'
+                    ? "bg-yellow-400 text-black shadow-md"
+                    : "bg-yellow-500 text-white shadow-md"
+                  : theme === 'dark'
+                    ? "text-gray-400 hover:text-white hover:bg-white/5"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-yellow-500/20"
+              )}
+            >
+              Geral
+            </button>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
+          {mesesAno.map((mes) => {
+            const campeao = campeoesMural.get(mes.key)
+            const category = campeao ? getLevelCategory(campeao.level) : null
+            const posicaoGeral = campeao ? posicoesGeral.get(campeao.id) : null
+            
+            return (
+              <div
+                key={mes.key}
+                className={cn(
+                  "flex flex-col items-center p-3 md:p-4 rounded-lg transition-all duration-300 relative",
+                  theme === 'dark'
+                    ? "bg-black/30 border border-white/10 hover:border-white/20"
+                    : "bg-yellow-500/10 border border-yellow-400/50 hover:border-yellow-300"
+                )}
+              >
+                {/* Troféu no topo */}
+                <Trophy className={cn(
+                  "w-5 h-5 md:w-6 md:h-6 mb-2",
+                  campeao
+                    ? theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                    : theme === 'dark' ? "text-gray-600" : "text-gray-400"
+                )} />
+                
+                {/* Avatar com borda colorida baseada no nível */}
+                {campeao ? (
+                  <>
+                    {campeao.avatarUrl ? (
+                      <img
+                        src={campeao.avatarUrl}
+                        alt={campeao.name}
+                        className={cn(
+                          "w-12 h-12 md:w-16 md:h-16 rounded-full mb-2 object-cover border-[3px]",
+                          getLevelBorderColor(campeao.level, theme === 'dark')
+                        )}
+                      />
+                    ) : (
+                      <div className={cn(
+                        "w-12 h-12 md:w-16 md:h-16 rounded-full mb-2 flex items-center justify-center font-bold text-lg md:text-xl border-[3px]",
+                        theme === 'dark'
+                          ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
+                          : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white",
+                        getLevelBorderColor(campeao.level, theme === 'dark')
+                      )}>
+                        {campeao.name.charAt(0)}
+                      </div>
+                    )}
+                    
+                    {/* Nome completo */}
+                    <p className={cn(
+                      "font-semibold text-xs md:text-sm text-center mb-1 truncate w-full",
+                      theme === 'dark' ? "text-white" : "text-gray-900"
+                    )}>
+                      {campeao.name}
+                    </p>
+                    
+                    {/* XP do mês ou Posição Geral */}
+                    {tipoMural === 'mensal' ? (
+                      <p className={cn(
+                        "font-bold text-xs text-center mb-1",
+                        theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                      )}>
+                        {campeao.xpMensal.toLocaleString('pt-BR')} XP
+                      </p>
+                    ) : (
+                      <p className={cn(
+                        "font-bold text-xs text-center mb-1",
+                        theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                      )}>
+                        #{posicaoGeral || '?'} Geral
+                      </p>
+                    )}
+                    
+                    {/* Nível na borda (badge) */}
+                    <div className={cn(
+                      "absolute -bottom-1 -right-1 rounded-full w-6 h-6 md:w-7 md:h-7 flex items-center justify-center text-xs font-bold border-2",
+                      category === 'iniciante'
+                        ? theme === 'dark'
+                          ? "bg-yellow-500/20 border-yellow-500 text-yellow-400"
+                          : "bg-yellow-500/30 border-yellow-500 text-yellow-700"
+                        : category === 'intermediario'
+                        ? theme === 'dark'
+                          ? "bg-blue-500/20 border-blue-500 text-blue-400"
+                          : "bg-blue-500/30 border-blue-500 text-blue-700"
+                        : theme === 'dark'
+                        ? "bg-purple-600/20 border-purple-600 text-purple-400"
+                        : "bg-purple-600/30 border-purple-600 text-purple-700"
+                    )}>
+                      {campeao.level}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Placeholder quando não há campeão */}
+                    <div className={cn(
+                      "w-12 h-12 md:w-16 md:h-16 rounded-full mb-2 flex items-center justify-center border-[3px] border-dashed",
+                      theme === 'dark'
+                        ? "border-gray-600 bg-gray-800/30"
+                        : "border-gray-300 bg-gray-100"
+                    )}>
+                      <span className={cn(
+                        "text-xs md:text-sm",
+                        theme === 'dark' ? "text-gray-600" : "text-gray-400"
+                      )}>
+                        ?
+                      </span>
+                    </div>
+                    <p className={cn(
+                      "text-xs text-center",
+                      theme === 'dark' ? "text-gray-500" : "text-gray-500"
+                    )}>
+                      Sem campeão
+                    </p>
+                  </>
+                )}
+                
+                {/* Nome do mês */}
+                <p className={cn(
+                  "text-xs text-center mt-1 font-medium",
+                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                )}>
+                  {mes.nomeAbreviado.split(' ')[0]}
+                </p>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Card Próximo Campeão - Contador */}
+      <div className={cn(
+        "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
+        theme === 'dark'
+          ? "bg-gray-800/30 border-white/10"
+          : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
+      )}>
+        <h2 className={cn(
+          "text-lg md:text-xl font-bold mb-4 md:mb-6 text-center",
+          theme === 'dark' ? "text-white" : "text-gray-900"
+        )}>
+          Próximo Campeão
+        </h2>
+        
+        <div className={cn(
+          "backdrop-blur-sm border rounded-xl p-4 md:p-6 w-full transition-colors duration-300",
+          theme === 'dark'
+            ? "bg-black/30 border-yellow-400/50"
+            : "bg-yellow-50 border-yellow-300"
+        )}>
+          <div className="text-center w-full">
+            <div className="w-full opacity-60">
+              <CountdownTimer targetDate={fimDoMes} theme={theme === 'dark' ? 'dark' : 'light'} />
+            </div>
+            <p className={cn(
+              "text-sm md:text-base leading-relaxed mt-4",
+              theme === 'dark' ? "text-gray-400" : "text-gray-600"
+            )}>
+              restantes para o campeão do mês ser revelado
+            </p>
+          </div>
         </div>
       </div>
 
