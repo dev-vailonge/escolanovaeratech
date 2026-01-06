@@ -219,10 +219,11 @@ export async function DELETE(
     }
 
     // Deletar a pergunta (operação principal)
-    const { error: deletePerguntaError } = await supabaseForDelete
+    const { error: deletePerguntaError, data: deletePerguntaData } = await supabaseForDelete
       .from('perguntas')
       .delete()
       .eq('id', perguntaId)
+      .select()
 
     if (deletePerguntaError) {
       console.error('❌ Erro ao deletar pergunta:', deletePerguntaError)
@@ -277,6 +278,13 @@ export async function DELETE(
         error: 'Erro ao deletar pergunta',
         details: process.env.NODE_ENV === 'development' ? deletePerguntaError.message : undefined
       }, { status: 500 })
+    }
+
+    // Verificar se a pergunta foi realmente deletada
+    if (!deletePerguntaData || deletePerguntaData.length === 0) {
+      console.warn('⚠️ Nenhuma pergunta foi deletada. Pode ser que a pergunta já não exista ou houve um problema com RLS.')
+    } else {
+      console.log(`✅ Pergunta ${perguntaId} deletada com sucesso do banco de dados (${deletePerguntaData.length} registro(s))`)
     }
 
     // Recalcular XP e nível de cada usuário afetado
