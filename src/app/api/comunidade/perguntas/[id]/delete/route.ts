@@ -12,7 +12,15 @@ const XP_MELHOR_RESPOSTA = XP_CONSTANTS.comunidade.respostaCerta // 100 XP total
 
 /**
  * DELETE /api/comunidade/perguntas/[id]/delete
- * Permite que admin ou criador (se não tiver respostas) delete uma pergunta e reverta todo XP relacionado
+ * 
+ * REGRAS DE NEGÓCIO:
+ * - Admin pode deletar qualquer pergunta (mesmo com respostas)
+ * - Aluno pode deletar apenas suas próprias perguntas SEM respostas
+ * - Ninguém pode deletar perguntas de outros usuários (exceto admin)
+ * 
+ * Ao deletar, reverte todo XP relacionado:
+ * - Autor da pergunta: perde 10 XP
+ * - Autores de respostas: perdem 1 XP cada (ou 100 XP se for melhor resposta)
  */
 export async function DELETE(
   request: Request,
@@ -69,9 +77,16 @@ export async function DELETE(
     isAdmin = user.role === 'admin'
     isAuthor = pergunta.autor_id === userId
 
+    // REGRAS DE NEGÓCIO:
+    // 1. Admin pode deletar qualquer pergunta (mesmo com respostas)
+    // 2. Aluno pode deletar apenas suas próprias perguntas SEM respostas
+    // 3. Ninguém pode deletar perguntas de outros usuários (exceto admin)
+
     // Se não é admin nem autor, negar acesso
     if (!isAdmin && !isAuthor) {
-      return NextResponse.json({ error: 'Você não tem permissão para deletar esta pergunta' }, { status: 403 })
+      return NextResponse.json({ 
+        error: 'Você não tem permissão para deletar esta pergunta. Apenas o autor ou um administrador podem deletar.' 
+      }, { status: 403 })
     }
 
     // Usar sempre o supabase normal (com token do usuário)
@@ -90,12 +105,33 @@ export async function DELETE(
       return NextResponse.json({ error: 'Erro ao verificar respostas da pergunta' }, { status: 500 })
     }
 
+    const temRespostas = respostas && respostas.length > 0
+
     // Se é autor (não admin), só pode deletar se não tiver respostas
-    if (!isAdmin && isAuthor && respostas && respostas.length > 0) {
+    if (!isAdmin && isAuthor && temRespostas) {
+      console.log(`⚠️ Autor tentou deletar pergunta com ${respostas.length} resposta(s)`)
       return NextResponse.json({ 
-        error: 'Não é possível deletar perguntas que já possuem respostas. Apenas administradores podem deletar perguntas com respostas.' 
+        error: 'Não é possível deletar perguntas que já possuem respostas. Apenas administradores podem deletar perguntas com respostas.',
+        detalhes: {
+          temRespostas: true,
+          quantidadeRespostas: respostas.length,
+          apenasAdmin: true
+        }
       }, { status: 403 })
     }
+
+    // Log das regras aplicadas
+    console.log(`📋 Regras de deleção:`, {
+      isAdmin,
+      isAuthor,
+      temRespostas: temRespostas,
+      podeDeletar: isAdmin || (isAuthor && !temRespostas),
+      motivo: isAdmin 
+        ? 'Admin pode deletar qualquer pergunta' 
+        : isAuthor && !temRespostas 
+          ? 'Autor pode deletar pergunta sem respostas'
+          : 'Não pode deletar'
+    })
 
 
     // Rastrear usuários afetados e quanto XP cada um perde
@@ -218,11 +254,35 @@ export async function DELETE(
       }
     }
 
+    // Testar se a função is_admin funciona (apenas para diagnóstico)
+    if (isAdmin) {
+      const { data: testAdmin, error: testError } = await supabaseForDelete
+        .rpc('is_admin', { user_id: userId })
+        .single()
+      
+      console.log('🔍 [DEBUG] Teste is_admin:', {
+        userId,
+        isAdmin,
+        testAdmin,
+        testError: testError?.message,
+      })
+    }
+
     // Deletar a pergunta (operação principal)
-    const { error: deletePerguntaError } = await supabaseForDelete
+    const { error: deletePerguntaError, data: deletePerguntaData } = await supabaseForDelete
       .from('perguntas')
       .delete()
       .eq('id', perguntaId)
+      .select()
+
+    console.log('🔍 [DEBUG] Resultado da deleção:', {
+      perguntaId,
+      userId,
+      isAdmin,
+      isAuthor,
+      deletePerguntaError: deletePerguntaError?.message,
+      deletePerguntaData: deletePerguntaData?.length || 0,
+    })
 
     if (deletePerguntaError) {
       console.error('❌ Erro ao deletar pergunta:', deletePerguntaError)
@@ -277,6 +337,77 @@ export async function DELETE(
         error: 'Erro ao deletar pergunta',
         details: process.env.NODE_ENV === 'development' ? deletePerguntaError.message : undefined
       }, { status: 500 })
+    }
+
+    // Verificar se a pergunta foi realmente deletada
+    // IMPORTANTE: Se RLS bloquear, o Supabase retorna sucesso mas com array vazio
+    if (!deletePerguntaData || deletePerguntaData.length === 0) {
+      console.error('❌ Nenhuma pergunta foi deletada! Isso geralmente indica que RLS bloqueou a operação.')
+      console.error('❌ Detalhes:', {
+        perguntaId,
+        userId,
+        isAdmin,
+        isAuthor,
+        supabaseClient: isAdmin ? 'admin (deveria funcionar)' : 'normal (pode ser bloqueado por RLS)'
+      })
+      
+      // Se for admin e não deletou, é definitivamente problema de RLS
+      if (isAdmin) {
+        return NextResponse.json({ 
+          error: 'A pergunta não foi deletada. Provavelmente as políticas RLS no Supabase estão bloqueando a deleção mesmo para admins.',
+          details: {
+            perguntaId,
+            userId,
+            isAdmin: true,
+            isAuthor,
+            problema: 'RLS bloqueando deleção de admin'
+          },
+          logs: [
+            `❌ ERRO: Pergunta não foi deletada do banco de dados`,
+            `Pergunta ID: ${perguntaId}`,
+            `Usuário ID: ${userId}`,
+            `É admin: ${isAdmin}`,
+            `É autor: ${isAuthor}`,
+            ``,
+            `🔍 Diagnóstico: O Supabase retornou sucesso, mas nenhum registro foi deletado.`,
+            `Isso indica que as políticas RLS (Row Level Security) estão bloqueando a deleção.`,
+            ``,
+            `💡 Solução:`,
+            `1. Acesse o Supabase Dashboard`,
+            `2. Vá em Authentication > Policies para a tabela 'perguntas'`,
+            `3. Crie ou ajuste uma política que permita DELETE para usuários com role='admin'`,
+            `4. Exemplo de política:`,
+            `   CREATE POLICY "Admins podem deletar qualquer pergunta"`,
+            `   ON perguntas FOR DELETE`,
+            `   USING (auth.jwt() ->> 'role' = 'admin');`,
+          ].filter(Boolean)
+        }, { status: 403 })
+      }
+      
+      // Se não for admin, pode ser RLS ou pergunta já deletada
+      return NextResponse.json({ 
+        error: 'A pergunta não foi deletada. Verifique se você tem permissão ou se a pergunta ainda existe.',
+        details: {
+          perguntaId,
+          userId,
+          isAdmin: false,
+          isAuthor,
+        },
+        logs: [
+          `❌ ERRO: Pergunta não foi deletada do banco de dados`,
+          `Pergunta ID: ${perguntaId}`,
+          `Usuário ID: ${userId}`,
+          `É admin: ${isAdmin}`,
+          `É autor: ${isAuthor}`,
+          ``,
+          `💡 Possíveis causas:`,
+          `1. Políticas RLS bloqueando a deleção`,
+          `2. A pergunta já foi deletada anteriormente`,
+          `3. Você não tem permissão para deletar esta pergunta`,
+        ].filter(Boolean)
+      }, { status: 403 })
+    } else {
+      console.log(`✅ Pergunta ${perguntaId} deletada com sucesso do banco de dados (${deletePerguntaData.length} registro(s))`)
     }
 
     // Recalcular XP e nível de cada usuário afetado

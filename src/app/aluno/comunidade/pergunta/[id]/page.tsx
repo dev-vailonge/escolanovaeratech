@@ -494,8 +494,8 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
         `\n\n💡 Verifique o console do navegador (F12) para logs detalhados.`
       )
 
-      // Voltar para a lista de perguntas
-      router.push('/aluno/comunidade')
+      // Voltar para a lista de perguntas e forçar reload completo para garantir atualização
+      window.location.href = '/aluno/comunidade'
     } catch (e: any) {
       console.error('❌ Erro ao deletar pergunta:', e)
       setError(e?.message || 'Erro ao deletar pergunta')
