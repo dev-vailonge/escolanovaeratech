@@ -1,7 +1,7 @@
 'use client'
 
 import { mockUser } from '@/data/aluno/mockUser'
-import { Edit2, Trophy, Lock, HelpCircle } from 'lucide-react'
+import { Edit2, Trophy, Lock, HelpCircle, BookOpen, Target, MessageCircle, Clock } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { isFeatureEnabled } from '@/lib/features'
@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase'
 import Modal from '@/components/ui/Modal'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getLevelBorderColor, getLevelRequirements, getXPForNextLevel, getLevelCategory, calculateLevel } from '@/lib/gamification'
+import type { DatabaseUserXpHistory } from '@/types/database'
 
 export default function PerfilPage() {
   const { user: authUser, refreshSession } = useAuth()
@@ -51,6 +52,8 @@ export default function PerfilPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [xpHistory, setXpHistory] = useState<DatabaseUserXpHistory[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
 
   // Crop state (zoom + mover)
   const cropBoxRef = useRef<HTMLDivElement | null>(null)
@@ -65,6 +68,45 @@ export default function PerfilPage() {
     setAvatarPreview(avatarUrl)
     setBio(user.bio || '')
   }, [user.name, avatarUrl, user.bio])
+
+  // Buscar histórico de XP
+  useEffect(() => {
+    const fetchXpHistory = async () => {
+      if (!authUser?.id) return
+
+      setLoadingHistory(true)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+        if (!token) {
+          setLoadingHistory(false)
+          return
+        }
+
+        const res = await fetch('/api/users/me/xp-history', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (!res.ok) {
+          throw new Error('Erro ao buscar histórico de XP')
+        }
+
+        const json = await res.json()
+        if (json.success && json.history) {
+          setXpHistory(json.history)
+        }
+      } catch (error) {
+        console.error('Erro ao buscar histórico de XP:', error)
+      } finally {
+        setLoadingHistory(false)
+      }
+    }
+
+    fetchXpHistory()
+  }, [authUser?.id])
 
   const canEdit = !!authUser?.id
 
@@ -724,6 +766,148 @@ export default function PerfilPage() {
             </div>
           </div>
 
+        </div>
+
+        {/* Card de Histórico de XP */}
+        <div className={cn(
+          "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
+          theme === 'dark'
+            ? "bg-gray-800/30 border-white/10"
+            : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
+        )}>
+          <div className="flex items-center justify-between mb-4 md:mb-6">
+            <h2 className={cn(
+              "text-lg md:text-xl font-bold",
+              theme === 'dark' ? "text-white" : "text-gray-900"
+            )}>
+              Histórico de XP
+            </h2>
+            <Clock className={cn(
+              "w-5 h-5",
+              theme === 'dark' ? "text-gray-400" : "text-gray-600"
+            )} />
+          </div>
+
+          {loadingHistory ? (
+            <div className={cn(
+              "text-center py-8 text-sm",
+              theme === 'dark' ? "text-gray-400" : "text-gray-600"
+            )}>
+              Carregando histórico...
+            </div>
+          ) : xpHistory.length === 0 ? (
+            <div className={cn(
+              "text-center py-8 text-sm",
+              theme === 'dark' ? "text-gray-400" : "text-gray-600"
+            )}>
+              Nenhum histórico de XP ainda
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[600px] overflow-y-auto">
+              {xpHistory.map((entry) => {
+                // Ícone e cor baseado na origem
+                let icon: React.ReactNode
+                let iconColor: string
+                let sourceLabel: string
+
+                switch (entry.source) {
+                  case 'aula':
+                    icon = <BookOpen className="w-4 h-4" />
+                    iconColor = theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                    sourceLabel = 'Aula'
+                    break
+                  case 'quiz':
+                    icon = <HelpCircle className="w-4 h-4" />
+                    iconColor = theme === 'dark' ? 'text-purple-400' : 'text-purple-600'
+                    sourceLabel = 'Quiz'
+                    break
+                  case 'desafio':
+                    icon = <Target className="w-4 h-4" />
+                    iconColor = theme === 'dark' ? 'text-green-400' : 'text-green-600'
+                    sourceLabel = 'Desafio'
+                    break
+                  case 'comunidade':
+                    icon = <MessageCircle className="w-4 h-4" />
+                    iconColor = theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'
+                    sourceLabel = 'Comunidade'
+                    break
+                  default:
+                    icon = <Trophy className="w-4 h-4" />
+                    iconColor = theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                    sourceLabel = entry.source
+                }
+
+                // Formatar data e hora
+                const date = new Date(entry.created_at)
+                const formattedDate = date.toLocaleDateString('pt-BR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
+                })
+                const formattedTime = date.toLocaleTimeString('pt-BR', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+
+                return (
+                  <div
+                    key={entry.id}
+                    className={cn(
+                      "flex items-start gap-3 p-3 rounded-lg border transition-colors",
+                      theme === 'dark'
+                        ? "bg-black/20 border-white/10 hover:bg-black/30"
+                        : "bg-yellow-50/50 border-yellow-400/50 hover:bg-yellow-50/70"
+                    )}
+                  >
+                    <div className={cn(
+                      "flex-shrink-0 mt-0.5",
+                      iconColor
+                    )}>
+                      {icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={cn(
+                              "text-xs font-medium px-2 py-0.5 rounded",
+                              theme === 'dark'
+                                ? "bg-white/10 text-gray-300"
+                                : "bg-yellow-400/20 text-yellow-700"
+                            )}>
+                              {sourceLabel}
+                            </span>
+                            <span className={cn(
+                              "text-sm font-bold",
+                              theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                            )}>
+                              +{entry.amount} XP
+                            </span>
+                          </div>
+                          {entry.description && (
+                            <p className={cn(
+                              "text-sm",
+                              theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                            )}>
+                              {entry.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className={cn(
+                          "text-xs",
+                          theme === 'dark' ? "text-gray-500" : "text-gray-500"
+                        )}>
+                          {formattedDate} às {formattedTime}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
 
