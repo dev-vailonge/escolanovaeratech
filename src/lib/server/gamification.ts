@@ -238,13 +238,19 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
   // Usar valor oficial de XP para desafios (40 XP)
   const xpDesafio = XP_CONSTANTS.desafio.completo
   
+  // Remover nível de dificuldade do título (iniciante, intermediário, avançado)
+  const tituloLimpo = desafio.titulo
+    .replace(/\s*-\s*(Iniciante|Intermediário|Intermediario|Avançado|Avancado)$/i, '')
+    .replace(/\s*\(Iniciante|Intermediário|Intermediario|Avançado|Avancado\)$/i, '')
+    .trim()
+  
   try {
     await insertXpEntry({
       userId: params.userId,
       source: 'desafio',
       sourceId: params.desafioId,
       amount: xpDesafio,
-      description: `Desafio concluído: ${desafio.titulo}`,
+      description: `Desafio concluído: ${tituloLimpo}`,
       accessToken: params.accessToken,
     })
     console.log(`✅ [completarDesafio] XP concedido com sucesso: ${xpDesafio} XP para usuário ${params.userId}`)
@@ -335,13 +341,19 @@ export async function completarQuiz(params: { userId: string; quizId: string; po
   // Se pontuacao = 50%, ganha 50% do XP remanescente
   const xpGanho = Math.round((params.pontuacao / 100) * xpRemanescente)
   
+  // Remover nível de dificuldade do título (iniciante, intermediário, avançado)
+  const tituloLimpo = quiz.titulo
+    .replace(/\s*-\s*(Iniciante|Intermediário|Intermediario|Avançado|Avancado)$/i, '')
+    .replace(/\s*\(Iniciante|Intermediário|Intermediario|Avançado|Avancado\)$/i, '')
+    .trim()
+  
   // Registrar XP ganho
   await insertXpEntry({
     userId: params.userId,
     source: 'quiz',
     sourceId: params.quizId,
     amount: xpGanho,
-    description: `Quiz concluído: ${quiz.titulo} (${params.pontuacao}% - tentativa ${newTentativas})`,
+    description: `Quiz concluído: ${tituloLimpo} (${params.pontuacao}% - tentativa ${newTentativas})`,
     accessToken: params.accessToken,
   })
 
