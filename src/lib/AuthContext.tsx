@@ -166,11 +166,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             dbUser = await getUserByEmail(supabaseUser.email || '')
             
             if (!dbUser) {
-              console.warn('⚠️ Usuário ainda não existe na tabela users após tentativas. Pode ser necessário criar manualmente ou verificar trigger do banco.')
-              console.warn('⚠️ O usuário pode fazer login, mas alguns recursos podem não funcionar até o registro ser criado.')
-              // Não retornar null - permitir login mesmo sem registro na tabela users
-              // O usuário pode ser criado depois por um trigger ou processo em background
-              return null
+              console.warn('⚠️ Usuário ainda não existe na tabela users após tentativas.')
+              console.warn('⚠️ Criando usuário temporário para permitir login...')
+              
+              // Criar um usuário "temporário" usando os dados do Supabase Auth
+              // Isso permite que o usuário faça login mesmo sem registro na tabela users
+              // O registro será criado depois por um trigger ou processo em background
+              const tempUser: DatabaseUser = {
+                id: supabaseUser.id,
+                email: supabaseUser.email || '',
+                name: supabaseUser.user_metadata?.name || 
+                      supabaseUser.user_metadata?.full_name || 
+                      supabaseUser.user_metadata?.display_name ||
+                      supabaseUser.email?.split('@')[0] || 
+                      'Usuário',
+                role: 'aluno',
+                access_level: 'full',
+                avatar_url: null,
+                bio: null,
+                level: 1,
+                xp: 0,
+                xp_mensal: 0,
+                coins: 0,
+                streak: 0,
+                created_at: supabaseUser.created_at || new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }
+              
+              console.log('✅ Usuário temporário criado para permitir login')
+              dbUser = tempUser
             } else {
               console.log('✅ Usuário encontrado por email após aguardar')
             }
