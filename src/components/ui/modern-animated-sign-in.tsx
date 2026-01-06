@@ -683,9 +683,9 @@ const AuthTabs = memo(function AuthTabs({
 }: AuthTabsProps) {
   return (
     <div className='flex max-lg:justify-center w-full md:w-auto'>
-      <div className='w-full max-w-md h-full flex flex-col justify-center items-center pl-2 sm:pl-4 md:pl-6 lg:pl-8 xl:pl-10 2xl:pl-12 pr-4 sm:pr-8 md:pr-12 lg:pr-16 xl:pr-20 2xl:pr-24'>
+      <div className='w-full max-w-md h-full flex flex-col justify-center items-center pl-2 sm:pl-4 md:pl-6 lg:pl-8 xl:pl-10 2xl:pl-12 pr-4 sm:pr-8 md:pr-12 lg:pr-16 xl:pr-20 2xl:pr-24 overflow-hidden'>
         {logo && (
-          <div className='mb-6 z-10'>
+          <div className='mb-6 z-10 w-full flex justify-center overflow-hidden'>
             {logo}
           </div>
         )}
