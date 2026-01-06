@@ -218,12 +218,35 @@ export async function DELETE(
       }
     }
 
+    // Testar se a função is_admin funciona (apenas para diagnóstico)
+    if (isAdmin) {
+      const { data: testAdmin, error: testError } = await supabaseForDelete
+        .rpc('is_admin', { user_id: userId })
+        .single()
+      
+      console.log('🔍 [DEBUG] Teste is_admin:', {
+        userId,
+        isAdmin,
+        testAdmin,
+        testError: testError?.message,
+      })
+    }
+
     // Deletar a pergunta (operação principal)
     const { error: deletePerguntaError, data: deletePerguntaData } = await supabaseForDelete
       .from('perguntas')
       .delete()
       .eq('id', perguntaId)
       .select()
+
+    console.log('🔍 [DEBUG] Resultado da deleção:', {
+      perguntaId,
+      userId,
+      isAdmin,
+      isAuthor,
+      deletePerguntaError: deletePerguntaError?.message,
+      deletePerguntaData: deletePerguntaData?.length || 0,
+    })
 
     if (deletePerguntaError) {
       console.error('❌ Erro ao deletar pergunta:', deletePerguntaError)
