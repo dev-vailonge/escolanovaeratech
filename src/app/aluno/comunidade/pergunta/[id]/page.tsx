@@ -610,7 +610,7 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
             : 'bg-green-50 border-green-400/90 shadow-md'
           : theme === 'dark'
             ? 'bg-gray-800/30 border-white/10'
-            : 'bg-white border-yellow-400/90 shadow-md'
+            : 'bg-yellow-500/10 border-yellow-400/90 shadow-md'
       )}>
         <div className="flex gap-3 md:gap-4">
           {/* Votes */}
@@ -869,7 +869,7 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
                     : 'bg-green-50 border-green-400 shadow-md'
                   : theme === 'dark'
                     ? 'bg-gray-800/30 border-white/10'
-                    : 'bg-white border-yellow-400/90 shadow-md'
+                    : 'bg-yellow-500/10 border-yellow-400/90 shadow-md'
               )}
             >
               {/* Badge de Resposta Certa - Destaque no topo */}
