@@ -44,8 +44,14 @@ export default function AlunoHeader() {
   const limparDescricao = (descricao: string | null | undefined): string => {
     if (!descricao) return ''
     return descricao
-      .replace(/\s*-\s*(Iniciante|Intermediário|Intermediario|Avançado|Avancado)$/i, '')
-      .replace(/\s*\(Iniciante|Intermediário|Intermediario|Avançado|Avancado\)$/i, '')
+      // Remove no final: "- Avancado", "- Avançado", etc
+      .replace(/\s*-\s*(Iniciante|Intermediário|Intermediario|Avançado|Avancado)(\s|$)/gi, ' ')
+      // Remove no meio: "Quiz de X - Avancado"
+      .replace(/\s*-\s*(Iniciante|Intermediário|Intermediario|Avançado|Avancado)\s*/gi, ' ')
+      // Remove entre parênteses: "(Avancado)"
+      .replace(/\s*\(Iniciante|Intermediário|Intermediario|Avançado|Avancado\)/gi, '')
+      // Remove espaços duplicados
+      .replace(/\s+/g, ' ')
       .trim()
   }
 
