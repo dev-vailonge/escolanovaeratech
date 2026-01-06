@@ -606,7 +606,7 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
         'backdrop-blur-md border rounded-xl p-4 md:p-6 transition-all duration-300',
         pergunta.resolvida
           ? theme === 'dark'
-            ? 'bg-green-500/20 border-green-500/50'
+            ? 'bg-green-500/10 border-green-500/30'
             : 'bg-green-50 border-green-400/90 shadow-md'
           : theme === 'dark'
             ? 'bg-gray-800/30 border-white/10'
@@ -780,7 +780,7 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
         <div className={cn(
           'backdrop-blur-md border rounded-xl p-4 md:p-6',
           theme === 'dark'
-            ? 'bg-green-500/20 border-green-500/50'
+            ? 'bg-green-500/10 border-green-500/30'
             : 'bg-green-50 border-green-400/90 shadow-md'
         )}>
           <div className="flex items-center gap-2 mb-2">
