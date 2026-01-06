@@ -188,13 +188,15 @@ function ResetPasswordForm() {
         console.log('📥 Resposta do updateUser recebida:', result)
         if (result.error) {
           console.error('❌ Erro ao atualizar senha:', result.error)
+          throw result.error
         } else {
           console.log('✅ Senha atualizada com sucesso no backend')
         }
         return result
       }).catch((err) => {
         console.error('❌ Erro na promise do updateUser:', err)
-        // Não re-throw, apenas logar
+        // Não re-throw aqui pois estamos usando timeout e não esperando a promise completar
+        // O erro será tratado no catch externo se necessário
       })
 
       // Aguardar apenas 2 segundos para dar tempo da requisição iniciar
@@ -217,12 +219,10 @@ function ResetPasswordForm() {
         console.warn('Aviso ao deslogar (não crítico):', signOutErr)
       })
       
+      // Usar window.location.replace para garantir redirect e não permitir voltar
       // FORÇAR redirect imediatamente - não esperar signOut
-      console.log('🚀 Executando window.location.href =', redirectUrl)
-      window.location.href = redirectUrl
-      
-      // Este log provavelmente não será executado porque o redirect acontece
-      console.log('✅ window.location.href executado')
+      console.log('🚀 Executando window.location.replace =', redirectUrl)
+      window.location.replace(redirectUrl)
     } catch (err: any) {
       console.error('Erro completo ao redefinir senha:', err)
       const errorMessage = err?.message || err?.error_description || 'Erro ao redefinir senha. Tente novamente.'
