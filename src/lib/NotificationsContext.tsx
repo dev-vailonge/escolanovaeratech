@@ -146,9 +146,32 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, [user?.accessLevel, user?.id, user?.role])
 
   // Buscar notificações na montagem e quando o usuário mudar
+  // IMPORTANTE: Garantir que os IDs lidos sejam carregados antes de buscar notificações
   useEffect(() => {
+    if (user?.id && typeof window !== 'undefined') {
+      // Primeiro, garantir que os IDs lidos estão carregados do localStorage
+      const storageKey = getStorageKey(user.id)
+      const stored = localStorage.getItem(storageKey)
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored) as string[]
+          // Só atualizar se ainda não foi carregado ou se mudou
+          setReadIds(prev => {
+            const storedSet = new Set<string>(parsed)
+            // Se os sets são diferentes, atualizar
+            if (prev.size !== storedSet.size || [...prev].some(id => !storedSet.has(id)) || [...storedSet].some(id => !prev.has(id))) {
+              return storedSet
+            }
+            return prev
+          })
+        } catch (e) {
+          console.error('Erro ao parsear notificações lidas:', e)
+        }
+      }
+    }
+    // Depois buscar notificações
     fetchNotifications()
-  }, [fetchNotifications])
+  }, [fetchNotifications, user?.id])
 
   // Configurar Supabase Realtime para notificações
   useEffect(() => {
@@ -262,10 +285,17 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     setReadIds(prev => {
       // Criar novo Set com todos os IDs para garantir atualização
       const newSet = new Set([...prev, ...allIds])
+      
+      // Salvar imediatamente no localStorage para garantir persistência
+      if (typeof window !== 'undefined' && user?.id) {
+        const storageKey = getStorageKey(user.id)
+        localStorage.setItem(storageKey, JSON.stringify([...newSet]))
+      }
+      
       return newSet
     })
     setHasNewNotification(false)
-  }, [notifications])
+  }, [notifications, user?.id])
 
   // Abrir modal
   const openModal = useCallback(() => {
