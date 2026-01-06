@@ -106,10 +106,10 @@ function NotificationCard({
         isClickable && "cursor-pointer active:scale-[0.98]",
         isRead 
           ? theme === 'dark' 
-            ? "bg-gray-800/20 border-white/5 opacity-50 backdrop-blur-md" 
+            ? "bg-gray-800/20 border-white/5 opacity-50 backdrop-blur-xl" 
             : "bg-yellow-50/50 border-yellow-400/50 opacity-70"
           : theme === 'dark'
-            ? "bg-gray-800/30 border-white/10 hover:border-yellow-400/50 active:border-yellow-400/40 backdrop-blur-md"
+            ? "bg-gray-800/30 border-white/10 hover:border-yellow-400/50 active:border-yellow-400/40 backdrop-blur-xl"
             : "bg-yellow-50/50 border-yellow-400/50 hover:border-yellow-500 active:border-yellow-600"
       )}
     >
@@ -256,8 +256,8 @@ export default function NotificationsModal() {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className={cn(
-          "fixed inset-0 backdrop-blur-md transition-opacity",
-          theme === 'dark' ? "bg-black/70" : "bg-black/50"
+          "fixed inset-0 transition-opacity",
+          theme === 'dark' ? "backdrop-blur-xl bg-black/70" : "backdrop-blur-md bg-black/50"
         )}
         style={{
           position: 'fixed',
@@ -279,7 +279,7 @@ export default function NotificationsModal() {
           "relative w-full max-w-lg rounded-2xl md:rounded-2xl rounded-t-3xl md:rounded-t-2xl overflow-hidden",
           "h-[90vh] md:h-auto md:max-h-[80vh]",
           theme === 'dark'
-            ? "bg-gray-800/30 border border-white/10 backdrop-blur-md shadow-2xl"
+            ? "bg-gray-800/30 border border-white/10 backdrop-blur-xl shadow-2xl"
             : "bg-white border border-yellow-400/90 shadow-xl"
         )}
         onClick={(e) => e.stopPropagation()}
@@ -292,7 +292,7 @@ export default function NotificationsModal() {
         <div className={cn(
           "flex items-center justify-between p-3 md:p-4 lg:p-5 border-b sticky top-0 z-10",
           theme === 'dark' 
-            ? "border-white/10 bg-gray-800/30 backdrop-blur-sm" 
+            ? "border-white/10 bg-gray-800/30 backdrop-blur-xl" 
             : "border-yellow-400/30 bg-white"
         )}>
           <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
