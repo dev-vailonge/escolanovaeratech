@@ -198,18 +198,14 @@ function ResetPasswordForm() {
         console.warn('Aviso ao deslogar (não crítico):', signOutErr)
       }
 
-      // Resetar loading antes do redirect
-      setIsLoading(false)
-      
       // Redirect to login page with success message
-      // Usar window.location.href para garantir que o redirect funcione
+      // Usar window.location.replace para garantir que funcione e não permita voltar
       const successMessage = encodeURIComponent('Senha alterada com sucesso! Faça login com sua nova senha.')
       console.log('🔄 Redirecionando para login...')
       
-      // Usar setTimeout para garantir que o estado seja atualizado antes do redirect
-      setTimeout(() => {
-        window.location.href = `/aluno/login?message=${successMessage}`
-      }, 100)
+      // Usar window.location.replace ao invés de href para garantir redirect
+      // Não resetar isLoading aqui, deixar o redirect acontecer
+      window.location.replace(`/aluno/login?message=${successMessage}`)
     } catch (err: any) {
       console.error('Erro completo ao redefinir senha:', err)
       const errorMessage = err?.message || err?.error_description || 'Erro ao redefinir senha. Tente novamente.'
