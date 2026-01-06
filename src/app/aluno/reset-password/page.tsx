@@ -179,16 +179,24 @@ function ResetPasswordForm() {
       console.log('🔄 Atualizando senha para usuário:', session.user.email)
 
       // Atualizar senha
+      console.log('📤 Chamando updateUser...')
       const { data: updateData, error: updateError } = await supabase.auth.updateUser({
         password: password
       })
 
+      console.log('📥 Resposta do updateUser:', { updateData, updateError })
+
       if (updateError) {
-        console.error('Erro ao atualizar senha:', updateError)
+        console.error('❌ Erro ao atualizar senha:', updateError)
         throw updateError
       }
 
-      console.log('✅ Senha atualizada com sucesso', updateData)
+      if (!updateData || !updateData.user) {
+        console.error('❌ updateUser retornou sem dados do usuário')
+        throw new Error('Erro ao atualizar senha: resposta inválida')
+      }
+
+      console.log('✅ Senha atualizada com sucesso', updateData.user.email)
 
       // Sign out the user after password change (não esperar erro, apenas tentar)
       try {
@@ -202,19 +210,27 @@ function ResetPasswordForm() {
       const successMessage = encodeURIComponent('Senha alterada com sucesso! Faça login com sua nova senha.')
       const redirectUrl = `/aluno/login?message=${successMessage}`
       
-      console.log('🔄 Redirecionando para login...', redirectUrl)
+      console.log('🔄 Preparando redirect para:', redirectUrl)
+      console.log('📍 URL atual:', window.location.href)
       
       // FORÇAR redirect imediatamente - não esperar nada
       // Usar window.location.href de forma síncrona e direta
+      console.log('🚀 Executando window.location.href =', redirectUrl)
       window.location.href = redirectUrl
       
-      // Se por algum motivo o redirect acima não funcionar, tentar novamente após 1 segundo
+      console.log('✅ window.location.href executado')
+      
+      // Se por algum motivo o redirect acima não funcionar, tentar novamente após 500ms
       setTimeout(() => {
-        if (window.location.pathname.includes('/reset-password')) {
-          console.warn('⚠️ Redirect não funcionou, tentando novamente...')
+        const currentPath = window.location.pathname
+        console.log('⏰ Timeout verificação - path atual:', currentPath)
+        if (currentPath.includes('/reset-password')) {
+          console.warn('⚠️ Redirect não funcionou, tentando novamente com replace...')
           window.location.replace(redirectUrl)
+        } else {
+          console.log('✅ Redirect funcionou!')
         }
-      }, 1000)
+      }, 500)
     } catch (err: any) {
       console.error('Erro completo ao redefinir senha:', err)
       const errorMessage = err?.message || err?.error_description || 'Erro ao redefinir senha. Tente novamente.'
