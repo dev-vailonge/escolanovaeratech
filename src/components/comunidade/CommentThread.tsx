@@ -381,7 +381,7 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
                 className={cn(
                   'p-2 rounded-lg border text-xs',
                   theme === 'dark'
-                    ? 'bg-black/30 border-white/10'
+                    ? 'bg-gray-800/30 border-white/10'
                     : 'bg-gray-50 border-gray-200'
                 )}
               >
