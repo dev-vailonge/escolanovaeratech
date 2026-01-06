@@ -277,23 +277,23 @@ const OrbitingCircles = memo(function OrbitingCircles({
           duration: duration,
           repeat: Infinity,
           ease: 'linear',
-          delay: -delay,
+          delay: delay > 0 ? -delay : 0,
         }}
         style={{
           transformOrigin: 'center center',
         }}
       >
-        <section
+        <motion.section
           className={cn(
             'absolute flex size-full transform-gpu items-center justify-center rounded-full border bg-black/10 dark:bg-white/10 z-10',
             className
           )}
           style={{
-            transform: `translateY(${radius}px)`,
+            y: radius,
           }}
         >
           {children}
-        </section>
+        </motion.section>
       </motion.div>
     </>
   );
