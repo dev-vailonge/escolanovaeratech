@@ -18,7 +18,8 @@ export async function middleware(request: NextRequest) {
       '/aluno/login',
       '/aluno/signup',
       '/aluno/forgot-password',
-      '/aluno/reset-password'
+      '/aluno/reset-password',
+      '/aluno/auth/confirm' // Rota de confirmação de email
     ]
 
     const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
