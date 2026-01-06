@@ -24,9 +24,30 @@ Cole o código abaixo no campo "Body" (aba Source) da configuração "Reset pass
           <!-- Header com logo/branding -->
           <tr>
             <td align="center" style="padding-bottom: 40px;">
-              <h1 style="margin: 0; font-size: 32px; font-weight: bold; color: #facc15; letter-spacing: -0.5px;">
-                Nova Era Tech
-              </h1>
+              <!-- Logo em círculo amarelo (similar à página de login) -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                <tr>
+                  <td align="center" style="padding-bottom: 20px;">
+                    <!-- Círculo com fundo amarelo translúcido e borda (w-24 h-24 = 96px) -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width: 96px; height: 96px; background-color: rgba(250, 204, 21, 0.1); border-radius: 50%; border: 2px solid rgba(250, 204, 21, 0.3); overflow: hidden;">
+                      <tr>
+                        <td align="center" valign="middle" style="width: 100%; height: 100%; padding-top: 2px;">
+                          <!-- Logo SVG - usar URL hospedada do logo light.svg -->
+                          <!-- Nota: Para produção, substitua pela URL completa do logo hospedado no seu servidor -->
+                          <img src="https://www.escolanovaeratech.com.br/logo%20light%20.svg" alt="Escola Nova Era Tech" width="144" height="144" style="display: block; margin: 0 auto; max-width: 150%; height: auto; transform: scale(1.5);" />
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <h1 style="margin: 0; font-size: 32px; font-weight: bold; color: #facc15; letter-spacing: -0.5px;">
+                      Escola Nova Era Tech
+                    </h1>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
