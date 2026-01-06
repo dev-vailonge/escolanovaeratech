@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useTheme, ThemeProvider } from '@/lib/ThemeContext'
+import { BoxReveal } from '@/components/ui/modern-animated-sign-in'
 import { cn } from '@/lib/utils'
 
 function AlunoForgotPasswordContent() {
@@ -79,20 +80,24 @@ function AlunoForgotPasswordContent() {
         )}
       >
         <div className="text-center mb-8">
-          <h1 className={cn(
-            "text-3xl md:text-4xl font-bold mb-2",
-            theme === 'dark'
-              ? "bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent"
-              : "text-gray-900"
-          )}>
-            Recuperar Senha
-          </h1>
-          <p className={cn(
-            "text-sm md:text-base",
-            theme === 'dark' ? "text-gray-400" : "text-gray-700"
-          )}>
-            Digite seu email para receber o link de recuperação
-          </p>
+          <BoxReveal boxColor='#FBBF24' duration={0.6}>
+            <h1 className={cn(
+              "text-3xl md:text-4xl font-bold mb-2",
+              theme === 'dark'
+                ? "bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent"
+                : "text-gray-900"
+            )}>
+              Recuperar Senha
+            </h1>
+          </BoxReveal>
+          <BoxReveal boxColor='#FBBF24' duration={0.6} className='pb-2'>
+            <p className={cn(
+              "text-sm md:text-base",
+              theme === 'dark' ? "text-gray-400" : "text-gray-700"
+            )}>
+              Digite seu email para receber o link de recuperação
+            </p>
+          </BoxReveal>
         </div>
 
         {success ? (
@@ -149,53 +154,58 @@ function AlunoForgotPasswordContent() {
           </motion.div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label 
-                htmlFor="email" 
-                className={cn(
-                  "block text-sm font-medium mb-2",
-                  theme === 'dark' ? "text-gray-300" : "text-gray-700"
-                )}
-              >
-                E-mail
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={cn(
-                  "w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all",
-                  theme === 'dark'
-                    ? "bg-black/50 border border-white/10"
-                    : "bg-white/90 border border-yellow-500/30 text-gray-900 placeholder-gray-400"
-                )}
-                placeholder="seu@email.com"
-                required
-              />
-            </div>
+            <BoxReveal boxColor='#FBBF24' duration={0.6} width='100%'>
+              <div>
+                <label 
+                  htmlFor="email" 
+                  className={cn(
+                    "block text-sm font-medium mb-2",
+                    theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                  )}
+                >
+                  E-mail
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={cn(
+                    "w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-transparent transition-all",
+                    theme === 'dark'
+                      ? "bg-black/50 border border-white/10"
+                      : "bg-white/90 border border-yellow-500/30 text-gray-900 placeholder-gray-400"
+                  )}
+                  placeholder="seu@email.com"
+                  required
+                />
+              </div>
+            </BoxReveal>
 
             {error && (
-              <div className={cn(
-                "p-3 rounded-lg text-sm text-center",
-                theme === 'dark'
-                  ? "bg-red-500/10 border border-red-500/20 text-red-400"
-                  : "bg-red-50 border border-red-200 text-red-600"
-              )}>
-                {error}
-              </div>
+              <BoxReveal boxColor='#FBBF24' duration={0.6} width='100%'>
+                <div className={cn(
+                  "p-3 rounded-lg text-sm text-center",
+                  theme === 'dark'
+                    ? "bg-red-500/10 border border-red-500/20 text-red-400"
+                    : "bg-red-50 border border-red-200 text-red-600"
+                )}>
+                  {error}
+                </div>
+              </BoxReveal>
             )}
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className={cn(
-                "w-full font-semibold py-3 px-6 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed",
-                theme === 'dark'
-                  ? "bg-yellow-500 text-black hover:bg-yellow-400 focus:ring-offset-black shadow-lg shadow-yellow-400/30 hover:shadow-yellow-400/50"
-                  : "bg-yellow-600 text-white hover:bg-yellow-700 focus:ring-offset-white shadow-lg shadow-yellow-600/30 hover:shadow-yellow-700/50"
-              )}
-            >
+            <BoxReveal boxColor='#FBBF24' duration={0.6} width='100%' overflow='visible'>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className={cn(
+                  "w-full font-semibold py-3 px-6 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed",
+                  theme === 'dark'
+                    ? "bg-yellow-500 text-black hover:bg-yellow-400 focus:ring-offset-black shadow-lg shadow-yellow-400/30 hover:shadow-yellow-400/50"
+                    : "bg-yellow-600 text-white hover:bg-yellow-700 focus:ring-offset-white shadow-lg shadow-yellow-600/30 hover:shadow-yellow-700/50"
+                )}
+              >
               {isLoading ? (
                 <span className="flex items-center justify-center">
                   <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -207,7 +217,8 @@ function AlunoForgotPasswordContent() {
               ) : (
                 'Enviar link de recuperação'
               )}
-            </button>
+              </button>
+            </BoxReveal>
           </form>
         )}
 
