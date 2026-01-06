@@ -203,14 +203,6 @@ function ResetPasswordForm() {
       
       console.log('⏱️ Aguardou 2s, prosseguindo com redirect...')
 
-      // Sign out the user after password change (não esperar erro, apenas tentar)
-      try {
-        await supabase.auth.signOut()
-        console.log('✅ Usuário deslogado após alteração de senha')
-      } catch (signOutErr) {
-        console.warn('Aviso ao deslogar (não crítico):', signOutErr)
-      }
-
       // Preparar mensagem de sucesso
       const successMessage = encodeURIComponent('Senha alterada com sucesso! Faça login com sua nova senha.')
       const redirectUrl = `/aluno/login?message=${successMessage}`
@@ -218,24 +210,19 @@ function ResetPasswordForm() {
       console.log('🔄 Preparando redirect para:', redirectUrl)
       console.log('📍 URL atual:', window.location.href)
       
-      // FORÇAR redirect imediatamente - não esperar nada
-      // Usar window.location.href de forma síncrona e direta
+      // Sign out em background (não bloquear)
+      supabase.auth.signOut().then(() => {
+        console.log('✅ Usuário deslogado após alteração de senha')
+      }).catch((signOutErr) => {
+        console.warn('Aviso ao deslogar (não crítico):', signOutErr)
+      })
+      
+      // FORÇAR redirect imediatamente - não esperar signOut
       console.log('🚀 Executando window.location.href =', redirectUrl)
       window.location.href = redirectUrl
       
+      // Este log provavelmente não será executado porque o redirect acontece
       console.log('✅ window.location.href executado')
-      
-      // Se por algum motivo o redirect acima não funcionar, tentar novamente após 500ms
-      setTimeout(() => {
-        const currentPath = window.location.pathname
-        console.log('⏰ Timeout verificação - path atual:', currentPath)
-        if (currentPath.includes('/reset-password')) {
-          console.warn('⚠️ Redirect não funcionou, tentando novamente com replace...')
-          window.location.replace(redirectUrl)
-        } else {
-          console.log('✅ Redirect funcionou!')
-        }
-      }, 500)
     } catch (err: any) {
       console.error('Erro completo ao redefinir senha:', err)
       const errorMessage = err?.message || err?.error_description || 'Erro ao redefinir senha. Tente novamente.'
