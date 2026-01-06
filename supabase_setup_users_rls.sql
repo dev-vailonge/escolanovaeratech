@@ -46,6 +46,23 @@ WITH CHECK (auth.uid() = id);
 --   )
 -- );
 
+-- 6. Trigger para excluir usuário da tabela users quando for excluído do auth.users
+-- Esta função será executada quando um usuário for excluído do Supabase Auth
+CREATE OR REPLACE FUNCTION public.handle_user_deleted()
+RETURNS trigger AS $$
+BEGIN
+  -- Excluir o usuário da tabela users quando for excluído do auth.users
+  DELETE FROM public.users WHERE id = OLD.id;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger que executa a função quando usuário é excluído do auth.users
+DROP TRIGGER IF EXISTS on_auth_user_deleted ON auth.users;
+CREATE TRIGGER on_auth_user_deleted
+  AFTER DELETE ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_user_deleted();
+
 -- ============================================================
 -- VERIFICAÇÃO
 -- ============================================================
@@ -53,10 +70,17 @@ WITH CHECK (auth.uid() = id);
 -- Para verificar se as políticas foram criadas:
 -- SELECT * FROM pg_policies WHERE tablename = 'users';
 --
+-- Para verificar se o trigger foi criado:
+-- SELECT * FROM pg_trigger WHERE tgname = 'on_auth_user_deleted';
+--
 -- Para testar se funciona:
 -- 1. Faça login como um usuário
 -- 2. Tente inserir um registro na tabela users com o mesmo ID do auth.uid()
 -- 3. Deve funcionar sem erro de permissão
+--
+-- Para testar o trigger de exclusão:
+-- 1. Exclua um usuário do Supabase Auth (Authentication > Users > Delete)
+-- 2. Verifique se o usuário também foi excluído da tabela users
 --
 -- ============================================================
 
