@@ -12,7 +12,15 @@ const XP_MELHOR_RESPOSTA = XP_CONSTANTS.comunidade.respostaCerta // 100 XP total
 
 /**
  * DELETE /api/comunidade/perguntas/[id]/delete
- * Permite que admin ou criador (se não tiver respostas) delete uma pergunta e reverta todo XP relacionado
+ * 
+ * REGRAS DE NEGÓCIO:
+ * - Admin pode deletar qualquer pergunta (mesmo com respostas)
+ * - Aluno pode deletar apenas suas próprias perguntas SEM respostas
+ * - Ninguém pode deletar perguntas de outros usuários (exceto admin)
+ * 
+ * Ao deletar, reverte todo XP relacionado:
+ * - Autor da pergunta: perde 10 XP
+ * - Autores de respostas: perdem 1 XP cada (ou 100 XP se for melhor resposta)
  */
 export async function DELETE(
   request: Request,
@@ -69,9 +77,16 @@ export async function DELETE(
     isAdmin = user.role === 'admin'
     isAuthor = pergunta.autor_id === userId
 
+    // REGRAS DE NEGÓCIO:
+    // 1. Admin pode deletar qualquer pergunta (mesmo com respostas)
+    // 2. Aluno pode deletar apenas suas próprias perguntas SEM respostas
+    // 3. Ninguém pode deletar perguntas de outros usuários (exceto admin)
+
     // Se não é admin nem autor, negar acesso
     if (!isAdmin && !isAuthor) {
-      return NextResponse.json({ error: 'Você não tem permissão para deletar esta pergunta' }, { status: 403 })
+      return NextResponse.json({ 
+        error: 'Você não tem permissão para deletar esta pergunta. Apenas o autor ou um administrador podem deletar.' 
+      }, { status: 403 })
     }
 
     // Usar sempre o supabase normal (com token do usuário)
@@ -90,12 +105,33 @@ export async function DELETE(
       return NextResponse.json({ error: 'Erro ao verificar respostas da pergunta' }, { status: 500 })
     }
 
+    const temRespostas = respostas && respostas.length > 0
+
     // Se é autor (não admin), só pode deletar se não tiver respostas
-    if (!isAdmin && isAuthor && respostas && respostas.length > 0) {
+    if (!isAdmin && isAuthor && temRespostas) {
+      console.log(`⚠️ Autor tentou deletar pergunta com ${respostas.length} resposta(s)`)
       return NextResponse.json({ 
-        error: 'Não é possível deletar perguntas que já possuem respostas. Apenas administradores podem deletar perguntas com respostas.' 
+        error: 'Não é possível deletar perguntas que já possuem respostas. Apenas administradores podem deletar perguntas com respostas.',
+        detalhes: {
+          temRespostas: true,
+          quantidadeRespostas: respostas.length,
+          apenasAdmin: true
+        }
       }, { status: 403 })
     }
+
+    // Log das regras aplicadas
+    console.log(`📋 Regras de deleção:`, {
+      isAdmin,
+      isAuthor,
+      temRespostas: temRespostas,
+      podeDeletar: isAdmin || (isAuthor && !temRespostas),
+      motivo: isAdmin 
+        ? 'Admin pode deletar qualquer pergunta' 
+        : isAuthor && !temRespostas 
+          ? 'Autor pode deletar pergunta sem respostas'
+          : 'Não pode deletar'
+    })
 
 
     // Rastrear usuários afetados e quanto XP cada um perde
