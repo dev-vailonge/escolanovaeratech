@@ -446,7 +446,7 @@ const AnimatedForm = memo(function AnimatedForm({
       </BoxReveal>
 
       {subHeader && (
-        <BoxReveal boxColor='#FFF420' duration={0.3} className='pb-2'>
+        <BoxReveal boxColor='#FBBF24' duration={0.3} className='pb-2'>
           <p className='text-gray-300 text-sm max-w-sm'>
             {subHeader}
           </p>
@@ -456,7 +456,7 @@ const AnimatedForm = memo(function AnimatedForm({
       {googleLogin && (
         <>
           <BoxReveal
-            boxColor='#FFF420'
+            boxColor='#FBBF24'
             duration={0.3}
             overflow='visible'
             width='unset'
@@ -487,7 +487,7 @@ const AnimatedForm = memo(function AnimatedForm({
             </button>
           </BoxReveal>
 
-          <BoxReveal boxColor='#FFF420' duration={0.3} width='100%'>
+          <BoxReveal boxColor='#FBBF24' duration={0.3} width='100%'>
             <section className='flex items-center gap-4'>
               <hr className='flex-1 border-1 border-dashed' style={{ borderColor: 'rgba(251, 191, 36, 0.2)' }} />
               <p className='text-gray-400 text-sm'>
@@ -513,7 +513,7 @@ const AnimatedForm = memo(function AnimatedForm({
 
               <BoxReveal
                 width='100%'
-                boxColor='#FFF420'
+                boxColor='#FBBF24'
                 duration={0.3}
                 className='flex flex-col space-y-2 w-full'
               >
@@ -560,7 +560,7 @@ const AnimatedForm = memo(function AnimatedForm({
           ))}
         </section>
 
-        <BoxReveal width='100%' boxColor='#FFF420' duration={0.3}>
+        <BoxReveal width='100%' boxColor='#FBBF24' duration={0.3}>
           {errorField && (
             <p className='text-red-500 text-sm mb-4'>{errorField}</p>
           )}
@@ -568,7 +568,7 @@ const AnimatedForm = memo(function AnimatedForm({
 
         <BoxReveal
           width='100%'
-          boxColor='#FFF420'
+          boxColor='#FBBF24'
           duration={0.3}
           overflow='visible'
         >
