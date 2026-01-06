@@ -1551,9 +1551,9 @@ export default function ComunidadePage() {
       <div className="grid grid-cols-3 gap-2 md:gap-4">
         <div
           className={cn(
-            "backdrop-blur-md border rounded-xl p-3 md:p-4",
+            "backdrop-blur-xl border rounded-xl p-3 md:p-4",
             theme === 'dark'
-              ? "bg-black/20 border-white/10"
+              ? "bg-gray-800/30 border-white/10 shadow-lg shadow-blue-500/10"
               : "bg-white border-yellow-400/90 shadow-md"
           )}
         >
@@ -1577,9 +1577,9 @@ export default function ComunidadePage() {
         </div>
         <div
           className={cn(
-            "backdrop-blur-md border rounded-xl p-3 md:p-4",
+            "backdrop-blur-xl border rounded-xl p-3 md:p-4",
             theme === 'dark'
-              ? "bg-black/20 border-white/10"
+              ? "bg-gray-800/30 border-white/10 shadow-lg shadow-green-500/10"
               : "bg-white border-yellow-400/90 shadow-md"
           )}
         >
@@ -1603,9 +1603,9 @@ export default function ComunidadePage() {
         </div>
         <div
           className={cn(
-            "backdrop-blur-md border rounded-xl p-3 md:p-4",
+            "backdrop-blur-xl border rounded-xl p-3 md:p-4",
             theme === 'dark'
-              ? "bg-black/20 border-white/10"
+              ? "bg-gray-800/30 border-white/10 shadow-lg shadow-yellow-500/10"
               : "bg-white border-yellow-400/90 shadow-md"
           )}
         >
