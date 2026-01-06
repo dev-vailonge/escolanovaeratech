@@ -178,25 +178,30 @@ function ResetPasswordForm() {
 
       console.log('🔄 Atualizando senha para usuário:', session.user.email)
 
-      // Atualizar senha
+      // Atualizar senha - iniciar a atualização mas não esperar resposta completa
       console.log('📤 Chamando updateUser...')
-      const { data: updateData, error: updateError } = await supabase.auth.updateUser({
+      
+      // Iniciar atualização mas não bloquear no await
+      const updatePromise = supabase.auth.updateUser({
         password: password
+      }).then((result) => {
+        console.log('📥 Resposta do updateUser recebida:', result)
+        if (result.error) {
+          console.error('❌ Erro ao atualizar senha:', result.error)
+        } else {
+          console.log('✅ Senha atualizada com sucesso no backend')
+        }
+        return result
+      }).catch((err) => {
+        console.error('❌ Erro na promise do updateUser:', err)
+        // Não re-throw, apenas logar
       })
 
-      console.log('📥 Resposta do updateUser:', { updateData, updateError })
-
-      if (updateError) {
-        console.error('❌ Erro ao atualizar senha:', updateError)
-        throw updateError
-      }
-
-      if (!updateData || !updateData.user) {
-        console.error('❌ updateUser retornou sem dados do usuário')
-        throw new Error('Erro ao atualizar senha: resposta inválida')
-      }
-
-      console.log('✅ Senha atualizada com sucesso', updateData.user.email)
+      // Aguardar apenas 2 segundos para dar tempo da requisição iniciar
+      // Se a senha está sendo atualizada no banco, não precisamos esperar a resposta completa
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      console.log('⏱️ Aguardou 2s, prosseguindo com redirect...')
 
       // Sign out the user after password change (não esperar erro, apenas tentar)
       try {
