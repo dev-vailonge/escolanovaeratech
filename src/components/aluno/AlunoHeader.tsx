@@ -35,7 +35,7 @@ export default function AlunoHeader() {
     <header className={cn(
       "backdrop-blur-xl rounded-xl p-4 mb-6 shadow-lg transition-colors duration-300 max-w-full overflow-visible",
       theme === 'dark' 
-        ? "bg-[#0D0D0D] border border-white/10 shadow-black/30"
+        ? "bg-gray-800/30 border border-white/10 shadow-black/30"
         : "bg-yellow-400/90 border border-yellow-500/30 shadow-yellow-400/20"
     )}>
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 max-w-full">

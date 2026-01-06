@@ -455,7 +455,7 @@ export default function AlunoSidebar() {
         className={cn(
           "hidden lg:flex fixed left-6 top-6 bottom-6 backdrop-blur-xl rounded-xl shadow-lg z-40 flex-col transition-all duration-300",
           theme === 'dark'
-            ? "bg-[#0D0D0D] border border-white/10 shadow-black/30"
+            ? "bg-gray-800/30 border border-white/10 shadow-black/30"
             : "bg-yellow-400/90 border border-yellow-500/30 shadow-yellow-400/20",
           isExpanded ? "w-64" : "w-20"
         )}
