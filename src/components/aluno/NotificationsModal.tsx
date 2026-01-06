@@ -276,11 +276,11 @@ export default function NotificationsModal() {
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ type: 'spring', duration: 0.3 }}
         className={cn(
-          "relative w-full max-w-lg rounded-2xl md:rounded-2xl rounded-t-3xl md:rounded-t-2xl shadow-2xl overflow-hidden",
+          "relative w-full max-w-lg rounded-2xl md:rounded-2xl rounded-t-3xl md:rounded-t-2xl shadow-2xl overflow-hidden backdrop-blur-md",
           "h-[90vh] md:h-auto md:max-h-[80vh]",
           theme === 'dark'
-            ? "bg-[#0a0a0a] border border-yellow-400/20"
-            : "bg-white border border-yellow-200"
+            ? "bg-gray-800/30 border border-white/10"
+            : "bg-yellow-500/10 border border-yellow-400/90"
         )}
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -290,10 +290,10 @@ export default function NotificationsModal() {
       >
         {/* Header */}
         <div className={cn(
-          "flex items-center justify-between p-3 md:p-4 lg:p-5 border-b sticky top-0 z-10",
+          "flex items-center justify-between p-3 md:p-4 lg:p-5 border-b sticky top-0 z-10 backdrop-blur-sm",
           theme === 'dark' 
-            ? "border-yellow-400/10 bg-[#0a0a0a]/95 backdrop-blur-sm" 
-            : "border-yellow-200 bg-white/95 backdrop-blur-sm"
+            ? "border-white/10 bg-gray-800/30" 
+            : "border-yellow-400/50 bg-yellow-500/10"
         )}>
           <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
             <div className={cn(
