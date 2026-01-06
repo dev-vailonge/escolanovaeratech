@@ -1825,7 +1825,7 @@ export default function ComunidadePage() {
                 "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-all duration-300",
                 pergunta.resolvida
                   ? theme === 'dark'
-                    ? "bg-gray-800/30 border-green-500/30 hover:border-green-400/50"
+                    ? "bg-green-500/20 border-green-500/50 hover:border-green-400/60"
                     : "bg-green-50 border-green-400/90 shadow-md hover:shadow-lg"
                   : theme === 'dark'
                     ? "bg-gray-800/30 border-white/10 hover:border-yellow-400/50"
