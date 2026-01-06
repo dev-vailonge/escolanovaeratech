@@ -71,10 +71,12 @@ export async function DELETE(
     }
 
     // Se for admin, usar SupabaseAdmin para garantir que a deleção funcione mesmo com RLS
-    const supabaseAdmin = isAdmin ? getSupabaseAdmin() : supabase
+    // Se não for admin, usar o supabase normal (que já tem o token do usuário)
+    const supabaseForDelete = isAdmin ? getSupabaseAdmin() : supabase
 
     // Buscar todas as respostas da pergunta
-    const { data: respostas, error: respostasError } = await supabase
+    // Usar supabaseForDelete para garantir acesso mesmo com RLS (admin) ou usar token normal (autor)
+    const { data: respostas, error: respostasError } = await supabaseForDelete
       .from('respostas')
       .select('id, autor_id, melhor_resposta, resposta_pai_id')
       .eq('pergunta_id', perguntaId)
@@ -119,8 +121,8 @@ export async function DELETE(
 
     // Remover entradas de XP do histórico (não crítico se falhar - apenas logar)
     // Buscar e remover a entrada de XP da pergunta
-    // Usar supabaseAdmin se for admin para garantir remoção mesmo com RLS
-    const { error: deleteXpPerguntaError } = await supabaseAdmin
+    // Usar supabaseForDelete (admin usa SupabaseAdmin, autor usa supabase normal)
+    const { error: deleteXpPerguntaError } = await supabaseForDelete
       .from('user_xp_history')
       .delete()
       .eq('source', 'comunidade')
@@ -136,7 +138,7 @@ export async function DELETE(
       const respostaIds = respostas.map((r) => r.id) // UUID direto, sem prefixo
 
       if (respostaIds.length > 0) {
-        const { error: deleteXpRespostasError } = await supabaseAdmin
+        const { error: deleteXpRespostasError } = await supabaseForDelete
           .from('user_xp_history')
           .delete()
           .eq('source', 'comunidade')
@@ -150,8 +152,8 @@ export async function DELETE(
     }
 
     // Deletar votos da pergunta (não crítico se falhar - apenas logar)
-    // Usar supabaseAdmin se for admin para garantir deleção mesmo com RLS
-    const { error: deleteVotosError } = await supabaseAdmin
+    // Usar supabaseForDelete (admin usa SupabaseAdmin, autor usa supabase normal)
+    const { error: deleteVotosError } = await supabaseForDelete
       .from('pergunta_votos')
       .delete()
       .eq('pergunta_id', perguntaId)
@@ -164,7 +166,7 @@ export async function DELETE(
 
     // Deletar respostas (incluindo comentários) - APENAS SE HOUVER respostas
     if (respostas && respostas.length > 0) {
-      const { error: deleteRespostasError } = await supabaseAdmin
+      const { error: deleteRespostasError } = await supabaseForDelete
         .from('respostas')
         .delete()
         .eq('pergunta_id', perguntaId)
@@ -194,8 +196,8 @@ export async function DELETE(
     }
 
     // Deletar a pergunta (operação principal)
-    // Usar supabaseAdmin se for admin para garantir deleção mesmo com RLS
-    const { error: deletePerguntaError } = await supabaseAdmin
+    // Usar supabaseForDelete (admin usa SupabaseAdmin, autor usa supabase normal)
+    const { error: deletePerguntaError } = await supabaseForDelete
       .from('perguntas')
       .delete()
       .eq('id', perguntaId)
@@ -240,8 +242,8 @@ export async function DELETE(
 
     for (const [usuarioId, xpPerdido] of usuariosAfetados.entries()) {
       // Buscar XP atual do usuário (incluindo xp_mensal)
-      // Usar supabaseAdmin para garantir acesso mesmo com RLS
-      const { data: usuario, error: usuarioError } = await supabaseAdmin
+      // Usar supabaseForDelete para garantir acesso mesmo com RLS (admin) ou usar token normal (autor)
+      const { data: usuario, error: usuarioError } = await supabaseForDelete
         .from('users')
         .select('xp, xp_mensal, level, name')
         .eq('id', usuarioId)
@@ -258,8 +260,8 @@ export async function DELETE(
       const novoNivel = calculateLevel(novoXp)
 
       // Atualizar usuário (xp total e xp mensal)
-      // Usar supabaseAdmin para garantir atualização mesmo com RLS
-      const { error: updateError } = await supabaseAdmin
+      // Usar supabaseForDelete para garantir atualização mesmo com RLS (admin) ou usar token normal (autor)
+      const { error: updateError } = await supabaseForDelete
         .from('users')
         .update({
           xp: novoXp,
@@ -295,8 +297,14 @@ export async function DELETE(
       detalhes: usuariosAtualizados,
     })
   } catch (error: any) {
-    console.error('Erro ao deletar pergunta:', error)
-    console.error('Stack trace:', error?.stack)
+    console.error('❌ Erro ao deletar pergunta:', error)
+    console.error('❌ Stack trace:', error?.stack)
+    console.error('❌ Error details:', {
+      message: error?.message,
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+    })
     
     // Erros de autenticação
     if (String(error?.message || '').includes('Não autenticado')) {
@@ -304,7 +312,7 @@ export async function DELETE(
     }
     
     // Erros de permissão
-    if (String(error?.message || '').includes('permission') || String(error?.message || '').includes('RLS')) {
+    if (String(error?.message || '').includes('permission') || String(error?.message || '').includes('RLS') || error?.code === '42501') {
       return NextResponse.json({ 
         error: 'Erro de permissão. Verifique se você tem permissão para deletar esta pergunta.',
         details: process.env.NODE_ENV === 'development' ? error?.message : undefined
@@ -318,7 +326,11 @@ export async function DELETE(
     
     return NextResponse.json({ 
       error: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      details: process.env.NODE_ENV === 'development' ? {
+        message: error?.message,
+        code: error?.code,
+        stack: error?.stack
+      } : undefined
     }, { status: 500 })
   }
 }
