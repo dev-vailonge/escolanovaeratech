@@ -178,12 +178,6 @@ export default function Home() {
             >
               Materiais Gratuitos
             </a>
-            <Link
-              href="/aluno/login"
-              className="px-4 py-2 rounded-lg bg-yellow-400/20 text-yellow-300 font-semibold border border-yellow-400 hover:bg-yellow-400/30 transition-all"
-            >
-              Entrar na área de membros
-            </Link>
           </div>
         </nav>
       </header>
