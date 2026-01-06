@@ -129,6 +129,18 @@ function AlunoForgotPasswordContent() {
               Email enviado!
             </h2>
             <p className={cn(
+              "text-sm mb-2",
+              theme === 'dark' ? "text-gray-400" : "text-gray-600"
+            )}>
+              Enviamos um link de recuperação para:
+            </p>
+            <p className={cn(
+              "text-sm font-semibold mb-3",
+              theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+            )}>
+              {email}
+            </p>
+            <p className={cn(
               "text-sm",
               theme === 'dark' ? "text-gray-400" : "text-gray-600"
             )}>
