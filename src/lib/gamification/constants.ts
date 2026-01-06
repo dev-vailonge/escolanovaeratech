@@ -19,13 +19,6 @@
  * Formulários:
  * - Formulário preenchido: 1 XP
  * 
- * Hotmart Club:
- * - Comentários realizados: 1 ponto
- * - Comentários recebidos: 1 ponto
- * - Reações recebidas em post: 1 ponto
- * - Aulas avaliadas: 2 pontos
- * - Aulas concluídas: 10 pontos
- * 
  * ============================================================
  */
 
@@ -46,31 +39,6 @@ export const XP_CONSTANTS = {
   },
 } as const
 
-/**
- * ============================================================
- * CONSTANTES DE XP HOTMART CLUB
- * ============================================================
- * 
- * Pontuação oficial da Hotmart Club conforme regras do jogo:
- * 
- * Comunidades:
- * - Comentários realizados: 1 ponto
- * - Comentários recebidos: 1 ponto
- * - Reações recebidas em post: 1 ponto
- * 
- * Sala de Aula:
- * - Aulas avaliadas: 2 pontos
- * - Aulas concluídas: 10 pontos
- * 
- * ============================================================
- */
-export const HOTMART_XP_CONSTANTS = {
-  comentario: 1,
-  comentarioRecebido: 1,
-  reacaoRecebida: 1,
-  aulaAvaliada: 2,
-  aulaConcluida: 10,
-} as const
 
 
 

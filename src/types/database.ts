@@ -154,7 +154,7 @@ export interface DatabaseUserDesafioProgress {
 export interface DatabaseUserXpHistory {
   id: string
   user_id: string
-  source: 'aula' | 'quiz' | 'desafio' | 'comunidade' | 'hotmart'
+  source: 'aula' | 'quiz' | 'desafio' | 'comunidade'
   source_id: string | null
   amount: number
   description: string | null
@@ -189,18 +189,6 @@ export interface DatabaseResposta {
   imagem_url?: string | null
   created_at: string
   updated_at: string
-}
-
-export interface DatabaseHotmartSubscription {
-  id: string
-  user_id: string
-  hotmart_transaction_id: string
-  product_id: string
-  status: 'active' | 'cancelled' | 'expired'
-  access_level: 'full' | 'limited'
-  created_at: string
-  updated_at: string
-  expires_at: string | null
 }
 
 export interface OpenAITokenUsage {
