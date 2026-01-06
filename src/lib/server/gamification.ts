@@ -3,7 +3,7 @@ import { calculateLevel } from '@/lib/gamification'
 import { getSupabaseClient } from './getSupabaseClient'
 import { getSupabaseAdmin } from './supabaseAdmin'
 
-export type XPSource = 'aula' | 'quiz' | 'desafio' | 'comunidade' | 'hotmart'
+export type XPSource = 'aula' | 'quiz' | 'desafio' | 'comunidade'
 
 export type RankingType = 'mensal' | 'geral'
 
@@ -116,32 +116,6 @@ export async function insertXpEntry(params: {
   await syncUserLevel(params.userId, params.accessToken)
 }
 
-/**
- * Insere uma entrada de XP da Hotmart Club
- * 
- * @param params - Parâmetros da entrada de XP
- * @param params.userId - ID do usuário
- * @param params.sourceId - ID único da ação na Hotmart (ex: hotmart_comment_{id}_{timestamp})
- * @param params.amount - Quantidade de XP ganho
- * @param params.description - Descrição da ação
- * @param params.accessToken - Token de acesso opcional (para RLS)
- */
-export async function insertHotmartXpEntry(params: {
-  userId: string
-  sourceId: string
-  amount: number
-  description?: string
-  accessToken?: string
-}) {
-  return insertXpEntry({
-    userId: params.userId,
-    source: 'hotmart',
-    sourceId: params.sourceId,
-    amount: params.amount,
-    description: params.description ?? undefined,
-    accessToken: params.accessToken,
-  })
-}
 
 export async function completarDesafio(params: { userId: string; desafioId: string; accessToken?: string }) {
   const supabase = await getSupabaseClient(params.accessToken)

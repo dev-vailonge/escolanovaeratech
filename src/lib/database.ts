@@ -138,7 +138,7 @@ export async function updateUserRole(userId: string, role: 'admin' | 'aluno'): P
 
 /**
  * Cria um usuário na tabela users
- * Usado principalmente quando recebemos dados do webhook da Hotmart ou após signup
+ * Usado principalmente quando recebemos dados do webhook ou após signup
  */
 export async function createUser(userData: {
   id?: string // ID opcional (geralmente do auth.users.id)

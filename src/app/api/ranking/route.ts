@@ -46,10 +46,6 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.json({
       success: true,
       type,
-      hotmart: {
-        status: 'aguardando_permissao',
-        message: 'As aulas assistidas no Hotmart Club ainda não estão sendo contabilizadas no ranking.',
-      },
       ranking: ranking || [],
       currentUserPosition: currentUser?.position || null,
       debug: {

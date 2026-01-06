@@ -32,8 +32,6 @@ export interface AuthUser {
   coins?: number
   streak?: number
   createdAt?: string
-  // TODO: Adicionar campo hasFormation quando integrar com Hotmart
-  // hasFormation?: boolean
 }
 
 /**

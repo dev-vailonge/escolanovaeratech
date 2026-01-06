@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     // Usar insertXpEntry que já gerencia tudo (histórico, sincronização de nível, etc)
     await insertXpEntry({
       userId,
-      source: source as 'aula' | 'quiz' | 'desafio' | 'comunidade' | 'hotmart',
+      source: source as 'aula' | 'quiz' | 'desafio' | 'comunidade',
       sourceId: sourceId || '',
       amount,
       description: description || undefined,

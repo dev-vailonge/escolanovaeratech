@@ -38,7 +38,6 @@ export default function RankingPage() {
   const { user: authUser } = useAuth()
   const [loading, setLoading] = useState(true) // Iniciar como true para mostrar loading inicial
   const [error, setError] = useState<string>('')
-  const [hotmartStatus, setHotmartStatus] = useState<string>('')
   const [ranking, setRanking] = useState<any[] | null>(null)
   const [rankingMensal, setRankingMensal] = useState<any[] | null>(null)
   const [isPontuacaoModalOpen, setIsPontuacaoModalOpen] = useState(false)
@@ -181,7 +180,6 @@ export default function RankingPage() {
         
         // ranking contém lista ordenada por xp total (maior pontuação all time)
         setRanking(json?.ranking || [])
-        setHotmartStatus(json?.hotmart?.message || '')
       } catch (e: any) {
         if (!mounted) return
         setError(e?.message || 'Erro ao carregar ranking')
@@ -366,7 +364,7 @@ export default function RankingPage() {
           Ranking baseado em XP. Complete aulas, quizzes e desafios para subir de posição!
         </p>
 
-        {(loading || error || hotmartStatus) && (
+        {(loading || error) && (
           <div
             className={cn(
               'border rounded-lg p-3 text-sm mb-4',
@@ -381,11 +379,6 @@ export default function RankingPage() {
           >
             {loading && 'Carregando ranking...'}
             {!loading && error}
-            {!loading && !error && hotmartStatus && (
-              <span>
-                <strong>Hotmart Club:</strong> As aulas assistidas no Hotmart Club ainda não estão sendo contabilizadas no ranking.
-              </span>
-            )}
           </div>
         )}
       </div>

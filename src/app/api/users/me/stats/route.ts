@@ -22,7 +22,6 @@ export async function GET(request: NextRequest) {
     // Buscar todas as estatísticas em paralelo
     const [
       aulasResult,
-      aulasHotmartResult,
       quizzesResult,
       desafiosResult,
       comunidadeResult,
@@ -35,14 +34,6 @@ export async function GET(request: NextRequest) {
         .select('source_id')
         .eq('user_id', userId)
         .eq('source', 'aula'),
-      
-      // Aulas da Hotmart (source='hotmart' com descrição contendo "aula")
-      supabaseAdmin
-        .from('user_xp_history')
-        .select('source_id, description')
-        .eq('user_id', userId)
-        .eq('source', 'hotmart')
-        .ilike('description', '%aula%'),
       
       // Quizzes completos
       supabaseAdmin
@@ -84,10 +75,6 @@ export async function GET(request: NextRequest) {
     if (aulasResult.error) {
       console.error('[API /users/me/stats] Erro ao buscar aulas:', aulasResult.error)
     }
-    console.log('[API /users/me/stats] aulas (source=hotmart):', aulasHotmartResult.data?.length || 0, aulasHotmartResult.error?.message || 'OK')
-    if (aulasHotmartResult.error) {
-      console.error('[API /users/me/stats] Erro ao buscar aulas Hotmart:', aulasHotmartResult.error)
-    }
     console.log('[API /users/me/stats] quizzes:', quizzesResult.data?.length || 0, quizzesResult.error?.message || 'OK')
     if (quizzesResult.error) {
       console.error('[API /users/me/stats] Erro ao buscar quizzes:', quizzesResult.error)
@@ -108,7 +95,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Contar aulas únicas (cada source_id diferente conta como uma aula)
-    // Incluir tanto source='aula' quanto source='hotmart' com descrição de aula
     const aulasUnicas = new Set<string>()
     
     // Aulas com source='aula'
@@ -116,13 +102,6 @@ export async function GET(request: NextRequest) {
       aulasResult.data
         .filter(item => item.source_id)
         .forEach(item => aulasUnicas.add(item.source_id as string))
-    }
-    
-    // Aulas da Hotmart (extrair quantidade da descrição ou contar source_id únicos)
-    if (aulasHotmartResult.data) {
-      aulasHotmartResult.data
-        .filter(item => item.source_id)
-        .forEach(item => aulasUnicas.add(`hotmart_${item.source_id}`))
     }
     
     const aulasCompletas = aulasUnicas.size

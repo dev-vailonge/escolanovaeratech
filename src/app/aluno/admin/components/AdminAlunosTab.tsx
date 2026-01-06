@@ -3,56 +3,24 @@
 import { useState, useEffect } from 'react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
-import { Loader2, RefreshCw, Mail, Phone, Calendar, ShoppingBag, DollarSign, Search, Database, ExternalLink, Trophy, Zap, Coins, Shield, User, Lock, Unlock } from 'lucide-react'
+import { Loader2, RefreshCw, Mail, Calendar, Search, Database, Trophy, Zap, Coins, Shield, User, Lock, Unlock } from 'lucide-react'
 import { getAllUsers, updateUserRole, updateUserAccessLevel } from '@/lib/database'
 import type { DatabaseUser } from '@/types/database'
 
-// Aluno vindo da Hotmart
-interface AlunoHotmart {
-  email: string
-  nome: string
-  telefone: string | null
-  documento: string | null
-  primeiraCompra: string
-  ultimaCompra: string
-  totalCompras: number
-  status: string
-  produtos: Array<{
-    id: string
-    nome: string
-    valor: number
-    moeda: string
-    dataCompra: string
-    status: string
-    transactionId: string
-  }>
-}
-
-type AlunoTab = 'local' | 'hotmart'
-
 export default function AdminAlunosTab() {
   const { theme } = useTheme()
-  const [activeTab, setActiveTab] = useState<AlunoTab>('local')
   
   // Usuários do banco local
   const [usersLocal, setUsersLocal] = useState<DatabaseUser[]>([])
   const [loadingLocal, setLoadingLocal] = useState(true)
   
-  // Alunos da Hotmart
-  const [alunosHotmart, setAlunosHotmart] = useState<AlunoHotmart[]>([])
-  const [loadingHotmart, setLoadingHotmart] = useState(false)
-  const [hotmartCarregado, setHotmartCarregado] = useState(false)
-  
   const [error, setError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [refreshing, setRefreshing] = useState(false)
-  const [syncing, setSyncing] = useState(false)
   const [updatingRole, setUpdatingRole] = useState<string | null>(null)
   const [updatingAccess, setUpdatingAccess] = useState<string | null>(null)
 
   useEffect(() => {
-    // Carregar apenas usuários locais automaticamente
-    // Hotmart só carrega quando clicar em Atualizar
     carregarUsersLocal()
   }, [])
   
@@ -68,31 +36,6 @@ export default function AdminAlunosTab() {
     }
   }
 
-  const carregarAlunosHotmart = async () => {
-    try {
-      setLoadingHotmart(true)
-      setError('')
-      
-      const response = await fetch('/api/hotmart/alunos?pageSize=100')
-      const data = await response.json()
-
-      if (!response.ok || !data.success) {
-        // Não mostrar erro se a API da Hotmart não estiver disponível
-        console.warn('API Hotmart:', data.message || 'Não disponível')
-        setAlunosHotmart([])
-        return
-      }
-
-      setAlunosHotmart(data.alunos || [])
-    } catch (err: any) {
-      console.error('Erro ao carregar alunos Hotmart:', err)
-      // Não bloquear a UI se Hotmart não estiver disponível
-      setAlunosHotmart([])
-    } finally {
-      setLoadingHotmart(false)
-      setHotmartCarregado(true)
-    }
-  }
 
   // Função para alterar a role do usuário
   const handleChangeRole = async (userId: string, currentRole: string) => {
@@ -171,55 +114,8 @@ export default function AdminAlunosTab() {
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    if (activeTab === 'local') {
-      await carregarUsersLocal()
-    } else {
-      await carregarAlunosHotmart()
-    }
+    await carregarUsersLocal()
     setRefreshing(false)
-  }
-
-  const handleSync = async () => {
-    try {
-      setSyncing(true)
-      setError('')
-      
-      // Calcular data de 1 ano atrás até hoje
-      const endDate = new Date()
-      const startDate = new Date()
-      startDate.setFullYear(endDate.getFullYear() - 1)
-      
-      const startDateStr = startDate.toISOString().split('T')[0]
-      const endDateStr = endDate.toISOString().split('T')[0]
-      
-      const response = await fetch('/api/hotmart/sync', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          startDate: startDateStr,
-          endDate: endDateStr,
-        }),
-      })
-      
-      const data = await response.json()
-      
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Erro ao sincronizar dados')
-      }
-      
-      // Após sincronizar, recarregar ambas listas
-      await Promise.all([carregarUsersLocal(), carregarAlunosHotmart()])
-      
-      // Mostrar mensagem de sucesso
-      alert(`Sincronização concluída! ${data.processed} aluno(s) processado(s).`)
-    } catch (err: any) {
-      console.error('Erro ao sincronizar:', err)
-      setError(err.message || 'Erro ao sincronizar dados históricos')
-    } finally {
-      setSyncing(false)
-    }
   }
 
   const formatarData = (data: string) => {
@@ -236,46 +132,6 @@ export default function AdminAlunosTab() {
     }
   }
 
-  const formatarMoeda = (valor: number, moeda: string = 'BRL') => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: moeda,
-    }).format(valor)
-  }
-
-  const getStatusBadge = (status: string) => {
-    const statusLower = status.toLowerCase()
-    if (statusLower === 'approved' || statusLower === 'active') {
-      return {
-        label: 'Ativo',
-        className: theme === 'dark'
-          ? 'bg-green-500/20 text-green-400 border-green-500/30'
-          : 'bg-green-100 text-green-700 border-green-300',
-      }
-    }
-    if (statusLower === 'cancelled' || statusLower === 'canceled') {
-      return {
-        label: 'Cancelado',
-        className: theme === 'dark'
-          ? 'bg-red-500/20 text-red-400 border-red-500/30'
-          : 'bg-red-100 text-red-700 border-red-300',
-      }
-    }
-    if (statusLower === 'expired') {
-      return {
-        label: 'Expirado',
-        className: theme === 'dark'
-          ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-          : 'bg-yellow-100 text-yellow-700 border-yellow-300',
-      }
-    }
-    return {
-      label: status,
-      className: theme === 'dark'
-        ? 'bg-gray-500/20 text-gray-400 border-gray-500/30'
-        : 'bg-gray-100 text-gray-600 border-gray-300',
-    }
-  }
 
   // Filtrar usuários locais por termo de busca
   const usersLocalFiltrados = usersLocal.filter((user) => {
@@ -283,17 +139,6 @@ export default function AdminAlunosTab() {
     return (
       user.name.toLowerCase().includes(termo) ||
       user.email.toLowerCase().includes(termo)
-    )
-  })
-
-  // Filtrar alunos Hotmart por termo de busca
-  const alunosHotmartFiltrados = alunosHotmart.filter((aluno) => {
-    const termo = searchTerm.toLowerCase()
-    return (
-      aluno.nome.toLowerCase().includes(termo) ||
-      aluno.email.toLowerCase().includes(termo) ||
-      (aluno.telefone && aluno.telefone.includes(termo)) ||
-      (aluno.documento && aluno.documento.includes(termo))
     )
   })
 
@@ -333,63 +178,6 @@ export default function AdminAlunosTab() {
 
   return (
     <div className="space-y-4">
-      {/* Sub-tabs: Local vs Hotmart */}
-      <div className={cn(
-        "flex gap-2 p-1 rounded-lg",
-        theme === 'dark'
-          ? "bg-black/30"
-          : "bg-gray-100"
-      )}>
-        <button
-          onClick={() => setActiveTab('local')}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm flex-1",
-            activeTab === 'local'
-              ? theme === 'dark'
-                ? "bg-yellow-400 text-black"
-                : "bg-yellow-500 text-white"
-              : theme === 'dark'
-                ? "text-gray-400 hover:text-white hover:bg-white/5"
-                : "text-gray-600 hover:text-gray-900 hover:bg-white"
-          )}
-        >
-          <Database className="w-4 h-4" />
-          <span>Usuários Locais</span>
-          <span className={cn(
-            "px-2 py-0.5 text-xs rounded-full",
-            activeTab === 'local'
-              ? theme === 'dark' ? "bg-black/20" : "bg-white/30"
-              : theme === 'dark' ? "bg-white/10" : "bg-gray-200"
-          )}>
-            {usersLocal.length}
-          </span>
-        </button>
-        <button
-          onClick={() => setActiveTab('hotmart')}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm flex-1",
-            activeTab === 'hotmart'
-              ? theme === 'dark'
-                ? "bg-yellow-400 text-black"
-                : "bg-yellow-500 text-white"
-              : theme === 'dark'
-                ? "text-gray-400 hover:text-white hover:bg-white/5"
-                : "text-gray-600 hover:text-gray-900 hover:bg-white"
-          )}
-        >
-          <ExternalLink className="w-4 h-4" />
-          <span>Hotmart</span>
-          <span className={cn(
-            "px-2 py-0.5 text-xs rounded-full",
-            activeTab === 'hotmart'
-              ? theme === 'dark' ? "bg-black/20" : "bg-white/30"
-              : theme === 'dark' ? "bg-white/10" : "bg-gray-200"
-          )}>
-            {loadingHotmart ? '...' : alunosHotmart.length}
-          </span>
-        </button>
-      </div>
-
       {/* Header com busca e refresh */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
@@ -397,16 +185,13 @@ export default function AdminAlunosTab() {
             "text-lg md:text-xl font-bold",
             theme === 'dark' ? "text-white" : "text-gray-900"
           )}>
-            {activeTab === 'local' ? 'Usuários do Sistema' : 'Alunos da Hotmart'}
+            Usuários do Sistema
           </h2>
           <p className={cn(
             "text-xs md:text-sm mt-1",
             theme === 'dark' ? "text-gray-400" : "text-gray-600"
           )}>
-            {activeTab === 'local' 
-              ? `${usersLocalFiltrados.length} de ${usersLocal.length} usuário${usersLocal.length !== 1 ? 's' : ''}`
-              : `${alunosHotmartFiltrados.length} de ${alunosHotmart.length} aluno${alunosHotmart.length !== 1 ? 's' : ''}`
-            }
+            {usersLocalFiltrados.length} de {usersLocal.length} usuário{usersLocal.length !== 1 ? 's' : ''}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -457,10 +242,8 @@ export default function AdminAlunosTab() {
         </div>
       )}
 
-      {/* Lista de Usuários Locais */}
-      {activeTab === 'local' && (
-        <>
-          {loadingLocal ? (
+      {/* Lista de Usuários */}
+      {loadingLocal ? (
             <div className={cn(
               "flex items-center justify-center p-8",
               theme === 'dark' ? "text-gray-400" : "text-gray-600"
@@ -672,206 +455,6 @@ export default function AdminAlunosTab() {
               })}
             </div>
           )}
-        </>
-      )}
-
-      {/* Lista de Alunos Hotmart */}
-      {activeTab === 'hotmart' && (
-        <>
-          {!hotmartCarregado && !loadingHotmart ? (
-            <div className={cn(
-              "p-8 text-center rounded-lg border",
-              theme === 'dark'
-                ? "bg-black/20 border-white/10 text-gray-400"
-                : "bg-gray-50 border-gray-200 text-gray-600"
-            )}>
-              <ExternalLink className={cn(
-                "w-12 h-12 mx-auto mb-4 opacity-50",
-                theme === 'dark' ? "text-gray-500" : "text-gray-400"
-              )} />
-              <div className="mb-2 font-medium">Dados da Hotmart não carregados</div>
-              <div className="text-xs opacity-75 mb-4">
-                Clique em "Atualizar" para buscar os alunos da Hotmart.
-              </div>
-              <button
-                onClick={carregarAlunosHotmart}
-                className={cn(
-                  "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors text-sm",
-                  theme === 'dark'
-                    ? "bg-yellow-400 text-black hover:bg-yellow-300"
-                    : "bg-yellow-500 text-white hover:bg-yellow-600"
-                )}
-              >
-                <RefreshCw className="w-4 h-4" />
-                Carregar Alunos
-              </button>
-            </div>
-          ) : loadingHotmart ? (
-            <div className={cn(
-              "flex items-center justify-center p-8",
-              theme === 'dark' ? "text-gray-400" : "text-gray-600"
-            )}>
-              <Loader2 className="w-6 h-6 animate-spin mr-2" />
-              <span>Carregando alunos da Hotmart...</span>
-            </div>
-          ) : alunosHotmartFiltrados.length === 0 ? (
-            <div className={cn(
-              "p-8 text-center rounded-lg border",
-              theme === 'dark'
-                ? "bg-black/20 border-white/10 text-gray-400"
-                : "bg-gray-50 border-gray-200 text-gray-600"
-            )}>
-              <div className="mb-2">
-                {searchTerm
-                  ? 'Nenhum aluno encontrado com o termo de busca.'
-                  : 'Nenhum aluno encontrado na Hotmart.'}
-              </div>
-              <div className="text-xs opacity-75">
-                {!searchTerm && 'A integração com a Hotmart ainda está aguardando liberação. Clique em "Sincronizar" para tentar novamente.'}
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {alunosHotmartFiltrados.map((aluno, index) => {
-                const statusBadge = getStatusBadge(aluno.status)
-                const valorTotal = aluno.produtos.reduce((sum, p) => sum + p.valor, 0)
-                const moedaPrincipal = aluno.produtos[0]?.moeda || 'BRL'
-
-                return (
-                  <div
-                    key={`${aluno.email}-${index}`}
-                    className={cn(
-                      "p-4 rounded-lg border transition-colors",
-                      theme === 'dark'
-                        ? "bg-black/30 border-white/10 hover:border-yellow-400/50"
-                        : "bg-gray-50 border-gray-200 hover:border-yellow-400"
-                    )}
-                  >
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                      {/* Informações do Aluno */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <h3 className={cn(
-                            "font-semibold text-base",
-                            theme === 'dark' ? "text-white" : "text-gray-900"
-                          )}>
-                            {aluno.nome}
-                          </h3>
-                          <span className={cn(
-                            "px-2 py-1 text-xs rounded-full border",
-                            statusBadge.className
-                          )}>
-                            {statusBadge.label}
-                          </span>
-                        </div>
-
-                        <div className="space-y-1 text-sm">
-                          <div className="flex items-center gap-2">
-                            <Mail className={cn(
-                              "w-4 h-4 flex-shrink-0",
-                              theme === 'dark' ? "text-gray-400" : "text-gray-500"
-                            )} />
-                            <span className={cn(
-                              "truncate",
-                              theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                            )}>
-                              {aluno.email}
-                            </span>
-                          </div>
-
-                          {aluno.telefone && (
-                            <div className="flex items-center gap-2">
-                              <Phone className={cn(
-                                "w-4 h-4 flex-shrink-0",
-                                theme === 'dark' ? "text-gray-400" : "text-gray-500"
-                              )} />
-                              <span className={cn(
-                                theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                              )}>
-                                {aluno.telefone}
-                              </span>
-                            </div>
-                          )}
-
-                          <div className="flex items-center gap-2">
-                            <Calendar className={cn(
-                              "w-4 h-4 flex-shrink-0",
-                              theme === 'dark' ? "text-gray-400" : "text-gray-500"
-                            )} />
-                            <span className={cn(
-                              theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                            )}>
-                              Última compra: {formatarData(aluno.ultimaCompra)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Estatísticas */}
-                      <div className="flex flex-col gap-2 md:items-end">
-                        <div className="flex items-center gap-4 text-sm">
-                          <div className="flex items-center gap-1">
-                            <ShoppingBag className={cn(
-                              "w-4 h-4",
-                              theme === 'dark' ? "text-gray-400" : "text-gray-500"
-                            )} />
-                            <span className={cn(
-                              "font-semibold",
-                              theme === 'dark' ? "text-white" : "text-gray-900"
-                            )}>
-                              {aluno.totalCompras} compra{aluno.totalCompras !== 1 ? 's' : ''}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <DollarSign className={cn(
-                              "w-4 h-4",
-                              theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                            )} />
-                            <span className={cn(
-                              "font-semibold",
-                              theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                            )}>
-                              {formatarMoeda(valorTotal, moedaPrincipal)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Lista de Produtos */}
-                        {aluno.produtos.length > 0 && (
-                          <div className={cn(
-                            "mt-2 p-2 rounded border text-xs w-full md:w-auto",
-                            theme === 'dark'
-                              ? "bg-black/20 border-white/5"
-                              : "bg-white border-gray-200"
-                          )}>
-                            <div className="font-semibold mb-1">Produtos:</div>
-                            {aluno.produtos.map((produto, pIndex) => (
-                              <div key={pIndex} className="flex items-center justify-between gap-2">
-                                <span className={cn(
-                                  "truncate",
-                                  theme === 'dark' ? "text-gray-300" : "text-gray-700"
-                                )}>
-                                  {produto.nome}
-                                </span>
-                                <span className={cn(
-                                  "font-semibold flex-shrink-0",
-                                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                                )}>
-                                  {formatarMoeda(produto.valor, produto.moeda)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </>
-      )}
     </div>
   )
 }
