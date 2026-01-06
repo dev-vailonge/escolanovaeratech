@@ -102,15 +102,15 @@ function NotificationCard({
       exit={{ opacity: 0, y: -10 }}
       onClick={handleClick}
       className={cn(
-        "p-3 md:p-4 rounded-lg md:rounded-xl border transition-all duration-200",
+        "p-3 md:p-4 rounded-lg md:rounded-xl border transition-all duration-200 backdrop-blur-md",
         isClickable && "cursor-pointer active:scale-[0.98]",
         isRead 
           ? theme === 'dark' 
-            ? "bg-white/5 border-white/5 opacity-50" 
-            : "bg-gray-50 border-gray-100 opacity-70"
+            ? "bg-gray-800/20 border-white/5 opacity-50" 
+            : "bg-yellow-500/5 border-yellow-400/30 opacity-70"
           : theme === 'dark'
-            ? "bg-[#111111] border-yellow-400/20 hover:border-yellow-400/50 active:border-yellow-400/40"
-            : "bg-gradient-to-br from-yellow-50 to-white border-yellow-200 hover:border-yellow-300 active:border-yellow-400"
+            ? "bg-gray-800/30 border-white/10 hover:border-yellow-400/50 active:border-yellow-400/40"
+            : "bg-yellow-500/10 border-yellow-400/50 hover:border-yellow-500 active:border-yellow-600"
       )}
     >
       <div className="flex gap-2.5 md:gap-3">
