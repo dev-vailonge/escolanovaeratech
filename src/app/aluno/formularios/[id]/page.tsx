@@ -452,11 +452,11 @@ export default function FormularioPage() {
           "backdrop-blur-md border rounded-xl p-8 md:p-12 text-center",
           theme === 'dark'
             ? "bg-black/20 border-white/10"
-            : "bg-white border-yellow-400/90 shadow-md"
+            : "bg-white border-[#FFF420]/90 shadow-md"
         )}>
           <Loader2 className={cn(
             "w-8 h-8 mx-auto mb-4 animate-spin",
-            theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+            theme === 'dark' ? "text-[#FFF420]" : "text-[#FFF420]"
           )} />
           <p className={cn(
             "text-sm md:text-base",
@@ -477,8 +477,8 @@ export default function FormularioPage() {
           className={cn(
             "inline-flex items-center gap-2 text-sm md:text-base font-medium transition-colors",
             theme === 'dark'
-              ? "text-yellow-400 hover:text-yellow-300"
-              : "text-yellow-600 hover:text-yellow-700"
+              ? "text-[#FFF420] hover:text-[#FFF420]"
+              : "text-[#FFF420] hover:text-[#FFF420]"
           )}
         >
           <ArrowLeft className="w-4 h-4" />
@@ -525,8 +525,8 @@ export default function FormularioPage() {
             <div className={cn(
               "mb-4 p-4 rounded-lg border mx-auto max-w-md",
               theme === 'dark'
-                ? "bg-yellow-400/20 border-yellow-400/50 text-yellow-400"
-                : "bg-yellow-100 border-yellow-400 text-yellow-700"
+                ? "bg-[#FFF420]/20 border-[#FFF420]/50 text-[#FFF420]"
+                : "bg-[#FFF420] border-[#FFF420] text-[#FFF420]"
             )}>
               <p className="text-lg font-semibold">
                 🎉 Você ganhou {pontosGanhos} pontos de XP!
@@ -586,7 +586,7 @@ export default function FormularioPage() {
         "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
         theme === 'dark'
           ? "bg-black/20 border-white/10"
-          : "bg-white border-yellow-400/90 shadow-md"
+          : "bg-white border-[#FFF420]/90 shadow-md"
       )}>
         {jaRespondido && (
           <div className={cn(
@@ -629,8 +629,8 @@ export default function FormularioPage() {
               className={cn(
                 "w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-colors",
                 theme === 'dark'
-                  ? "bg-black/50 border-white/10 text-white focus:border-yellow-400 focus:ring-yellow-400/20"
-                  : "bg-white border-gray-300 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500/20"
+                  ? "bg-black/50 border-white/10 text-white focus:border-[#FFF420] focus:ring-[#FFF420]/20"
+                  : "bg-white border-gray-300 text-gray-900 focus:border-[#FFF420] focus:ring-[#FFF420]/20"
               )}
               placeholder="Seu nome completo"
               required
@@ -653,8 +653,8 @@ export default function FormularioPage() {
               className={cn(
                 "w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-colors",
                 theme === 'dark'
-                  ? "bg-black/50 border-white/10 text-white focus:border-yellow-400 focus:ring-yellow-400/20"
-                  : "bg-white border-gray-300 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500/20"
+                  ? "bg-black/50 border-white/10 text-white focus:border-[#FFF420] focus:ring-[#FFF420]/20"
+                  : "bg-white border-gray-300 text-gray-900 focus:border-[#FFF420] focus:ring-[#FFF420]/20"
               )}
               placeholder="seu@email.com"
               required
@@ -677,8 +677,8 @@ export default function FormularioPage() {
               className={cn(
                 "w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-colors",
                 theme === 'dark'
-                  ? "bg-black/50 border-white/10 text-white focus:border-yellow-400 focus:ring-yellow-400/20"
-                  : "bg-white border-gray-300 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500/20"
+                  ? "bg-black/50 border-white/10 text-white focus:border-[#FFF420] focus:ring-[#FFF420]/20"
+                  : "bg-white border-gray-300 text-gray-900 focus:border-[#FFF420] focus:ring-[#FFF420]/20"
               )}
               placeholder="(00) 00000-0000"
               disabled={submitting}
@@ -719,8 +719,8 @@ export default function FormularioPage() {
                         <span className={cn(
                           "ml-2 text-xs px-2 py-0.5 rounded-full",
                           theme === 'dark'
-                            ? "bg-yellow-400/20 text-yellow-400"
-                            : "bg-yellow-100 text-yellow-700"
+                            ? "bg-[#FFF420]/20 text-[#FFF420]"
+                            : "bg-[#FFF420] text-[#FFF420]"
                         )}>
                           +{pergunta.pontos} pontos
                         </span>
@@ -736,8 +736,8 @@ export default function FormularioPage() {
                         className={cn(
                           "w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-colors resize-none",
                           theme === 'dark'
-                            ? "bg-black/50 border-white/10 text-white focus:border-yellow-400 focus:ring-yellow-400/20"
-                            : "bg-white border-gray-300 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500/20"
+                            ? "bg-black/50 border-white/10 text-white focus:border-[#FFF420] focus:ring-[#FFF420]/20"
+                            : "bg-white border-gray-300 text-gray-900 focus:border-[#FFF420] focus:ring-[#FFF420]/20"
                         )}
                         placeholder="Digite sua resposta aqui..."
                         required={pergunta.obrigatoria}
@@ -755,10 +755,10 @@ export default function FormularioPage() {
                               "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
                               theme === 'dark'
                                 ? respostaAtual === opcao
-                                  ? "bg-yellow-400/20 border-yellow-400/50"
+                                  ? "bg-[#FFF420]/20 border-[#FFF420]/50"
                                   : "bg-black/50 border-white/10 hover:bg-black/70"
                                 : respostaAtual === opcao
-                                  ? "bg-yellow-100 border-yellow-400"
+                                  ? "bg-[#FFF420] border-[#FFF420]"
                                   : "bg-white border-gray-300 hover:bg-gray-50"
                             )}
                           >
@@ -770,7 +770,7 @@ export default function FormularioPage() {
                               onChange={(e) => atualizarRespostaPergunta(pergunta.id, e.target.value)}
                               required={pergunta.obrigatoria}
                               disabled={submitting}
-                              className="w-4 h-4 text-yellow-500 focus:ring-yellow-500"
+                              className="w-4 h-4 text-[#FFF420] focus:ring-[#FFF420]"
                             />
                             <span className={cn(
                               "flex-1",
@@ -797,10 +797,10 @@ export default function FormularioPage() {
                                 "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
                                 theme === 'dark'
                                   ? estaSelecionada
-                                    ? "bg-yellow-400/20 border-yellow-400/50"
+                                    ? "bg-[#FFF420]/20 border-[#FFF420]/50"
                                     : "bg-black/50 border-white/10 hover:bg-black/70"
                                   : estaSelecionada
-                                    ? "bg-yellow-100 border-yellow-400"
+                                    ? "bg-[#FFF420] border-[#FFF420]"
                                     : "bg-white border-gray-300 hover:bg-gray-50"
                               )}
                             >
@@ -816,7 +816,7 @@ export default function FormularioPage() {
                                   }
                                 }}
                                 disabled={submitting}
-                                className="w-4 h-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-500"
+                                className="w-4 h-4 rounded border-gray-300 text-[#FFF420] focus:ring-[#FFF420]"
                               />
                               <span className={cn(
                                 "flex-1",
@@ -843,10 +843,10 @@ export default function FormularioPage() {
                                   "flex items-center justify-center w-12 h-12 rounded-lg border cursor-pointer transition-colors",
                                   theme === 'dark'
                                     ? respostaAtual === valor.toString()
-                                      ? "bg-yellow-400/20 border-yellow-400/50 text-yellow-400"
+                                      ? "bg-[#FFF420]/20 border-[#FFF420]/50 text-[#FFF420]"
                                       : "bg-black/50 border-white/10 text-gray-400 hover:bg-black/70"
                                     : respostaAtual === valor.toString()
-                                      ? "bg-yellow-100 border-yellow-400 text-yellow-700"
+                                      ? "bg-[#FFF420] border-[#FFF420] text-[#FFF420]"
                                       : "bg-white border-gray-300 text-gray-600 hover:bg-gray-50"
                                 )}
                               >
@@ -875,8 +875,8 @@ export default function FormularioPage() {
                 <div className={cn(
                   "p-3 rounded-lg border",
                   theme === 'dark'
-                    ? "bg-yellow-400/10 border-yellow-400/30 text-yellow-400"
-                    : "bg-yellow-50 border-yellow-200 text-yellow-700"
+                    ? "bg-[#FFF420]/10 border-[#FFF420]/30 text-[#FFF420]"
+                    : "bg-[#FFF420] border-rgba(255, 244, 32, 0.4) text-[#FFF420]"
                 )}>
                   <p className="text-sm font-medium">
                     💰 Respondendo todas as perguntas, você pode ganhar até {totalPontos} pontos!
@@ -906,8 +906,8 @@ export default function FormularioPage() {
                 className={cn(
                   "w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-colors resize-none",
                   theme === 'dark'
-                    ? "bg-black/50 border-white/10 text-white focus:border-yellow-400 focus:ring-yellow-400/20"
-                    : "bg-white border-gray-300 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500/20"
+                    ? "bg-black/50 border-white/10 text-white focus:border-[#FFF420] focus:ring-[#FFF420]/20"
+                    : "bg-white border-gray-300 text-gray-900 focus:border-[#FFF420] focus:ring-[#FFF420]/20"
                 )}
                 placeholder={
                   formulario?.tipo === 'feedback' 
@@ -943,8 +943,8 @@ export default function FormularioPage() {
               className={cn(
                 "px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2",
                 theme === 'dark'
-                  ? "bg-yellow-400 text-black hover:bg-yellow-300 disabled:opacity-50"
-                  : "bg-yellow-500 text-white hover:bg-yellow-600 disabled:opacity-50"
+                  ? "bg-[#FFF420] text-black hover:bg-[#FFF420] disabled:opacity-50"
+                  : "bg-[#FFF420] text-white hover:bg-[#FFF420] disabled:opacity-50"
               )}
             >
               {submitting ? (

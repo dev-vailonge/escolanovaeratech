@@ -25,9 +25,11 @@ function AlunoLoginContent() {
     if (message) {
       setSuccessMessage(message)
       // Remove message from URL
-      const url = new URL(window.location.href)
-      url.searchParams.delete('message')
-      router.replace(url.pathname + url.search, { scroll: false })
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('message')
+        router.replace(url.pathname + url.search, { scroll: false })
+      }
     }
   }, [searchParams, router])
 
