@@ -766,8 +766,8 @@ export default function QuizPage() {
       <div className={cn(
         "backdrop-blur-md border rounded-xl p-1 transition-colors duration-300",
         theme === 'dark'
-          ? "bg-black/20 border-white/10"
-          : "bg-white border-yellow-400/90 shadow-md"
+          ? "bg-gray-800/30 border-white/10"
+          : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
       )}>
         <div className="flex gap-1">
           <button
@@ -807,8 +807,8 @@ export default function QuizPage() {
       <div className={cn(
         "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
         theme === 'dark'
-          ? "bg-black/20 border-white/10"
-          : "bg-white border-yellow-400/90 shadow-md"
+          ? "bg-gray-800/30 border-white/10"
+          : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
       )}>
         {activeTab === 'inicial' ? (
           <div className="flex flex-col items-center justify-center py-12 md:py-16">
@@ -849,8 +849,8 @@ export default function QuizPage() {
             <div className={cn(
               "backdrop-blur-md border rounded-xl p-3 md:p-4 transition-colors duration-300",
               theme === 'dark'
-                ? "bg-black/20 border-white/10"
-                : "bg-white border-yellow-400/90 shadow-md"
+                ? "bg-gray-800/30 border-white/10"
+                : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
             )}>
               <div className="flex items-center gap-2 md:gap-3">
                 <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-500 flex-shrink-0" />
@@ -928,8 +928,8 @@ export default function QuizPage() {
               <div className={cn(
                 "p-8 text-center rounded-xl border",
                 theme === 'dark'
-                  ? "bg-black/20 border-white/10 text-gray-400"
-                  : "bg-gray-50 border-gray-200 text-gray-600"
+                  ? "bg-gray-800/30 border-white/10 text-gray-400"
+                  : "bg-yellow-500/10 border-yellow-400/50 text-gray-600"
               )}>
                 <Trophy className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p className="text-lg font-medium mb-2">Nenhum quiz concluído ainda</p>
@@ -942,8 +942,8 @@ export default function QuizPage() {
                   className={cn(
                     "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-all duration-300",
                     theme === 'dark'
-                      ? "bg-black/20 border-white/10 hover:border-yellow-400/50"
-                      : "bg-white border-yellow-400/90 shadow-md hover:border-yellow-500 hover:shadow-lg"
+                      ? "bg-gray-800/30 border-white/10 hover:border-yellow-400/50"
+                      : "bg-yellow-500/10 border-yellow-400/90 shadow-md hover:border-yellow-500 hover:shadow-lg"
                   )}
                 >
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">

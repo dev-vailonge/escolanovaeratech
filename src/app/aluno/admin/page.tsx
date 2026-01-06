@@ -100,8 +100,8 @@ export default function AdminPage() {
       <div className={cn(
         "backdrop-blur-md border rounded-xl p-8 md:p-12 text-center",
         theme === 'dark'
-          ? "bg-black/20 border-white/10"
-          : "bg-white border-yellow-400/90 shadow-md"
+          ? "bg-gray-800/30 border-white/10"
+          : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
       )}>
         <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
         <p className={cn(
@@ -120,8 +120,8 @@ export default function AdminPage() {
       <div className={cn(
         "backdrop-blur-md border rounded-xl p-8 md:p-12 text-center",
         theme === 'dark'
-          ? "bg-black/20 border-white/10"
-          : "bg-white border-yellow-400/90 shadow-md"
+          ? "bg-gray-800/30 border-white/10"
+          : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
       )}>
         <h2 className={cn(
           "text-xl md:text-2xl font-bold mb-4",
@@ -170,8 +170,8 @@ export default function AdminPage() {
       <div className={cn(
         "backdrop-blur-md border rounded-xl p-1 transition-colors duration-300",
         theme === 'dark'
-          ? "bg-black/20 border-white/10"
-          : "bg-white border-yellow-400/90 shadow-md"
+          ? "bg-gray-800/30 border-white/10"
+          : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
       )}>
         <div className="flex flex-wrap gap-1">
           {tabs.map((tab) => {
@@ -205,8 +205,8 @@ export default function AdminPage() {
       <div className={cn(
         "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
         theme === 'dark'
-          ? "bg-black/20 border-white/10"
-          : "bg-white border-yellow-400/90 shadow-md"
+          ? "bg-gray-800/30 border-white/10"
+          : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
       )}>
         <Suspense fallback={<TabLoading theme={theme} />}>
           {/* Renderiza abas visitadas com display:none para manter cache dos dados */}
