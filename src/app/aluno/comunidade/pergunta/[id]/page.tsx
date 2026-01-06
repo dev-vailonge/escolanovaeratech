@@ -570,8 +570,9 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
           Voltar
         </button>
 
-        {/* Botão de Deletar (apenas para admins) */}
-        {user?.role === 'admin' && (
+        {/* Botão de Deletar */}
+        {/* Admin pode deletar qualquer pergunta, autor pode deletar apenas se não tiver respostas */}
+        {(user?.role === 'admin' || (pergunta.autor?.id === currentUserId && (!pergunta.respostas || (Array.isArray(pergunta.respostas) && pergunta.respostas.length === 0)))) && (
           <button
             onClick={deletarPergunta}
             disabled={isDeleting}
