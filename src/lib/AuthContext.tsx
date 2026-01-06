@@ -39,6 +39,42 @@ function convertToAuthUser(dbUser: DatabaseUser | null, supabaseUser: User | nul
   }
 }
 
+// Função helper para criar usuário diretamente usando cliente autenticado
+// Isso funciona se o RLS permitir que o próprio usuário crie seu registro
+async function createUserDirectly(supabaseUser: User, userName: string): Promise<DatabaseUser | null> {
+  try {
+    console.log(`🔄 Tentando criar usuário diretamente na tabela users: ${supabaseUser.email}`)
+    
+    const { data, error } = await supabase
+      .from('users')
+      .insert({
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        name: userName,
+        role: 'aluno',
+        access_level: 'full'
+      })
+      .select()
+      .single()
+
+    if (error) {
+      // Se o erro for que o usuário já existe, tentar buscar
+      if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('already exists')) {
+        console.log('ℹ️ Usuário já existe, buscando...')
+        return await getUserById(supabaseUser.id)
+      }
+      console.error('❌ Erro ao criar usuário diretamente:', error)
+      return null
+    }
+
+    console.log(`✅ Usuário criado diretamente na tabela users: ${supabaseUser.email}`)
+    return data
+  } catch (error: any) {
+    console.error('❌ Erro ao criar usuário diretamente:', error)
+    return null
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true) // Inicia como true para evitar flash de login
@@ -55,13 +91,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Se o usuário não existe na tabela users, criar automaticamente
       // SEGURANÇA: Só cria se o usuário estiver autenticado (supabaseUser existe)
-      // A API valida que o ID corresponde a um usuário válido no auth.users
       if (!dbUser) {
         console.warn(`⚠️ Usuário ${supabaseUser.id} não encontrado na tabela users. Criando automaticamente...`)
         
+        const userName = supabaseUser.user_metadata?.name || 
+                         supabaseUser.user_metadata?.full_name || 
+                         supabaseUser.user_metadata?.display_name ||
+                         supabaseUser.email?.split('@')[0] || 
+                         'Usuário'
+        
+        // Primeiro, tentar criar via API (se tiver service role key)
         try {
-          // Chamar API para criar o usuário e confirmar email
-          // A API valida que o usuário existe no auth.users antes de criar
           const response = await fetch('/api/users/create', {
             method: 'POST',
             headers: {
@@ -70,34 +110,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             body: JSON.stringify({
               id: supabaseUser.id,
               email: supabaseUser.email || '',
-              name: supabaseUser.user_metadata?.name || 
-                    supabaseUser.user_metadata?.full_name || 
-                    supabaseUser.user_metadata?.display_name ||
-                    supabaseUser.email?.split('@')[0] || 
-                    'Usuário',
+              name: userName,
               role: 'aluno',
-              access_level: 'limited'
+              access_level: 'full'
             }),
           })
 
           const result = await response.json()
 
           if (response.ok && result.success && result.user) {
-            console.log(`✅ Usuário criado automaticamente: ${supabaseUser.email}`)
+            console.log(`✅ Usuário criado automaticamente via API: ${supabaseUser.email}`)
             dbUser = result.user
+          } else if (result.code === 'MISSING_SERVICE_ROLE_KEY') {
+            // Se não tiver service role key, criar diretamente usando cliente autenticado
+            console.warn('⚠️ Service role key não disponível, criando usuário diretamente com cliente autenticado...')
+            dbUser = await createUserDirectly(supabaseUser, userName)
           } else {
             console.error('❌ Erro ao criar usuário automaticamente:', result.error)
-            // Tentar buscar novamente (pode ter sido criado pelo trigger ou outra fonte)
-            dbUser = await getUserById(supabaseUser.id)
-            if (!dbUser) {
-              return null
-            }
+            // Tentar criar diretamente como fallback
+            dbUser = await createUserDirectly(supabaseUser, userName)
           }
         } catch (apiError: any) {
-          console.error('❌ Erro ao chamar API de criar usuário:', apiError)
-          // Tentar buscar novamente (pode ter sido criado por outra fonte)
+          console.warn('⚠️ Erro ao chamar API de criar usuário, tentando criar diretamente:', apiError.message)
+          // Tentar criar diretamente usando cliente autenticado
+          dbUser = await createUserDirectly(supabaseUser, userName)
+        }
+        
+        // Se ainda não conseguiu criar, tentar buscar novamente (pode ter sido criado por trigger)
+        if (!dbUser) {
           dbUser = await getUserById(supabaseUser.id)
           if (!dbUser) {
+            console.error('❌ Não foi possível criar usuário na tabela users')
             return null
           }
         }
