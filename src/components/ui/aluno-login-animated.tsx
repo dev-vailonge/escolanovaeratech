@@ -76,9 +76,13 @@ const iconsArray: OrbitIcon[] = [
   },
   {
     component: () => (
-      <div className='w-10 h-10 rounded bg-black flex items-center justify-center'>
-        <span className='text-yellow-400 font-bold text-sm'>JS</span>
-      </div>
+      <Image
+        width={100}
+        height={100}
+        src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg'
+        alt='JavaScript'
+        className='w-10 h-10'
+      />
     ),
     className: 'size-[50px] border-none bg-transparent',
     radius: 210,

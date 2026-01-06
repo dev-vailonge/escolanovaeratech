@@ -106,26 +106,22 @@ function AlunoLoginContent() {
     router.push('/aluno/forgot-password')
   }
 
-  // Logo component - usar logo light .svg dentro de um círculo, ocupando todo o espaço
+  // Logo component - usar logo_light_circle.svg que já vem em formato circular
   const logo = (
     <div className="relative mb-4 flex items-center justify-center lg:translate-x-4 max-w-full">
-      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-yellow-400/10 border-2 border-yellow-400/30 flex items-center justify-center overflow-hidden">
-        <div className="relative w-full h-full flex items-center justify-center scale-[1.3] sm:scale-150 translate-y-0.5">
-          <Image
-            src="/logo light .svg"
-            alt="Nova Era Tech"
-            width={300}
-            height={300}
-            quality={100}
-            priority
-            unoptimized={true}
-            className="w-full h-full object-contain"
-            style={{
-              imageRendering: 'auto' as const,
-            }}
-          />
-        </div>
-      </div>
+      <Image
+        src="/logo_light_circle.svg"
+        alt="Escola Nova Era Tech"
+        width={96}
+        height={96}
+        quality={100}
+        priority
+        unoptimized={true}
+        className="w-20 h-20 sm:w-24 sm:h-24"
+        style={{
+          imageRendering: 'auto' as const,
+        }}
+      />
     </div>
   )
 
