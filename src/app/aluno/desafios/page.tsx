@@ -1090,46 +1090,48 @@ export default function DesafiosPage() {
         </p>
       </div>
 
-      {/* Abas */}
-      <div className={cn(
-        "backdrop-blur-md border rounded-xl p-1 transition-colors duration-300",
-        theme === 'dark'
-          ? "bg-gray-800/30 border-white/10"
-          : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
-      )}>
-        <div className="flex gap-1">
-          <button
-            onClick={() => { setActiveTab('gerar'); setError(''); setSuccess(''); }}
-            className={cn(
-              "flex-1 px-4 py-2 rounded-lg font-medium transition-all text-sm md:text-base",
-              activeTab === 'gerar'
-                ? theme === 'dark'
-                  ? "bg-yellow-400 text-black"
-                  : "bg-yellow-500 text-white"
-                : theme === 'dark'
-                  ? "text-gray-400 hover:text-white hover:bg-white/5"
-                  : "text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20"
-            )}
-          >
-            Novo Desafio
-          </button>
-          <button
-            onClick={() => { setActiveTab('meus'); setError(''); setSuccess(''); }}
-            className={cn(
-              "flex-1 px-4 py-2 rounded-lg font-medium transition-all text-sm md:text-base",
-              activeTab === 'meus'
-                ? theme === 'dark'
-                  ? "bg-yellow-400 text-black"
-                  : "bg-yellow-500 text-white"
-                : theme === 'dark'
-                  ? "text-gray-400 hover:text-white hover:bg-white/5"
-                  : "text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20"
-            )}
-          >
-            Meus Desafios
-          </button>
+      {/* Abas - Só mostra se tiver desafios */}
+      {meusDesafios.length > 0 && (
+        <div className={cn(
+          "backdrop-blur-md border rounded-xl p-1 transition-colors duration-300",
+          theme === 'dark'
+            ? "bg-gray-800/30 border-white/10"
+            : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
+        )}>
+          <div className="flex gap-1">
+            <button
+              onClick={() => { setActiveTab('gerar'); setError(''); setSuccess(''); }}
+              className={cn(
+                "flex-1 px-4 py-2 rounded-lg font-medium transition-all text-sm md:text-base",
+                activeTab === 'gerar'
+                  ? theme === 'dark'
+                    ? "bg-yellow-400 text-black"
+                    : "bg-yellow-500 text-white"
+                  : theme === 'dark'
+                    ? "text-gray-400 hover:text-white hover:bg-white/5"
+                    : "text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20"
+              )}
+            >
+              Novo Desafio
+            </button>
+            <button
+              onClick={() => { setActiveTab('meus'); setError(''); setSuccess(''); }}
+              className={cn(
+                "flex-1 px-4 py-2 rounded-lg font-medium transition-all text-sm md:text-base",
+                activeTab === 'meus'
+                  ? theme === 'dark'
+                    ? "bg-yellow-400 text-black"
+                    : "bg-yellow-500 text-white"
+                  : theme === 'dark'
+                    ? "text-gray-400 hover:text-white hover:bg-white/5"
+                    : "text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20"
+              )}
+            >
+              Meus Desafios
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Conteúdo das Abas */}
       <div className={cn(
@@ -1138,7 +1140,7 @@ export default function DesafiosPage() {
           ? "bg-gray-800/30 border-white/10"
           : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
       )}>
-        {activeTab === 'gerar' ? (
+        {meusDesafios.length === 0 || activeTab === 'gerar' ? (
           // Aba Gerar Desafio
           <div className="flex flex-col items-center justify-center py-12 md:py-16">
             {!podeGerarNovo && desafioAtivo ? (
