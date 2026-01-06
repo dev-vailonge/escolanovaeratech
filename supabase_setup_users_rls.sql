@@ -11,31 +11,58 @@
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
 -- 2. Política para permitir que usuários autenticados LEIAM seu próprio registro
--- Remove política existente se houver antes de criar
-DROP POLICY IF EXISTS "Users can read their own data" ON users;
-CREATE POLICY "Users can read their own data"
-ON users
-FOR SELECT
-TO authenticated
-USING (auth.uid() = id);
+-- Só cria se não existir (mais seguro - não remove políticas existentes)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'public' 
+    AND tablename = 'users' 
+    AND policyname = 'Users can read their own data'
+  ) THEN
+    CREATE POLICY "Users can read their own data"
+    ON users
+    FOR SELECT
+    TO authenticated
+    USING (auth.uid() = id);
+  END IF;
+END $$;
 
 -- 3. Política para permitir que usuários autenticados CRIEM seu próprio registro
 -- Esta é a política que permite criação automática no login
-DROP POLICY IF EXISTS "Users can insert their own record" ON users;
-CREATE POLICY "Users can insert their own record"
-ON users
-FOR INSERT
-TO authenticated
-WITH CHECK (auth.uid() = id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'public' 
+    AND tablename = 'users' 
+    AND policyname = 'Users can insert their own record'
+  ) THEN
+    CREATE POLICY "Users can insert their own record"
+    ON users
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = id);
+  END IF;
+END $$;
 
 -- 4. Política para permitir que usuários autenticados ATUALIZEM seu próprio registro
-DROP POLICY IF EXISTS "Users can update their own data" ON users;
-CREATE POLICY "Users can update their own data"
-ON users
-FOR UPDATE
-TO authenticated
-USING (auth.uid() = id)
-WITH CHECK (auth.uid() = id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'public' 
+    AND tablename = 'users' 
+    AND policyname = 'Users can update their own data'
+  ) THEN
+    CREATE POLICY "Users can update their own data"
+    ON users
+    FOR UPDATE
+    TO authenticated
+    USING (auth.uid() = id)
+    WITH CHECK (auth.uid() = id);
+  END IF;
+END $$;
 
 -- 5. (Opcional) Política para admins lerem todos os usuários
 -- Descomente se quiser que admins vejam todos os usuários
