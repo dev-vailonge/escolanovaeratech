@@ -188,20 +188,28 @@ function ResetPasswordForm() {
         throw updateError
       }
 
-      console.log('✅ Senha atualizada com sucesso')
+      console.log('✅ Senha atualizada com sucesso', updateData)
 
-      // Sign out the user after password change
-      const { error: signOutError } = await supabase.auth.signOut()
-      if (signOutError) {
-        console.warn('Aviso ao deslogar:', signOutError)
-      } else {
+      // Sign out the user after password change (não esperar erro, apenas tentar)
+      try {
+        await supabase.auth.signOut()
         console.log('✅ Usuário deslogado após alteração de senha')
+      } catch (signOutErr) {
+        console.warn('Aviso ao deslogar (não crítico):', signOutErr)
       }
 
+      // Resetar loading antes do redirect
+      setIsLoading(false)
+      
       // Redirect to login page with success message
       // Usar window.location.href para garantir que o redirect funcione
       const successMessage = encodeURIComponent('Senha alterada com sucesso! Faça login com sua nova senha.')
-      window.location.href = `/aluno/login?message=${successMessage}`
+      console.log('🔄 Redirecionando para login...')
+      
+      // Usar setTimeout para garantir que o estado seja atualizado antes do redirect
+      setTimeout(() => {
+        window.location.href = `/aluno/login?message=${successMessage}`
+      }, 100)
     } catch (err: any) {
       console.error('Erro completo ao redefinir senha:', err)
       const errorMessage = err?.message || err?.error_description || 'Erro ao redefinir senha. Tente novamente.'
