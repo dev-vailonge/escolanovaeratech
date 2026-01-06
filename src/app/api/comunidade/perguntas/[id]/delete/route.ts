@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
+import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
 import { calculateLevel } from '@/lib/gamification'
 import { XP_CONSTANTS } from '@/lib/gamification/constants'
@@ -25,6 +26,7 @@ export async function DELETE(
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
     const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length).trim() : undefined
     
+    // Usar getSupabaseClient inicialmente para verificar permissões
     const supabase = await getSupabaseClient(accessToken)
     const perguntaId = params.id
 
@@ -67,6 +69,9 @@ export async function DELETE(
     if (!isAdmin && !isAuthor) {
       return NextResponse.json({ error: 'Você não tem permissão para deletar esta pergunta' }, { status: 403 })
     }
+
+    // Se for admin, usar SupabaseAdmin para garantir que a deleção funcione mesmo com RLS
+    const supabaseAdmin = isAdmin ? getSupabaseAdmin() : supabase
 
     // Buscar todas as respostas da pergunta
     const { data: respostas, error: respostasError } = await supabase
@@ -114,7 +119,8 @@ export async function DELETE(
 
     // Remover entradas de XP do histórico (não crítico se falhar - apenas logar)
     // Buscar e remover a entrada de XP da pergunta
-    const { error: deleteXpPerguntaError } = await supabase
+    // Usar supabaseAdmin se for admin para garantir remoção mesmo com RLS
+    const { error: deleteXpPerguntaError } = await supabaseAdmin
       .from('user_xp_history')
       .delete()
       .eq('source', 'comunidade')
@@ -130,7 +136,7 @@ export async function DELETE(
       const respostaIds = respostas.map((r) => r.id) // UUID direto, sem prefixo
 
       if (respostaIds.length > 0) {
-        const { error: deleteXpRespostasError } = await supabase
+        const { error: deleteXpRespostasError } = await supabaseAdmin
           .from('user_xp_history')
           .delete()
           .eq('source', 'comunidade')
@@ -144,7 +150,8 @@ export async function DELETE(
     }
 
     // Deletar votos da pergunta (não crítico se falhar - apenas logar)
-    const { error: deleteVotosError } = await supabase
+    // Usar supabaseAdmin se for admin para garantir deleção mesmo com RLS
+    const { error: deleteVotosError } = await supabaseAdmin
       .from('pergunta_votos')
       .delete()
       .eq('pergunta_id', perguntaId)
@@ -157,7 +164,7 @@ export async function DELETE(
 
     // Deletar respostas (incluindo comentários) - APENAS SE HOUVER respostas
     if (respostas && respostas.length > 0) {
-      const { error: deleteRespostasError } = await supabase
+      const { error: deleteRespostasError } = await supabaseAdmin
         .from('respostas')
         .delete()
         .eq('pergunta_id', perguntaId)
@@ -187,7 +194,8 @@ export async function DELETE(
     }
 
     // Deletar a pergunta (operação principal)
-    const { error: deletePerguntaError } = await supabase
+    // Usar supabaseAdmin se for admin para garantir deleção mesmo com RLS
+    const { error: deletePerguntaError } = await supabaseAdmin
       .from('perguntas')
       .delete()
       .eq('id', perguntaId)
@@ -232,7 +240,8 @@ export async function DELETE(
 
     for (const [usuarioId, xpPerdido] of usuariosAfetados.entries()) {
       // Buscar XP atual do usuário (incluindo xp_mensal)
-      const { data: usuario, error: usuarioError } = await supabase
+      // Usar supabaseAdmin para garantir acesso mesmo com RLS
+      const { data: usuario, error: usuarioError } = await supabaseAdmin
         .from('users')
         .select('xp, xp_mensal, level, name')
         .eq('id', usuarioId)
@@ -249,7 +258,8 @@ export async function DELETE(
       const novoNivel = calculateLevel(novoXp)
 
       // Atualizar usuário (xp total e xp mensal)
-      const { error: updateError } = await supabase
+      // Usar supabaseAdmin para garantir atualização mesmo com RLS
+      const { error: updateError } = await supabaseAdmin
         .from('users')
         .update({
           xp: novoXp,
