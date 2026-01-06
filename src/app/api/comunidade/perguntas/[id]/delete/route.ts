@@ -281,8 +281,72 @@ export async function DELETE(
     }
 
     // Verificar se a pergunta foi realmente deletada
+    // IMPORTANTE: Se RLS bloquear, o Supabase retorna sucesso mas com array vazio
     if (!deletePerguntaData || deletePerguntaData.length === 0) {
-      console.warn('⚠️ Nenhuma pergunta foi deletada. Pode ser que a pergunta já não exista ou houve um problema com RLS.')
+      console.error('❌ Nenhuma pergunta foi deletada! Isso geralmente indica que RLS bloqueou a operação.')
+      console.error('❌ Detalhes:', {
+        perguntaId,
+        userId,
+        isAdmin,
+        isAuthor,
+        supabaseClient: isAdmin ? 'admin (deveria funcionar)' : 'normal (pode ser bloqueado por RLS)'
+      })
+      
+      // Se for admin e não deletou, é definitivamente problema de RLS
+      if (isAdmin) {
+        return NextResponse.json({ 
+          error: 'A pergunta não foi deletada. Provavelmente as políticas RLS no Supabase estão bloqueando a deleção mesmo para admins.',
+          details: {
+            perguntaId,
+            userId,
+            isAdmin: true,
+            isAuthor,
+            problema: 'RLS bloqueando deleção de admin'
+          },
+          logs: [
+            `❌ ERRO: Pergunta não foi deletada do banco de dados`,
+            `Pergunta ID: ${perguntaId}`,
+            `Usuário ID: ${userId}`,
+            `É admin: ${isAdmin}`,
+            `É autor: ${isAuthor}`,
+            ``,
+            `🔍 Diagnóstico: O Supabase retornou sucesso, mas nenhum registro foi deletado.`,
+            `Isso indica que as políticas RLS (Row Level Security) estão bloqueando a deleção.`,
+            ``,
+            `💡 Solução:`,
+            `1. Acesse o Supabase Dashboard`,
+            `2. Vá em Authentication > Policies para a tabela 'perguntas'`,
+            `3. Crie ou ajuste uma política que permita DELETE para usuários com role='admin'`,
+            `4. Exemplo de política:`,
+            `   CREATE POLICY "Admins podem deletar qualquer pergunta"`,
+            `   ON perguntas FOR DELETE`,
+            `   USING (auth.jwt() ->> 'role' = 'admin');`,
+          ].filter(Boolean)
+        }, { status: 403 })
+      }
+      
+      // Se não for admin, pode ser RLS ou pergunta já deletada
+      return NextResponse.json({ 
+        error: 'A pergunta não foi deletada. Verifique se você tem permissão ou se a pergunta ainda existe.',
+        details: {
+          perguntaId,
+          userId,
+          isAdmin: false,
+          isAuthor,
+        },
+        logs: [
+          `❌ ERRO: Pergunta não foi deletada do banco de dados`,
+          `Pergunta ID: ${perguntaId}`,
+          `Usuário ID: ${userId}`,
+          `É admin: ${isAdmin}`,
+          `É autor: ${isAuthor}`,
+          ``,
+          `💡 Possíveis causas:`,
+          `1. Políticas RLS bloqueando a deleção`,
+          `2. A pergunta já foi deletada anteriormente`,
+          `3. Você não tem permissão para deletar esta pergunta`,
+        ].filter(Boolean)
+      }, { status: 403 })
     } else {
       console.log(`✅ Pergunta ${perguntaId} deletada com sucesso do banco de dados (${deletePerguntaData.length} registro(s))`)
     }
