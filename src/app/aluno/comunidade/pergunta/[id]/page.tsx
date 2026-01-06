@@ -606,10 +606,10 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
         'backdrop-blur-md border rounded-xl p-4 md:p-6 transition-all duration-300',
         pergunta.resolvida
           ? theme === 'dark'
-            ? 'bg-black/20 border-green-500/30'
+            ? 'bg-gray-800/40 border-green-500/30'
             : 'bg-green-50 border-green-400/90 shadow-md'
           : theme === 'dark'
-            ? 'bg-black/20 border-white/10'
+            ? 'bg-gray-800/40 border-white/10'
             : 'bg-white border-yellow-400/90 shadow-md'
       )}>
         <div className="flex gap-3 md:gap-4">
@@ -780,7 +780,7 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
         <div className={cn(
           'backdrop-blur-md border rounded-xl p-4 md:p-6',
           theme === 'dark'
-            ? 'bg-green-500/10 border-green-500/30'
+            ? 'bg-gray-800/40 border-green-500/30'
             : 'bg-green-50 border-green-400/90 shadow-md'
         )}>
           <div className="flex items-center gap-2 mb-2">
@@ -806,7 +806,7 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
         <div className={cn(
           'backdrop-blur-md border rounded-xl p-4 md:p-6',
           theme === 'dark'
-            ? 'bg-black/20 border-white/10'
+            ? 'bg-gray-800/40 border-white/10'
             : 'bg-white border-yellow-400/90 shadow-md'
         )}>
           <h2 className={cn(
@@ -928,7 +928,7 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
           <div className={cn(
             'backdrop-blur-md border rounded-xl p-8 text-center',
             theme === 'dark'
-              ? 'bg-black/20 border-white/10'
+              ? 'bg-gray-800/40 border-white/10'
               : 'bg-white border-yellow-400/90 shadow-md'
           )}>
             <p className={cn(theme === 'dark' ? 'text-gray-400' : 'text-gray-600')}>
@@ -961,10 +961,10 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
                 'backdrop-blur-md border rounded-xl p-4 md:p-6',
                 resposta.melhorResposta
                   ? theme === 'dark'
-                    ? 'bg-green-500/10 border-green-500/30'
+                    ? 'bg-gray-800/40 border-green-500/30'
                     : 'bg-green-50 border-green-300'
                   : theme === 'dark'
-                    ? 'bg-black/20 border-white/10'
+                    ? 'bg-gray-800/40 border-white/10'
                     : 'bg-white border-yellow-400/90 shadow-md'
               )}
             >
