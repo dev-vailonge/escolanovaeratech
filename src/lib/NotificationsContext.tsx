@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from 'react'
 import { supabase } from './supabase'
 import { useAuth } from './AuthContext'
 import type { DatabaseNotificacao } from '@/types/database'
@@ -246,8 +246,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.accessLevel, user?.id, user?.role])
 
-  // Calcular contagem de não lidas
-  const unreadCount = notifications.filter(n => !readIds.has(n.id)).length
+  // Calcular contagem de não lidas (usando useMemo para garantir recálculo)
+  const unreadCount = useMemo(() => {
+    return notifications.filter(n => !readIds.has(n.id)).length
+  }, [notifications, readIds])
 
   // Marcar notificação como lida
   const markAsRead = useCallback((notificationId: string) => {
@@ -257,7 +259,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   // Marcar todas como lidas
   const markAllAsRead = useCallback(() => {
     const allIds = notifications.map(n => n.id)
-    setReadIds(prev => new Set([...prev, ...allIds]))
+    setReadIds(prev => {
+      // Criar novo Set com todos os IDs para garantir atualização
+      const newSet = new Set([...prev, ...allIds])
+      return newSet
+    })
     setHasNewNotification(false)
   }, [notifications])
 
