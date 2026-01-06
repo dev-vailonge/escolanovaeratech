@@ -52,3 +52,4 @@ Melhorar a experiência do usuário na página de ranking com implementação de
 ## 🔗 URL para Criar PR
 https://github.com/dev-vailonge/escolanovaeratech/pull/new/fix/corrige-ui-ranking
 
+

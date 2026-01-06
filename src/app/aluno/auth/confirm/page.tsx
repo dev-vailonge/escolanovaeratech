@@ -25,6 +25,47 @@ export default function ConfirmEmailPage() {
           return
         }
 
+        // Verificar query params primeiro (Supabase pode enviar tokens na query)
+        const urlParams = new URLSearchParams(window.location.search)
+        const accessTokenQuery = urlParams.get('access_token')
+        const refreshTokenQuery = urlParams.get('refresh_token')
+        const error = urlParams.get('error')
+        const errorDescription = urlParams.get('error_description')
+
+        // Se tiver erro na query, processar erro
+        if (error) {
+          if (error === 'access_denied' && (errorDescription?.includes('expired') || errorDescription?.includes('invalid'))) {
+            setStatus('error')
+            setMessage('O link de confirmação expirou ou é inválido. Por favor, solicite um novo link ou faça login.')
+          } else {
+            setStatus('error')
+            setMessage(errorDescription || 'Erro ao confirmar email. Tente fazer login.')
+          }
+          return
+        }
+
+        // Se tiver tokens na query, processar
+        if (accessTokenQuery && refreshTokenQuery) {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessTokenQuery,
+            refresh_token: refreshTokenQuery,
+          })
+
+          if (error) {
+            throw error
+          }
+
+          if (data?.session) {
+            console.log('✅ Sessão criada via query params, email confirmado')
+            setStatus('success')
+            setMessage('Email confirmado com sucesso! Redirecionando...')
+            setTimeout(() => {
+              router.push('/aluno?confirmed=true')
+            }, 2000)
+            return
+          }
+        }
+
         // Verificar hash fragment na URL (Supabase pode enviar tokens no hash)
         const hash = window.location.hash
         if (hash) {
@@ -32,7 +73,20 @@ export default function ConfirmEmailPage() {
           const hashParams = new URLSearchParams(hash.substring(1))
           const accessToken = hashParams.get('access_token')
           const refreshToken = hashParams.get('refresh_token')
-          const type = hashParams.get('type')
+          const hashError = hashParams.get('error')
+          const hashErrorDescription = hashParams.get('error_description')
+
+          // Se tiver erro no hash, processar erro
+          if (hashError) {
+            if (hashError === 'access_denied' && (hashErrorDescription?.includes('expired') || hashErrorDescription?.includes('invalid'))) {
+              setStatus('error')
+              setMessage('O link de confirmação expirou ou é inválido. Por favor, solicite um novo link ou faça login.')
+            } else {
+              setStatus('error')
+              setMessage(hashErrorDescription || 'Erro ao confirmar email. Tente fazer login.')
+            }
+            return
+          }
 
           if (accessToken && refreshToken) {
             // Definir sessão com os tokens
@@ -46,7 +100,7 @@ export default function ConfirmEmailPage() {
             }
 
             if (data?.session) {
-              console.log('✅ Sessão criada, email confirmado')
+              console.log('✅ Sessão criada via hash, email confirmado')
               setStatus('success')
               setMessage('Email confirmado com sucesso! Redirecionando...')
               setTimeout(() => {
@@ -57,23 +111,7 @@ export default function ConfirmEmailPage() {
           }
         }
 
-        // Se chegou aqui sem tokens, verificar se há erro na URL
-        const urlParams = new URLSearchParams(window.location.search)
-        const error = urlParams.get('error')
-        const errorDescription = urlParams.get('error_description')
-
-        if (error) {
-          if (error === 'access_denied' && errorDescription?.includes('expired')) {
-            setStatus('error')
-            setMessage('O link de confirmação expirou. Por favor, solicite um novo link ou faça login.')
-          } else {
-            setStatus('error')
-            setMessage(errorDescription || 'Erro ao confirmar email. Tente fazer login.')
-          }
-          return
-        }
-
-        // Se não tem tokens nem erro, pode ser que o link já foi usado
+        // Se chegou aqui sem tokens nem erro, pode ser que o link já foi usado
         setStatus('error')
         setMessage('Link inválido ou já utilizado. Tente fazer login.')
       } catch (error: any) {

@@ -57,3 +57,4 @@ A API de geração de desafios estava usando `getSupabaseAdmin()` (que requer `S
 **Relacionado a:** #PONTO_SITUACAO_SERVICE_ROLE_KEY.md
 **Branch:** `fix/corrige-desafios-service-role`
 
+
