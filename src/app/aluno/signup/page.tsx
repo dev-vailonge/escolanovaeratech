@@ -56,13 +56,15 @@ function AlunoSignUpContent() {
 
     try {
       // Criar conta no Supabase Auth
+      // IMPORTANTE: emailRedirectTo aponta para a rota que processa a confirmação de email
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: {
             name: formData.name
-          }
+          },
+          emailRedirectTo: `${window.location.origin}/aluno/auth/confirm`
         }
       })
 
