@@ -72,7 +72,18 @@ export async function DELETE(
 
     // Se for admin, usar SupabaseAdmin para garantir que a deleção funcione mesmo com RLS
     // Se não for admin, usar o supabase normal (que já tem o token do usuário)
-    const supabaseForDelete = isAdmin ? getSupabaseAdmin() : supabase
+    let supabaseForDelete = supabase
+    if (isAdmin) {
+      try {
+        supabaseForDelete = getSupabaseAdmin()
+      } catch (adminError: any) {
+        console.error('❌ Erro ao obter SupabaseAdmin:', adminError)
+        // Se não tiver SERVICE_ROLE_KEY configurado, usar supabase normal
+        // Mas avisar que pode falhar por RLS
+        console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY não configurado. Usando cliente normal (pode falhar por RLS)')
+        supabaseForDelete = supabase
+      }
+    }
 
     // Buscar todas as respostas da pergunta
     // Usar supabaseForDelete para garantir acesso mesmo com RLS (admin) ou usar token normal (autor)
@@ -320,6 +331,15 @@ export async function DELETE(
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
     
+    // Erro específico: SERVICE_ROLE_KEY não configurado
+    if (String(error?.message || '').includes('SUPABASE_SERVICE_ROLE_KEY') || String(error?.message || '').includes('Supabase admin não configurado')) {
+      console.error('❌ SUPABASE_SERVICE_ROLE_KEY não configurado em produção!')
+      return NextResponse.json({ 
+        error: 'Configuração do servidor incompleta. Entre em contato com o suporte.',
+        details: 'SERVICE_ROLE_KEY não configurado'
+      }, { status: 500 })
+    }
+    
     // Erros de permissão
     if (String(error?.message || '').includes('permission') || String(error?.message || '').includes('RLS') || error?.code === '42501') {
       return NextResponse.json({ 
@@ -328,10 +348,19 @@ export async function DELETE(
       }, { status: 403 })
     }
     
-    // Outros erros - retornar mensagem específica em dev, genérica em prod
+    // Outros erros - sempre logar detalhes no servidor, mas retornar mensagem genérica em prod
     const errorMessage = process.env.NODE_ENV === 'development' 
       ? error?.message || 'Erro ao deletar pergunta'
       : 'Erro ao deletar pergunta. Tente novamente mais tarde.'
+    
+    // Em produção, sempre logar o erro completo no servidor para diagnóstico
+    console.error('❌ [PRODUÇÃO] Erro completo:', JSON.stringify({
+      message: error?.message,
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+      stack: error?.stack?.substring(0, 500), // Limitar stack trace nos logs
+    }, null, 2))
     
     return NextResponse.json({ 
       error: errorMessage,
