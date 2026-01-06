@@ -228,7 +228,7 @@ export function AlunoLoginAnimated({
         <Ripple mainCircleSize={100} />
         <TechOrbitDisplay 
           iconsArray={iconsArray} 
-          text='Nova Era Tech'
+          text='Escola Nova Era Tech'
         />
       </span>
 

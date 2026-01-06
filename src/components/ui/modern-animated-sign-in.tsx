@@ -268,43 +268,22 @@ const OrbitingCircles = memo(function OrbitingCircles({
           />
         </svg>
       )}
-      <motion.div
-        className="absolute inset-0 flex items-center justify-center"
-        style={{
-          transformOrigin: 'center center',
-        }}
-        animate={{
-          rotate: reverse ? -360 : 360,
-        }}
-        transition={{
-          duration: duration,
-          repeat: Infinity,
-          ease: 'linear',
-          delay: delay > 0 ? -delay : 0,
-        }}
+      <section
+        style={
+          {
+            '--duration': duration,
+            '--radius': radius,
+            '--delay': -delay,
+          } as React.CSSProperties
+        }
+        className={cn(
+          'absolute flex size-full transform-gpu animate-orbit items-center justify-center rounded-full border bg-black/10 [animation-delay:calc(var(--delay)*1000ms)] dark:bg-white/10',
+          { '[animation-direction:reverse]': reverse },
+          className
+        )}
       >
-        <motion.div
-          className={cn(
-            'absolute flex items-center justify-center transform-gpu z-10',
-            className
-          )}
-          animate={{
-            rotate: reverse ? 360 : -360,
-          }}
-          transition={{
-            duration: duration,
-            repeat: Infinity,
-            ease: 'linear',
-            delay: delay > 0 ? -delay : 0,
-          }}
-          style={{
-            y: radius,
-            transformOrigin: 'center center',
-          }}
-        >
-          {children}
-        </motion.div>
-      </motion.div>
+        {children}
+      </section>
     </>
   );
 });
@@ -467,7 +446,7 @@ const AnimatedForm = memo(function AnimatedForm({
       </BoxReveal>
 
       {subHeader && (
-        <BoxReveal boxColor='#FFF420' duration={0.3} className='pb-2'>
+        <BoxReveal boxColor='#FBBF24' duration={0.3} className='pb-2'>
           <p className='text-gray-300 text-sm max-w-sm'>
             {subHeader}
           </p>
@@ -477,7 +456,7 @@ const AnimatedForm = memo(function AnimatedForm({
       {googleLogin && (
         <>
           <BoxReveal
-            boxColor='#FFF420'
+            boxColor='#FBBF24'
             duration={0.3}
             overflow='visible'
             width='unset'
@@ -508,7 +487,7 @@ const AnimatedForm = memo(function AnimatedForm({
             </button>
           </BoxReveal>
 
-          <BoxReveal boxColor='#FFF420' duration={0.3} width='100%'>
+          <BoxReveal boxColor='#FBBF24' duration={0.3} width='100%'>
             <section className='flex items-center gap-4'>
               <hr className='flex-1 border-1 border-dashed' style={{ borderColor: 'rgba(251, 191, 36, 0.2)' }} />
               <p className='text-gray-400 text-sm'>
@@ -534,7 +513,7 @@ const AnimatedForm = memo(function AnimatedForm({
 
               <BoxReveal
                 width='100%'
-                boxColor='#FFF420'
+                boxColor='#FBBF24'
                 duration={0.3}
                 className='flex flex-col space-y-2 w-full'
               >
@@ -581,7 +560,7 @@ const AnimatedForm = memo(function AnimatedForm({
           ))}
         </section>
 
-        <BoxReveal width='100%' boxColor='#FFF420' duration={0.3}>
+        <BoxReveal width='100%' boxColor='#FBBF24' duration={0.3}>
           {errorField && (
             <p className='text-red-500 text-sm mb-4'>{errorField}</p>
           )}
@@ -589,7 +568,7 @@ const AnimatedForm = memo(function AnimatedForm({
 
         <BoxReveal
           width='100%'
-          boxColor='#FFF420'
+          boxColor='#FBBF24'
           duration={0.3}
           overflow='visible'
         >

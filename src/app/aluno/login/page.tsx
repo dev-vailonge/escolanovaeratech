@@ -129,6 +129,18 @@ function AlunoLoginContent() {
     </div>
   )
 
+  // Show loading while AuthContext is initializing
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div 
+          className="animate-spin rounded-full h-12 w-12 border-b-2"
+          style={{ borderColor: '#FBBF24' }}
+        ></div>
+      </div>
+    )
+  }
+
   return (
     <AlunoLoginAnimated
       formData={formData}
@@ -147,7 +159,10 @@ function AlunoLoginWrapper() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+        <div 
+          className="animate-spin rounded-full h-12 w-12 border-b-2"
+          style={{ borderColor: '#FBBF24' }}
+        ></div>
       </div>
     }>
       <AlunoLoginContent />
