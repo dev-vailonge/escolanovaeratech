@@ -1872,12 +1872,15 @@ export default function ComunidadePage() {
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between mb-2 gap-2">
-                    <h3 className={cn(
-                      "text-base md:text-lg font-semibold cursor-pointer line-clamp-2 transition-colors flex-1",
-                      theme === 'dark'
-                        ? "text-white hover:text-yellow-400"
-                        : "text-gray-900 hover:text-yellow-600"
-                    )}>
+                    <h3 
+                      onClick={() => router.push(`/aluno/comunidade/pergunta/${pergunta.id}`)}
+                      className={cn(
+                        "text-base md:text-lg font-semibold cursor-pointer line-clamp-2 transition-colors flex-1",
+                        theme === 'dark'
+                          ? "text-white hover:text-yellow-400"
+                          : "text-gray-900 hover:text-yellow-600"
+                      )}
+                    >
                       {pergunta.titulo}
                     </h3>
                     {/* Botões de editar/excluir - editar sempre permitido se for dono, excluir apenas sem respostas */}
