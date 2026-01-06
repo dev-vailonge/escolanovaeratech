@@ -163,20 +163,49 @@ function ResetPasswordForm() {
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      // Verificar se ainda tem sessão antes de atualizar
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError) {
+        console.error('Erro ao verificar sessão:', sessionError)
+        throw new Error('Sessão inválida. Por favor, use o link de recuperação novamente.')
+      }
+
+      if (!session) {
+        console.error('Nenhuma sessão encontrada')
+        throw new Error('Sessão expirada. Por favor, solicite um novo link de recuperação.')
+      }
+
+      console.log('🔄 Atualizando senha para usuário:', session.user.email)
+
+      // Atualizar senha
+      const { data: updateData, error: updateError } = await supabase.auth.updateUser({
         password: password
       })
 
-      if (error) throw error
+      if (updateError) {
+        console.error('Erro ao atualizar senha:', updateError)
+        throw updateError
+      }
+
+      console.log('✅ Senha atualizada com sucesso')
 
       // Sign out the user after password change
-      await supabase.auth.signOut()
+      const { error: signOutError } = await supabase.auth.signOut()
+      if (signOutError) {
+        console.warn('Aviso ao deslogar:', signOutError)
+      } else {
+        console.log('✅ Usuário deslogado após alteração de senha')
+      }
 
       // Redirect to login page with success message
-      router.push('/aluno/login?message=Senha alterada com sucesso! Faça login com sua nova senha.')
+      // Usar window.location.href para garantir que o redirect funcione
+      const successMessage = encodeURIComponent('Senha alterada com sucesso! Faça login com sua nova senha.')
+      window.location.href = `/aluno/login?message=${successMessage}`
     } catch (err: any) {
-      setError(err?.message || 'Erro ao redefinir senha')
-    } finally {
+      console.error('Erro completo ao redefinir senha:', err)
+      const errorMessage = err?.message || err?.error_description || 'Erro ao redefinir senha. Tente novamente.'
+      setError(errorMessage)
       setIsLoading(false)
     }
   }
