@@ -195,7 +195,13 @@ export function AlunoLoginAnimated({
   logo,
 }: AlunoLoginAnimatedProps) {
   const formFields = {
-    header: 'Bem-vindo ao portal do aluno',
+    header: (
+      <>
+        <span className="text-yellow-400">Portal do Aluno</span>
+        <br />
+        <span>Seja bem-vindo</span>
+      </>
+    ),
     subHeader: 'Entre com suas credenciais para acessar sua conta',
     fields: [
       {
