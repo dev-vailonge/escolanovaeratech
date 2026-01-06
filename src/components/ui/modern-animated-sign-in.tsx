@@ -268,19 +268,28 @@ const OrbitingCircles = memo(function OrbitingCircles({
           />
         </svg>
       )}
-      <div
+      <motion.div
         className="absolute inset-0 flex items-center justify-center"
         style={{
           transformOrigin: 'center center',
         }}
+        animate={{
+          rotate: reverse ? -360 : 360,
+        }}
+        transition={{
+          duration: duration,
+          repeat: Infinity,
+          ease: 'linear',
+          delay: delay > 0 ? -delay : 0,
+        }}
       >
         <motion.div
           className={cn(
-            'absolute flex size-full transform-gpu items-center justify-center rounded-full border bg-black/10 dark:bg-white/10 z-10',
+            'absolute flex items-center justify-center transform-gpu z-10',
             className
           )}
           animate={{
-            rotate: reverse ? -360 : 360,
+            rotate: reverse ? 360 : -360,
           }}
           transition={{
             duration: duration,
@@ -295,7 +304,7 @@ const OrbitingCircles = memo(function OrbitingCircles({
         >
           {children}
         </motion.div>
-      </div>
+      </motion.div>
     </>
   );
 });
@@ -351,8 +360,7 @@ const TechOrbitDisplay = memo(function TechOrbitDisplay({
         </span>
       </span>
 
-      {/* Temporariamente desabilitado para resolver problemas de build na Vercel */}
-      {/* {iconsArray.map((icon, index) => (
+      {iconsArray.map((icon, index) => (
         <OrbitingCircles
           key={index}
           className={icon.className}
@@ -364,7 +372,7 @@ const TechOrbitDisplay = memo(function TechOrbitDisplay({
         >
           {icon.component()}
         </OrbitingCircles>
-      ))} */}
+      ))}
     </section>
   );
 });
