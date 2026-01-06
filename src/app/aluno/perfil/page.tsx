@@ -1,7 +1,7 @@
 'use client'
 
 import { mockUser } from '@/data/aluno/mockUser'
-import { Edit2, Trophy, Lock, HelpCircle, BookOpen, Target, MessageCircle, Clock } from 'lucide-react'
+import { Edit2, Trophy, Lock, HelpCircle, BookOpen, Target, MessageCircle } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { isFeatureEnabled } from '@/lib/features'
@@ -775,17 +775,13 @@ export default function PerfilPage() {
             ? "bg-gray-800/30 border-white/10"
             : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
         )}>
-          <div className="flex items-center justify-between mb-4 md:mb-6">
+          <div className="mb-4 md:mb-6">
             <h2 className={cn(
               "text-lg md:text-xl font-bold",
               theme === 'dark' ? "text-white" : "text-gray-900"
             )}>
               Histórico de XP
             </h2>
-            <Clock className={cn(
-              "w-5 h-5",
-              theme === 'dark' ? "text-gray-400" : "text-gray-600"
-            )} />
           </div>
 
           {loadingHistory ? (
