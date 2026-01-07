@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
-import { Trophy, TrendingUp, HelpCircle, MessageSquare, CheckCircle, Target, FileText, Award, Lock, RefreshCw, Crown, Clock } from 'lucide-react'
+import { useEffect, useState, useMemo, useRef } from 'react'
+import { Trophy, TrendingUp, HelpCircle, MessageSquare, CheckCircle, Target, FileText, Award, Lock, RefreshCw, Crown, Clock, Share2, Download } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/AuthContext'
@@ -10,6 +10,7 @@ import Modal from '@/components/ui/Modal'
 import { calculateLevel, getLevelBorderColor, getLevelRequirements, getLevelCategory } from '@/lib/gamification'
 import BadgeDisplay from '@/components/comunidade/BadgeDisplay'
 import CountdownTimer from '@/components/ui/countdown-timer'
+import html2canvas from 'html2canvas'
 
 // Função para verificar se o mês atual já fechou
 // O mês anterior é considerado fechado no dia 1 (a partir de 00:01)
@@ -47,6 +48,8 @@ export default function RankingPage() {
   const [tipoRanking, setTipoRanking] = useState<'mensal' | 'geral'>('geral')
   const [tipoMural, setTipoMural] = useState<'mensal' | 'geral'>('mensal')
   const [rankingGeral, setRankingGeral] = useState<any[] | null>(null)
+  const [gerandoImagem, setGerandoImagem] = useState(false)
+  const muralRef = useRef<HTMLDivElement>(null)
   
   // Buscar ranking mensal para o Card Mural
   // Se o mês fechou (dia >= 2), busca o campeão do mês anterior que acabou de fechar
@@ -396,6 +399,85 @@ export default function RankingPage() {
   const currentUser = currentUserId ? filteredRanking.find(u => u.id === currentUserId) : null
   const currentUserPosition = currentUser?.position || 0
 
+  // Função para gerar e compartilhar imagem do mural
+  const handleCompartilharMural = async () => {
+    if (!muralRef.current) return
+
+    setGerandoImagem(true)
+    try {
+      // Temporariamente esconder o botão de compartilhar para não aparecer na imagem
+      const shareButton = muralRef.current.querySelector('button[title="Compartilhar mural nas redes sociais"]') as HTMLElement
+      const originalDisplay = shareButton?.style.display
+      if (shareButton) {
+        shareButton.style.display = 'none'
+      }
+
+      // Gerar imagem do mural usando html2canvas
+      const canvas = await html2canvas(muralRef.current, {
+        backgroundColor: theme === 'dark' ? '#000000' : '#ffffff',
+        scale: 2, // Maior qualidade
+        logging: false,
+        useCORS: true,
+        allowTaint: false,
+      })
+
+      // Restaurar visibilidade do botão
+      if (shareButton) {
+        shareButton.style.display = originalDisplay || ''
+      }
+
+      // Converter canvas para blob
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          console.error('Erro ao gerar imagem')
+          setGerandoImagem(false)
+          return
+        }
+
+        // Criar URL temporária
+        const url = URL.createObjectURL(blob)
+
+        // Tentar usar Web Share API se disponível (mobile)
+        if (navigator.share && navigator.canShare) {
+          const file = new File([blob], 'mural-campeoes.png', { type: 'image/png' })
+          if (navigator.canShare({ files: [file] })) {
+            navigator.share({
+              title: 'Mural dos Campeões - Escola Nova Era Tech',
+              text: 'Confira o Mural dos Campeões Mensais!',
+              files: [file],
+            }).then(() => {
+              URL.revokeObjectURL(url)
+              setGerandoImagem(false)
+            }).catch((error) => {
+              console.error('Erro ao compartilhar:', error)
+              // Fallback para download
+              downloadImage(url)
+            })
+            return
+          }
+        }
+
+        // Fallback: download da imagem
+        downloadImage(url)
+      }, 'image/png', 0.95)
+    } catch (error) {
+      console.error('Erro ao gerar imagem do mural:', error)
+      setGerandoImagem(false)
+    }
+  }
+
+  // Função auxiliar para fazer download da imagem
+  const downloadImage = (url: string) => {
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `mural-campeoes-${new Date().getTime()}.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    setGerandoImagem(false)
+  }
+
   return (
     <div className="space-y-4 md:space-y-6">
       {/* Header */}
@@ -628,18 +710,44 @@ export default function RankingPage() {
       </div>
 
       {/* Mural dos Campeões - 12 Meses */}
-      <div className={cn(
+      <div ref={muralRef} className={cn(
         "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
         theme === 'dark'
           ? "bg-gray-800/30 border-white/10"
           : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
       )}>
-        <h2 className={cn(
-          "text-lg md:text-xl font-bold mb-4 md:mb-6 text-center",
-          theme === 'dark' ? "text-white" : "text-gray-900"
-        )}>
-          Mural dos Campeões
-        </h2>
+        <div className="flex items-center justify-between mb-4 md:mb-6">
+          <h2 className={cn(
+            "text-lg md:text-xl font-bold",
+            theme === 'dark' ? "text-white" : "text-gray-900"
+          )}>
+            Mural dos Campeões
+          </h2>
+          <button
+            onClick={handleCompartilharMural}
+            disabled={gerandoImagem}
+            className={cn(
+              "flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-xs md:text-sm",
+              gerandoImagem && "opacity-50 cursor-not-allowed",
+              theme === 'dark'
+                ? "bg-black/30 border-white/10 text-gray-300 hover:bg-black/50 hover:border-yellow-400/50"
+                : "bg-yellow-500/10 border-yellow-400/70 text-gray-700 hover:bg-yellow-500/20 hover:border-yellow-500"
+            )}
+            title="Compartilhar mural nas redes sociais"
+          >
+            {gerandoImagem ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Gerando...
+              </>
+            ) : (
+              <>
+                <Share2 className="w-4 h-4" />
+                Compartilhar
+              </>
+            )}
+          </button>
+        </div>
         
         {/* Seletor de Tipo de Mural */}
         <div className={cn(
