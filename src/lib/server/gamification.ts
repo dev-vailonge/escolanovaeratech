@@ -235,7 +235,7 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
     throw errorToThrow
   }
 
-  // Usar valor oficial de XP para desafios (40 XP)
+  // Usar valor oficial de XP para desafios (50 XP)
   const xpDesafio = XP_CONSTANTS.desafio.completo
   
   // Remover nível de dificuldade do título (iniciante, intermediário, avançado)

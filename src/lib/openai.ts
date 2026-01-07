@@ -91,7 +91,7 @@ async function trackTokenUsage(params: TrackTokenUsageParams): Promise<void> {
   }
 }
 
-// Prompt para gerar desafios (XP é fixo em 40, não precisa da IA sugerir)
+// Prompt para gerar desafios (XP é fixo em 50, não precisa da IA sugerir)
 const PROMPT_GERAR_DESAFIO = `Você é um instrutor de programação experiente. Gere um desafio prático de programação.
 
 Tecnologia: {tecnologia}
