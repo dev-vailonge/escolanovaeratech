@@ -21,7 +21,7 @@ const TECNOLOGIAS_VALIDAS = [
   'Web Development'
 ]
 const NIVEIS_VALIDOS = ['iniciante', 'intermediario', 'avancado'] as const
-const XP_DESAFIO = 40 // XP fixo para desafios IA
+const XP_DESAFIO = 50 // XP fixo para desafios IA
 
 export async function POST(request: Request) {
   try {

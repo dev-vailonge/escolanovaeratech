@@ -27,7 +27,7 @@
  *    - Quiz completo: 20 XP (se acertar tudo, ou percentual de quantas acertar)
  * 
  * 3. Desafios
- *    - Desafio concluído: 40 XP
+ *    - Desafio concluído: 50 XP
  * 
  * 4. Formulários
  *    - Formulário preenchido: 1 XP

@@ -999,7 +999,7 @@ export default function RankingPage() {
                 "font-bold text-sm md:text-base flex-shrink-0",
                 theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
               )}>
-                40 XP
+                50 XP
               </span>
             </div>
           </div>

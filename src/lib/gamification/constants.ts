@@ -14,7 +14,7 @@
  * - Quiz completo: 20 XP (se acertar tudo, ou percentual de quantas acertar)
  * 
  * Desafios:
- * - Desafio concluído: 40 XP
+ * - Desafio concluído: 50 XP
  * 
  * Formulários:
  * - Formulário preenchido: 1 XP
@@ -32,7 +32,7 @@ export const XP_CONSTANTS = {
     maximo: 20,
   },
   desafio: {
-    completo: 40,
+    completo: 50,
   },
   formulario: {
     preenchido: 1,
