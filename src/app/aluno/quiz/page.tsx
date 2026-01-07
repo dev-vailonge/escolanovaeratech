@@ -46,8 +46,7 @@ export default function QuizPage() {
   const [error, setError] = useState<string>('')
   const [success, setSuccess] = useState<string>('')
   
-  // Estados para abas e modal de seleção
-  const [activeTab, setActiveTab] = useState<'inicial' | 'concluidos'>('inicial')
+  // Estados para modal de seleção
   const [showSelectionModal, setShowSelectionModal] = useState(false)
   const [selectedTecnologia, setSelectedTecnologia] = useState('')
   const [selectedNivel, setSelectedNivel] = useState<'iniciante' | 'intermediario' | 'avancado' | ''>('')
@@ -188,111 +187,112 @@ export default function QuizPage() {
     return () => clearInterval(interval)
   }, [isGerando, loadingMessages.length])
 
+  // Função para carregar quizzes (extraída para reutilização)
+  const fetchQuizzes = async (showLoading = true) => {
+    try {
+      if (showLoading) setLoading(true)
+      
+      // Buscar quizzes, progresso e XP ganho em paralelo para melhor performance
+      const [dbQuizzes, progressResult, xpHistoryResult] = await Promise.allSettled([
+        getAllQuizzes(),
+        // Buscar progresso do usuário se logado
+        authUser?.id
+          ? supabase
+              .from('user_quiz_progress')
+              .select('quiz_id, tentativas, melhor_pontuacao, completo, updated_at')
+              .eq('user_id', authUser.id)
+              .then(({ data, error }) => {
+                if (error) {
+                  console.error('❌ Erro ao buscar progresso:', error)
+                  return []
+                }
+                return data || []
+              })
+          : Promise.resolve([]),
+        // Buscar histórico de XP ganho em quizzes
+        authUser?.id
+          ? supabase
+              .from('user_xp_history')
+              .select('source_id, amount')
+              .eq('user_id', authUser.id)
+              .eq('source', 'quiz')
+              .then(({ data, error }) => {
+                if (error) {
+                  console.error('❌ Erro ao buscar histórico de XP:', error)
+                  return []
+                }
+                return data || []
+              })
+          : Promise.resolve([])
+      ])
+      
+      // Processar quizzes
+      if (dbQuizzes.status !== 'fulfilled') {
+        throw new Error('Erro ao carregar quizzes')
+      }
+      
+      // Processar progresso
+      let userProgress: Record<string, { tentativas: number; melhor_pontuacao: number | null; completo: boolean; dataConclusao?: string }> = {}
+      if (progressResult.status === 'fulfilled' && Array.isArray(progressResult.value)) {
+        progressResult.value.forEach((p: any) => {
+          userProgress[p.quiz_id] = {
+            tentativas: p.tentativas || 0,
+            melhor_pontuacao: p.melhor_pontuacao,
+            completo: p.completo || false,
+            dataConclusao: p.completo ? p.updated_at : undefined
+          }
+        })
+      }
+
+      // Processar XP ganho por quiz
+      let xpGanhoPorQuiz: Record<string, number> = {}
+      if (xpHistoryResult.status === 'fulfilled' && Array.isArray(xpHistoryResult.value)) {
+        xpHistoryResult.value.forEach((entry: any) => {
+          if (entry.source_id) {
+            xpGanhoPorQuiz[entry.source_id] = (xpGanhoPorQuiz[entry.source_id] || 0) + (entry.amount || 0)
+          }
+        })
+      }
+      
+      // Converter para formato UI
+      const quizzesUI: QuizUI[] = dbQuizzes.value
+        .filter(q => q.disponivel) // Só mostrar disponíveis
+        .map(q => {
+          const progress = userProgress[q.id]
+          const questoesArray = Array.isArray(q.questoes) ? q.questoes as QuizQuestion[] : []
+          const numQuestoes = questoesArray.length
+          
+          return {
+            id: q.id,
+            titulo: q.titulo,
+            descricao: q.descricao,
+            tecnologia: q.tecnologia,
+            nivel: q.nivel,
+            questoes: questoesArray,
+            numQuestoes,
+            tempoEstimado: Math.max(5, Math.ceil(numQuestoes * 1.5)), // ~1.5 min por questão
+            xpGanho: q.xp,
+            completo: progress?.completo || false,
+            pontuacao: progress?.melhor_pontuacao ?? undefined,
+            tentativas: progress?.tentativas || 0,
+            melhorPontuacao: progress?.melhor_pontuacao ?? undefined,
+            disponivel: q.disponivel,
+            xpTotalGanho: xpGanhoPorQuiz[q.id] || 0,
+            dataConclusao: progress?.dataConclusao
+          }
+        })
+      
+      setQuizes(quizzesUI)
+    } catch (err) {
+      console.error('Erro ao carregar quizzes:', err)
+      setError('Erro ao carregar quizzes. Tente novamente.')
+    } finally {
+      if (showLoading) setLoading(false)
+    }
+  }
+
   // Carregar quizzes do Supabase
   useEffect(() => {
-    const fetchQuizzes = async () => {
-      try {
-        setLoading(true)
-        
-        // Buscar quizzes, progresso e XP ganho em paralelo para melhor performance
-        const [dbQuizzes, progressResult, xpHistoryResult] = await Promise.allSettled([
-          getAllQuizzes(),
-          // Buscar progresso do usuário se logado
-          authUser?.id
-            ? supabase
-                .from('user_quiz_progress')
-                .select('quiz_id, tentativas, melhor_pontuacao, completo, updated_at')
-                .eq('user_id', authUser.id)
-                .then(({ data, error }) => {
-                  if (error) {
-                    console.error('❌ Erro ao buscar progresso:', error)
-                    return []
-                  }
-                  return data || []
-                })
-            : Promise.resolve([]),
-          // Buscar histórico de XP ganho em quizzes
-          authUser?.id
-            ? supabase
-                .from('user_xp_history')
-                .select('source_id, amount')
-                .eq('user_id', authUser.id)
-                .eq('source', 'quiz')
-                .then(({ data, error }) => {
-                  if (error) {
-                    console.error('❌ Erro ao buscar histórico de XP:', error)
-                    return []
-                  }
-                  return data || []
-                })
-            : Promise.resolve([])
-        ])
-        
-        // Processar quizzes
-        if (dbQuizzes.status !== 'fulfilled') {
-          throw new Error('Erro ao carregar quizzes')
-        }
-        
-        // Processar progresso
-        let userProgress: Record<string, { tentativas: number; melhor_pontuacao: number | null; completo: boolean; dataConclusao?: string }> = {}
-        if (progressResult.status === 'fulfilled' && Array.isArray(progressResult.value)) {
-          progressResult.value.forEach((p: any) => {
-            userProgress[p.quiz_id] = {
-              tentativas: p.tentativas || 0,
-              melhor_pontuacao: p.melhor_pontuacao,
-              completo: p.completo || false,
-              dataConclusao: p.completo ? p.updated_at : undefined
-            }
-          })
-        }
-
-        // Processar XP ganho por quiz
-        let xpGanhoPorQuiz: Record<string, number> = {}
-        if (xpHistoryResult.status === 'fulfilled' && Array.isArray(xpHistoryResult.value)) {
-          xpHistoryResult.value.forEach((entry: any) => {
-            if (entry.source_id) {
-              xpGanhoPorQuiz[entry.source_id] = (xpGanhoPorQuiz[entry.source_id] || 0) + (entry.amount || 0)
-            }
-          })
-        }
-        
-        // Converter para formato UI
-        const quizzesUI: QuizUI[] = dbQuizzes.value
-          .filter(q => q.disponivel) // Só mostrar disponíveis
-          .map(q => {
-            const progress = userProgress[q.id]
-            const questoesArray = Array.isArray(q.questoes) ? q.questoes as QuizQuestion[] : []
-            const numQuestoes = questoesArray.length
-            
-            return {
-              id: q.id,
-              titulo: q.titulo,
-              descricao: q.descricao,
-              tecnologia: q.tecnologia,
-              nivel: q.nivel,
-              questoes: questoesArray,
-              numQuestoes,
-              tempoEstimado: Math.max(5, Math.ceil(numQuestoes * 1.5)), // ~1.5 min por questão
-              xpGanho: q.xp,
-              completo: progress?.completo || false,
-              pontuacao: progress?.melhor_pontuacao ?? undefined,
-              tentativas: progress?.tentativas || 0,
-              melhorPontuacao: progress?.melhor_pontuacao ?? undefined,
-              disponivel: q.disponivel,
-              xpTotalGanho: xpGanhoPorQuiz[q.id] || 0,
-              dataConclusao: progress?.dataConclusao
-            }
-          })
-        
-        setQuizes(quizzesUI)
-      } catch (err) {
-        console.error('Erro ao carregar quizzes:', err)
-        setError('Erro ao carregar quizzes. Tente novamente.')
-      } finally {
-        setLoading(false)
-      }
-    }
-    
     fetchQuizzes()
   }, [authUser?.id])
 
@@ -475,6 +475,21 @@ export default function QuizPage() {
       } else {
         setSuccess(`✅ Quiz concluído! Você já atingiu o limite máximo de XP deste quiz (${selectedQuiz.xpGanho} XP).`)
       }
+
+      // Fechar modal do quiz
+      setIsPlaying(false)
+      setSelectedQuiz(null)
+
+      // Disparar evento para atualizar dados do usuário (XP, nível)
+      if (awarded && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('xpGained'))
+      }
+
+      // Recarregar dados para atualizar histórico e XP
+      // Aguardar um pouco para garantir que o backend processou
+      setTimeout(() => {
+        fetchQuizzes(false) // Recarregar sem mostrar loading
+      }, 500)
     } catch (e: any) {
       console.error('Erro ao registrar quiz:', e)
       setError(e?.message || 'Erro ao registrar resultado')
@@ -762,60 +777,27 @@ export default function QuizPage() {
         </p>
       </div>
 
-      {/* Abas */}
-      <div className={cn(
-        "backdrop-blur-md border rounded-xl p-1 transition-colors duration-300",
-        theme === 'dark'
-          ? "bg-gray-800/30 border-white/10"
-          : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
-      )}>
-        <div className="flex gap-1">
-          <button
-            onClick={() => setActiveTab('inicial')}
-            className={cn(
-              "flex-1 px-4 py-2 rounded-lg font-medium transition-all text-sm md:text-base",
-              activeTab === 'inicial'
-                ? theme === 'dark'
-                  ? "bg-yellow-400 text-black"
-                  : "bg-yellow-500 text-white"
-                : theme === 'dark'
-                  ? "text-gray-400 hover:text-white hover:bg-white/5"
-                  : "text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20"
-            )}
-          >
-            Novo Quiz
-          </button>
-          <button
-            onClick={() => setActiveTab('concluidos')}
-            className={cn(
-              "flex-1 px-4 py-2 rounded-lg font-medium transition-all text-sm md:text-base",
-              activeTab === 'concluidos'
-                ? theme === 'dark'
-                  ? "bg-yellow-400 text-black"
-                  : "bg-yellow-500 text-white"
-                : theme === 'dark'
-                  ? "text-gray-400 hover:text-white hover:bg-white/5"
-                  : "text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20"
-            )}
-          >
-            Quiz Concluídos
-          </button>
-        </div>
-      </div>
-
-      {/* Conteúdo das Abas */}
-      <div className={cn(
-        "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
-        theme === 'dark'
-          ? "bg-gray-800/30 border-white/10"
-          : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
-      )}>
-        {activeTab === 'inicial' ? (
+      {/* Conteúdo Principal */}
+      {quizesCompletos.length === 0 ? (
+        // Empty State - quando não há histórico
+        <div className={cn(
+          "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
+          theme === 'dark'
+            ? "bg-gray-800/30 border-white/10"
+            : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
+        )}>
           <div className="flex flex-col items-center justify-center py-12 md:py-16">
-            <HelpCircle className={cn(
-              "w-16 h-16 md:w-20 md:h-20 mb-6",
-              theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-            )} />
+            <div className={cn(
+              "w-16 h-16 md:w-20 md:h-20 rounded-full border-4 flex items-center justify-center mb-6",
+              theme === 'dark' 
+                ? "border-yellow-400" 
+                : "border-yellow-500"
+            )}>
+              <HelpCircle className={cn(
+                "w-10 h-10 md:w-12 md:h-12",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )} />
+            </div>
             <h2 className={cn(
               "text-xl md:text-2xl font-bold mb-4 text-center",
               theme === 'dark' ? "text-white" : "text-gray-900"
@@ -843,236 +825,250 @@ export default function QuizPage() {
               {!canParticipate ? 'Acesso Limitado' : 'Fazer Quiz'}
             </button>
           </div>
-        ) : (
-          <div className="space-y-3 md:space-y-4">
-            {/* Card de Estatísticas */}
-            <div className={cn(
-              "backdrop-blur-md border rounded-xl p-3 md:p-4 transition-colors duration-300",
-              theme === 'dark'
-                ? "bg-gray-800/30 border-white/10"
-                : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
-            )}>
-              <div className="flex items-center gap-2 md:gap-3">
-                <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-500 flex-shrink-0" />
-                <div className="min-w-0">
-                  <p className={cn(
-                    "text-xl md:text-2xl font-bold",
-                    theme === 'dark' ? "text-white" : "text-gray-900"
-                  )}>
-                    {quizesCompletosCount}
-                  </p>
-                  <p className={cn(
-                    "text-xs md:text-sm",
-                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                  )}>
-                    Quiz Concluídos
-                  </p>
-                </div>
+        </div>
+      ) : (
+        // Quando há histórico - mostrar botão no topo e lista de quizzes
+        <div className="space-y-4 md:space-y-6">
+          {/* Botão Fazer Quiz no topo */}
+          <div className={cn(
+            "backdrop-blur-md border rounded-xl p-4 transition-colors duration-300",
+            theme === 'dark'
+              ? "bg-gray-800/30 border-white/10"
+              : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
+          )}>
+            <button
+              onClick={handleFazerQuiz}
+              disabled={!canParticipate}
+              className={cn(
+                "w-full px-6 py-3 rounded-lg font-semibold text-base md:text-lg transition-all",
+                !canParticipate
+                  ? "opacity-50 cursor-not-allowed bg-gray-400 text-white"
+                  : theme === 'dark'
+                    ? "bg-yellow-400 hover:bg-yellow-500 text-black"
+                    : "bg-yellow-500 hover:bg-yellow-600 text-white"
+              )}
+            >
+              {!canParticipate ? 'Acesso Limitado' : 'Fazer Quiz'}
+            </button>
+          </div>
+
+          {/* Card de Estatísticas */}
+          <div className={cn(
+            "backdrop-blur-md border rounded-xl p-3 md:p-4 transition-colors duration-300",
+            theme === 'dark'
+              ? "bg-gray-800/30 border-white/10"
+              : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
+          )}>
+            <div className="flex items-center gap-2 md:gap-3">
+              <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-500 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className={cn(
+                  "text-xl md:text-2xl font-bold",
+                  theme === 'dark' ? "text-white" : "text-gray-900"
+                )}>
+                  {quizesCompletosCount}
+                </p>
+                <p className={cn(
+                  "text-xs md:text-sm",
+                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                )}>
+                  Quiz Concluídos
+                </p>
               </div>
             </div>
+          </div>
 
-            {/* Insights Gerais */}
-            {quizesCompletos.length > 0 && (() => {
-              const quizzesComBaixaPontuacao = quizesCompletos.filter(q => (q.melhorPontuacao || 0) < 70)
-              if (quizzesComBaixaPontuacao.length === 0) return null
-              
-              const tecnologiasComDificuldade = [...new Set(quizzesComBaixaPontuacao.map(q => q.tecnologia))]
-              
-              return (
-                <div className={cn(
-                  "p-4 rounded-xl border",
-                  theme === 'dark' 
-                    ? "bg-blue-500/10 border-blue-500/30" 
-                    : "bg-blue-50 border-blue-200"
-                )}>
-                  <div className="flex items-start gap-3">
-                    <Lightbulb className={cn(
-                      "w-5 h-5 flex-shrink-0 mt-0.5",
-                      theme === 'dark' ? "text-blue-400" : "text-blue-600"
-                    )} />
-                    <div className="flex-1">
-                      <h3 className={cn(
-                        "font-semibold mb-2",
-                        theme === 'dark' ? "text-blue-300" : "text-blue-800"
-                      )}>
-                        💡 Recomendações de Estudo
-                      </h3>
-                      <div className={cn(
-                        "space-y-2 text-sm",
-                        theme === 'dark' ? "text-blue-200" : "text-blue-700"
-                      )}>
-                        <p>
-                          Você teve dificuldades em {quizzesComBaixaPontuacao.length} {quizzesComBaixaPontuacao.length === 1 ? 'quiz' : 'quizzes'}.
-                        </p>
-                        {tecnologiasComDificuldade.length > 0 && (
-                          <div>
-                            <p className="font-medium mb-1">Foque em revisar:</p>
-                            <ul className="list-disc list-inside space-y-1 ml-2">
-                              {tecnologiasComDificuldade.map((tech, idx) => (
-                                <li key={idx}>{tech}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        <p className="mt-2">
-                          Recomendamos refazer esses quizzes após revisar os conceitos para melhorar seu desempenho!
-                        </p>
-                      </div>
+          {/* Insights Gerais */}
+          {quizesCompletos.length > 0 && (() => {
+            const quizzesComBaixaPontuacao = quizesCompletos.filter(q => (q.melhorPontuacao || 0) < 70)
+            if (quizzesComBaixaPontuacao.length === 0) return null
+            
+            const tecnologiasComDificuldade = [...new Set(quizzesComBaixaPontuacao.map(q => q.tecnologia))]
+            
+            return (
+              <div className={cn(
+                "p-4 rounded-xl border",
+                theme === 'dark' 
+                  ? "bg-blue-500/10 border-blue-500/30" 
+                  : "bg-blue-50 border-blue-200"
+              )}>
+                <div className="flex items-start gap-3">
+                  <Lightbulb className={cn(
+                    "w-5 h-5 flex-shrink-0 mt-0.5",
+                    theme === 'dark' ? "text-blue-400" : "text-blue-600"
+                  )} />
+                  <div className="flex-1">
+                    <h3 className={cn(
+                      "font-semibold mb-2",
+                      theme === 'dark' ? "text-blue-300" : "text-blue-800"
+                    )}>
+                      💡 Recomendações de Estudo
+                    </h3>
+                    <div className={cn(
+                      "space-y-2 text-sm",
+                      theme === 'dark' ? "text-blue-200" : "text-blue-700"
+                    )}>
+                      <p>
+                        Você teve dificuldades em {quizzesComBaixaPontuacao.length} {quizzesComBaixaPontuacao.length === 1 ? 'quiz' : 'quizzes'}.
+                      </p>
+                      {tecnologiasComDificuldade.length > 0 && (
+                        <div>
+                          <p className="font-medium mb-1">Foque em revisar:</p>
+                          <ul className="list-disc list-inside space-y-1 ml-2">
+                            {tecnologiasComDificuldade.map((tech, idx) => (
+                              <li key={idx}>{tech}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      <p className="mt-2">
+                        Recomendamos refazer esses quizzes após revisar os conceitos para melhorar seu desempenho!
+                      </p>
                     </div>
                   </div>
                 </div>
-              )
-            })()}
-
-            {quizesCompletos.length === 0 ? (
-              <div className={cn(
-                "p-8 text-center rounded-xl border",
-                theme === 'dark'
-                  ? "bg-gray-800/30 border-white/10 text-gray-400"
-                  : "bg-yellow-500/10 border-yellow-400/50 text-gray-600"
-              )}>
-                <Trophy className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium mb-2">Nenhum quiz concluído ainda</p>
-                <p className="text-sm">Complete quizzes para vê-los aqui!</p>
               </div>
-            ) : (
-              quizesCompletos.map((quiz) => (
-                <div
-                  key={quiz.id}
-                  className={cn(
-                    "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-all duration-300",
-                    theme === 'dark'
-                      ? "bg-gray-800/30 border-white/10 hover:border-yellow-400/50"
-                      : "bg-yellow-500/10 border-yellow-400/90 shadow-md hover:border-yellow-500 hover:shadow-lg"
-                  )}
-                >
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2">
-                        <HelpCircle className="w-4 h-4 md:w-5 md:h-5 text-blue-500 flex-shrink-0" />
-                        <h3 className={cn(
-                          "text-base md:text-lg font-semibold flex-1 min-w-0",
-                          theme === 'dark' ? "text-white" : "text-gray-900"
-                        )}>
-                          {quiz.titulo}
-                        </h3>
-                        <span className={cn(
-                          "px-2 py-1 text-xs rounded-full border",
-                          theme === 'dark'
-                            ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
-                            : "bg-blue-100 text-blue-700 border-blue-300"
-                        )}>
-                          {quiz.tecnologia}
-                        </span>
-                        <span className={cn(
-                          "px-2 py-1 text-xs rounded-full border flex items-center gap-1 whitespace-nowrap",
-                          theme === 'dark'
-                            ? "bg-green-500/20 text-green-400 border-green-500/30"
-                            : "bg-green-100 text-green-700 border-green-300"
-                        )}>
-                          <Trophy className="w-3 h-3" />
-                          {quiz.melhorPontuacao}%
-                        </span>
-                      </div>
-                      <p className={cn(
-                        "text-sm md:text-base mb-3 md:mb-4 line-clamp-2",
-                        theme === 'dark' ? "text-gray-400" : "text-gray-600"
+            )
+          })()}
+
+          {/* Lista de Quizzes Concluídos */}
+          <div className="space-y-3 md:space-y-4">
+            {quizesCompletos.map((quiz) => (
+              <div
+                key={quiz.id}
+                className={cn(
+                  "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-all duration-300",
+                  theme === 'dark'
+                    ? "bg-gray-800/30 border-white/10 hover:border-yellow-400/50"
+                    : "bg-yellow-500/10 border-yellow-400/90 shadow-md hover:border-yellow-500 hover:shadow-lg"
+                )}
+              >
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2">
+                      <HelpCircle className="w-4 h-4 md:w-5 md:h-5 text-blue-500 flex-shrink-0" />
+                      <h3 className={cn(
+                        "text-base md:text-lg font-semibold flex-1 min-w-0",
+                        theme === 'dark' ? "text-white" : "text-gray-900"
                       )}>
-                        {quiz.descricao}
-                      </p>
-                      
-                      <div className={cn(
-                        "flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm mb-3",
-                        theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                        {quiz.titulo}
+                      </h3>
+                      <span className={cn(
+                        "px-2 py-1 text-xs rounded-full border",
+                        theme === 'dark'
+                          ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                          : "bg-blue-100 text-blue-700 border-blue-300"
                       )}>
-                        <span className="flex items-center gap-1">
-                          <HelpCircle className="w-3 h-3 md:w-4 md:h-4" />
-                          {quiz.numQuestoes} questões
-                        </span>
-                        <span className="capitalize">{quiz.nivel}</span>
-                        <span className={cn(
+                        {quiz.tecnologia}
+                      </span>
+                      <span className={cn(
+                        "px-2 py-1 text-xs rounded-full border flex items-center gap-1 whitespace-nowrap",
+                        theme === 'dark'
+                          ? "bg-green-500/20 text-green-400 border-green-500/30"
+                          : "bg-green-100 text-green-700 border-green-300"
+                      )}>
+                        <Trophy className="w-3 h-3" />
+                        {quiz.melhorPontuacao}%
+                      </span>
+                    </div>
+                    <p className={cn(
+                      "text-sm md:text-base mb-3 md:mb-4 line-clamp-2",
+                      theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                    )}>
+                      {quiz.descricao}
+                    </p>
+                    
+                    <div className={cn(
+                      "flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm mb-3",
+                      theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                    )}>
+                      <span className="flex items-center gap-1">
+                        <HelpCircle className="w-3 h-3 md:w-4 md:h-4" />
+                        {quiz.numQuestoes} questões
+                      </span>
+                      <span className="capitalize">{quiz.nivel}</span>
+                      <span className={cn(
+                        "font-semibold",
+                        theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                      )}>
+                        +{quiz.xpGanho} XP
+                      </span>
+                    </div>
+
+                    <div className={cn(
+                      "text-xs md:text-sm",
+                      theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                    )}>
+                      <p>
+                        Melhor pontuação: <span className={cn(
                           "font-semibold",
                           theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                         )}>
-                          +{quiz.xpGanho} XP
+                          {quiz.melhorPontuacao}%
                         </span>
-                      </div>
-
-                      <div className={cn(
-                        "text-xs md:text-sm",
-                        theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                      )}>
-                        <p>
-                          Melhor pontuação: <span className={cn(
-                            "font-semibold",
-                            theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                          )}>
-                            {quiz.melhorPontuacao}%
-                          </span>
-                        </p>
-                        <p>Tentativas: {quiz.tentativas}</p>
-                        <p>
-                          XP ganho: <span className={cn(
-                            "font-semibold",
-                            theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                          )}>
-                            {quiz.melhorPontuacao 
-                              ? Math.round((quiz.melhorPontuacao / 100) * quiz.xpGanho) 
-                              : 0}/{quiz.xpGanho} XP
-                          </span>
-                        </p>
-                        {quiz.dataConclusao && (
-                          <p>
-                            Concluído em: <span className="font-semibold">
-                              {new Date(quiz.dataConclusao).toLocaleDateString('pt-BR', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      {!canParticipate && (
-                        <div className={cn(
-                          "p-3 rounded-lg text-sm",
-                          theme === 'dark'
-                            ? "bg-yellow-400/10 border border-yellow-400/30 text-yellow-400"
-                            : "bg-yellow-50 border border-yellow-300 text-yellow-700"
+                      </p>
+                      <p>Tentativas: {quiz.tentativas}</p>
+                      <p>
+                        XP ganho: <span className={cn(
+                          "font-semibold",
+                          theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                         )}>
-                          <div className="flex items-center gap-2">
-                            <Lock className="w-4 h-4" />
-                            <span>Upgrade para participar</span>
-                          </div>
-                        </div>
+                          {quiz.melhorPontuacao 
+                            ? Math.round((quiz.melhorPontuacao / 100) * quiz.xpGanho) 
+                            : 0}/{quiz.xpGanho} XP
+                        </span>
+                      </p>
+                      {quiz.dataConclusao && (
+                        <p>
+                          Concluído em: <span className="font-semibold">
+                            {new Date(quiz.dataConclusao).toLocaleDateString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </p>
                       )}
-                      <button 
-                        className={cn(
-                          "btn-primary w-full md:w-auto",
-                          (!canParticipate || quiz.numQuestoes === 0) && "opacity-50 cursor-not-allowed"
-                        )}
-                        disabled={!quiz.disponivel || !canParticipate || quiz.numQuestoes === 0}
-                        onClick={() => handleStartQuiz(quiz)}
-                      >
-                        {!canParticipate 
-                          ? 'Acesso Limitado' 
-                          : quiz.numQuestoes === 0
-                            ? 'Sem perguntas'
-                            : 'Refazer'}
-                      </button>
                     </div>
                   </div>
+
+                  <div className="flex flex-col gap-2">
+                    {!canParticipate && (
+                      <div className={cn(
+                        "p-3 rounded-lg text-sm",
+                        theme === 'dark'
+                          ? "bg-yellow-400/10 border border-yellow-400/30 text-yellow-400"
+                          : "bg-yellow-50 border border-yellow-300 text-yellow-700"
+                      )}>
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-4 h-4" />
+                          <span>Upgrade para participar</span>
+                        </div>
+                      </div>
+                    )}
+                    <button 
+                      className={cn(
+                        "btn-primary w-full md:w-auto",
+                        (!canParticipate || quiz.numQuestoes === 0) && "opacity-50 cursor-not-allowed"
+                      )}
+                      disabled={!quiz.disponivel || !canParticipate || quiz.numQuestoes === 0}
+                      onClick={() => handleStartQuiz(quiz)}
+                    >
+                      {!canParticipate 
+                        ? 'Acesso Limitado' 
+                        : quiz.numQuestoes === 0
+                          ? 'Sem perguntas'
+                          : 'Refazer'}
+                    </button>
+                  </div>
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -82,8 +82,24 @@ export default function AlunoSidebar() {
   }
 
   const handleLogout = async () => {
-    await signOut()
-    router.push('/aluno/login')
+    try {
+      await signOut()
+      // Limpar localStorage relacionado a auth
+      if (typeof window !== 'undefined') {
+        const keys = Object.keys(localStorage)
+        keys.forEach(key => {
+          if (key.startsWith('sb-') || key.includes('supabase') || key.includes('auth')) {
+            localStorage.removeItem(key)
+          }
+        })
+      }
+      // Forçar reload completo para limpar todos os estados
+      window.location.href = '/aluno/login'
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error)
+      // Mesmo com erro, redirecionar
+      window.location.href = '/aluno/login'
+    }
   }
 
   const toggleMenuModal = () => {

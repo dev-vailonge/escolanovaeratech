@@ -1,7 +1,7 @@
 'use client'
 
 import { mockUser } from '@/data/aluno/mockUser'
-import { Bell, Coins, Flame, Sun, Moon } from 'lucide-react'
+import { Bell, Coins, Flame, Sun, Moon, BookOpen, HelpCircle, Target, MessageCircle, Trophy } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { isFeatureEnabled } from '@/lib/features'
@@ -9,9 +9,15 @@ import { useAuth } from '@/lib/AuthContext'
 import { useNotifications } from '@/lib/NotificationsContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getLevelBorderColor, calculateLevel } from '@/lib/gamification'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import Modal from '@/components/ui/Modal'
+import type { DatabaseUserXpHistory } from '@/types/database'
 
 export default function AlunoHeader() {
   const { user: authUser } = useAuth()
+  const router = useRouter()
   // Usar usuário autenticado se disponível, senão usar mockUser como fallback
   const user = authUser
     ? {
@@ -27,9 +33,64 @@ export default function AlunoHeader() {
     : { ...mockUser, avatarUrl: null as string | null }
   const { theme, toggleTheme } = useTheme()
   const { unreadCount, openModal, hasNewNotification } = useNotifications()
+  const [xpModalOpen, setXpModalOpen] = useState(false)
+  const [xpHistory, setXpHistory] = useState<DatabaseUserXpHistory[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
 
   // Calcular nível baseado no XP atual (pode ser diferente do user.level se estiver desatualizado)
   const currentLevel = calculateLevel(user.xp || 0)
+
+  // Função para limpar descrição removendo níveis de dificuldade
+  const limparDescricao = (descricao: string | null | undefined): string => {
+    if (!descricao) return ''
+    return descricao
+      // Remove padrão: " - Avancado" ou " - Avançado" em qualquer lugar
+      .replace(/\s*-\s*(Iniciante|Intermediário|Intermediario|Avançado|Avancado)\s*/gi, ' ')
+      // Remove entre parênteses: "(Avancado)"
+      .replace(/\s*\(Iniciante|Intermediário|Intermediario|Avançado|Avancado\)/gi, '')
+      // Remove espaços duplicados
+      .replace(/\s+/g, ' ')
+      .trim()
+  }
+
+  // Buscar histórico de XP quando abrir a modal
+  useEffect(() => {
+    const fetchXpHistory = async () => {
+      if (!xpModalOpen || !authUser?.id) return
+
+      setLoadingHistory(true)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const token = session?.access_token
+        if (!token) {
+          setLoadingHistory(false)
+          return
+        }
+
+        const res = await fetch('/api/users/me/xp-history', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (!res.ok) {
+          throw new Error('Erro ao buscar histórico de XP')
+        }
+
+        const json = await res.json()
+        if (json.success && json.history) {
+          setXpHistory(json.history.slice(0, 10)) // Mostrar apenas os 10 mais recentes
+        }
+      } catch (error) {
+        console.error('Erro ao buscar histórico de XP:', error)
+      } finally {
+        setLoadingHistory(false)
+      }
+    }
+
+    fetchXpHistory()
+  }, [xpModalOpen, authUser?.id])
 
   return (
     <header className={cn(
@@ -145,13 +206,16 @@ export default function AlunoHeader() {
 
         {/* Stats - Mobile: segunda linha com XP | Desktop: todos alinhados à direita */}
         <div className="flex items-center flex-nowrap gap-2 sm:gap-3 w-full lg:w-auto lg:gap-4">
-          {/* XP Total */}
-          <div className={cn(
-            "flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border flex-shrink-0",
-            theme === 'dark'
-              ? "bg-[#0f0f0f] border-white/10"
-              : "bg-yellow-500/20 border-yellow-600/30"
-          )}>
+          {/* XP Total - Clicável */}
+          <button
+            onClick={() => setXpModalOpen(true)}
+            className={cn(
+              "flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border flex-shrink-0 transition-colors cursor-pointer",
+              theme === 'dark'
+                ? "bg-[#0f0f0f] border-white/10 hover:bg-white/5"
+                : "bg-yellow-500/20 border-yellow-600/30 hover:bg-yellow-500/30"
+            )}
+          >
             <span className={cn(
               "text-xs sm:text-sm font-medium",
               theme === 'dark' ? "text-gray-400" : "text-gray-700"
@@ -164,7 +228,7 @@ export default function AlunoHeader() {
             )}>
               {user.xp.toLocaleString('pt-BR')}
             </span>
-          </div>
+          </button>
 
           {/* Coins - Oculto no MVP */}
           {isFeatureEnabled('coins') && (
@@ -270,6 +334,146 @@ export default function AlunoHeader() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Histórico de XP */}
+      <Modal
+        isOpen={xpModalOpen}
+        onClose={() => setXpModalOpen(false)}
+        title="Histórico de XP"
+        size="md"
+      >
+        <div className="space-y-4">
+          {loadingHistory ? (
+            <div className={cn(
+              "text-center py-8 text-sm",
+              theme === 'dark' ? "text-gray-400" : "text-gray-600"
+            )}>
+              Carregando histórico...
+            </div>
+          ) : xpHistory.length === 0 ? (
+            <div className={cn(
+              "text-center py-8 text-sm",
+              theme === 'dark' ? "text-gray-400" : "text-gray-600"
+            )}>
+              Nenhum histórico de XP ainda
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {xpHistory.map((entry) => {
+                // Ícone e cor baseado na origem
+                let icon: React.ReactNode
+                let iconColor: string
+                let sourceLabel: string
+
+                switch (entry.source) {
+                  case 'aula':
+                    icon = <BookOpen className="w-4 h-4" />
+                    iconColor = theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                    sourceLabel = 'Aula'
+                    break
+                  case 'quiz':
+                    icon = <HelpCircle className="w-4 h-4" />
+                    iconColor = theme === 'dark' ? 'text-purple-400' : 'text-purple-600'
+                    sourceLabel = 'Quiz'
+                    break
+                  case 'desafio':
+                    icon = <Target className="w-4 h-4" />
+                    iconColor = theme === 'dark' ? 'text-green-400' : 'text-green-600'
+                    sourceLabel = 'Desafio'
+                    break
+                  case 'comunidade':
+                    icon = <MessageCircle className="w-4 h-4" />
+                    iconColor = theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'
+                    sourceLabel = 'Comunidade'
+                    break
+                  default:
+                    icon = <Trophy className="w-4 h-4" />
+                    iconColor = theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                    sourceLabel = entry.source
+                }
+
+                // Formatar data e hora
+                const date = new Date(entry.created_at)
+                const formattedDate = date.toLocaleDateString('pt-BR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
+                })
+                const formattedTime = date.toLocaleTimeString('pt-BR', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+
+                return (
+                  <div
+                    key={entry.id}
+                    className={cn(
+                      "flex items-center gap-3 p-2 rounded-lg border",
+                      theme === 'dark'
+                        ? "bg-black/20 border-white/10"
+                        : "bg-yellow-50/50 border-yellow-400/50"
+                    )}
+                  >
+                    <div className={cn(
+                      "flex-shrink-0",
+                      iconColor
+                    )}>
+                      {icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-0.5">
+                        <span className={cn(
+                          "text-xs font-medium",
+                          theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                        )}>
+                          {sourceLabel}
+                        </span>
+                        <span className={cn(
+                          "text-sm font-bold",
+                          theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                        )}>
+                          +{entry.amount} XP
+                        </span>
+                      </div>
+                      {entry.description && (
+                        <p className={cn(
+                          "text-xs truncate",
+                          theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                        )}>
+                          {limparDescricao(entry.description)}
+                        </p>
+                      )}
+                      <p className={cn(
+                        "text-xs mt-1",
+                        theme === 'dark' ? "text-gray-500" : "text-gray-500"
+                      )}>
+                        {formattedDate} às {formattedTime}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          <div className="pt-4 border-t border-white/10">
+            <button
+              onClick={() => {
+                setXpModalOpen(false)
+                router.push('/aluno/perfil')
+              }}
+              className={cn(
+                "w-full px-4 py-2 rounded-lg font-medium text-sm transition-colors",
+                theme === 'dark'
+                  ? "bg-yellow-400/20 text-yellow-400 border border-yellow-400/30 hover:bg-yellow-400/30"
+                  : "bg-yellow-500 text-white hover:bg-yellow-600"
+              )}
+            >
+              Ver todas
+            </button>
+          </div>
+        </div>
+      </Modal>
     </header>
   )
 }
