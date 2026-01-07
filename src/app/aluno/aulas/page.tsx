@@ -29,8 +29,8 @@ export default function AulasPage() {
       <div className={cn(
         "backdrop-blur-md border rounded-xl p-8 md:p-12 text-center transition-colors duration-300",
         theme === 'dark'
-          ? "bg-black/20 border-white/10"
-          : "bg-white border-yellow-400/90 shadow-md"
+          ? "bg-gray-800/30 border-white/10"
+          : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
       )}>
         <div className="max-w-md mx-auto">
           <div className={cn(

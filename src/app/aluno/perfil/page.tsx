@@ -427,7 +427,7 @@ export default function PerfilPage() {
                 ref={cropBoxRef}
                 className={cn(
                   "relative w-full max-w-[320px] mx-auto aspect-square rounded-full overflow-hidden border touch-none select-none",
-                  theme === 'dark' ? "border-white/10 bg-black/30" : "border-gray-200 bg-gray-50"
+                  theme === 'dark' ? "border-white/10 bg-black/30" : "border-yellow-400/50 bg-yellow-500/10"
                 )}
                 onPointerDown={onCropPointerDown}
                 onPointerMove={onCropPointerMove}
@@ -482,7 +482,7 @@ export default function PerfilPage() {
                 "w-full px-3 py-2 rounded-lg border text-sm",
                 theme === 'dark'
                   ? "bg-black/30 border-white/10 text-white"
-                  : "bg-white border-gray-200 text-gray-900"
+                  : "bg-yellow-500/10 border-yellow-400/50 text-gray-900"
               )}
             />
           </div>
@@ -500,7 +500,7 @@ export default function PerfilPage() {
                 "w-full px-3 py-2 rounded-lg border text-sm min-h-[80px]",
                 theme === 'dark'
                   ? "bg-black/30 border-white/10 text-white placeholder-gray-500"
-                  : "bg-white border-gray-200 text-gray-900 placeholder-gray-400"
+                  : "bg-yellow-500/10 border-yellow-400/50 text-gray-900 placeholder-gray-400"
               )}
             />
             <p className={cn("text-xs", theme === 'dark' ? "text-gray-400" : "text-gray-600")}>
@@ -553,8 +553,8 @@ export default function PerfilPage() {
           <div className={cn(
             "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
             theme === 'dark'
-              ? "bg-black/20 border-white/10"
-              : "bg-white border-yellow-400/90 shadow-md"
+              ? "bg-gray-800/30 border-white/10"
+              : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
           )}>
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4 md:mb-6">
               <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">

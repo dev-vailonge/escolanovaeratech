@@ -382,7 +382,7 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
                   'p-2 rounded-lg border text-xs',
                   theme === 'dark'
                     ? 'bg-gray-800/30 border-white/10'
-                    : 'bg-gray-50 border-gray-200'
+                    : 'bg-yellow-500/10 border-yellow-400/50'
                 )}
               >
                 <div className="flex items-start gap-2">

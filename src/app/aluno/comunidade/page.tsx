@@ -1554,7 +1554,7 @@ export default function ComunidadePage() {
             "backdrop-blur-md border rounded-xl p-3 md:p-4",
             theme === 'dark'
               ? "bg-gray-800/30 border-white/10"
-              : "bg-white border-yellow-400/90 shadow-md"
+              : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
           )}
         >
           <div className="flex flex-col md:flex-row items-center md:items-center gap-1 md:gap-3">
@@ -1580,7 +1580,7 @@ export default function ComunidadePage() {
             "backdrop-blur-md border rounded-xl p-3 md:p-4",
             theme === 'dark'
               ? "bg-gray-800/30 border-white/10"
-              : "bg-white border-yellow-400/90 shadow-md"
+              : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
           )}
         >
           <div className="flex flex-col md:flex-row items-center md:items-center gap-1 md:gap-3">
@@ -1606,7 +1606,7 @@ export default function ComunidadePage() {
             "backdrop-blur-md border rounded-xl p-3 md:p-4",
             theme === 'dark'
               ? "bg-gray-800/30 border-white/10"
-              : "bg-white border-yellow-400/90 shadow-md"
+              : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
           )}
         >
           <div className="flex flex-col md:flex-row items-center md:items-center gap-1 md:gap-3">
@@ -1825,11 +1825,11 @@ export default function ComunidadePage() {
                 "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-all duration-300",
                 pergunta.resolvida
                   ? theme === 'dark'
-                    ? "bg-gray-800/30 border-green-500/30 hover:border-green-400/50"
+                    ? "bg-green-500/10 border-green-500/30 hover:border-green-400/40"
                     : "bg-green-50 border-green-400/90 shadow-md hover:shadow-lg"
                   : theme === 'dark'
                     ? "bg-gray-800/30 border-white/10 hover:border-yellow-400/50"
-                    : "bg-white border-yellow-400/90 shadow-md hover:border-yellow-500 hover:shadow-lg"
+                    : "bg-yellow-500/10 border-yellow-400/90 shadow-md hover:border-yellow-500 hover:shadow-lg"
               )}
             >
               <div className="flex gap-3 md:gap-4">

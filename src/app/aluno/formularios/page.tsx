@@ -135,8 +135,8 @@ export default function FormulariosPage() {
         <div className={cn(
           "backdrop-blur-md border rounded-xl p-8 md:p-12 text-center",
           theme === 'dark'
-            ? "bg-black/20 border-white/10"
-            : "bg-white border-yellow-400/90 shadow-md"
+            ? "bg-gray-800/30 border-white/10"
+            : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
         )}>
           <p className={cn(
             "text-sm md:text-base",
@@ -172,8 +172,8 @@ export default function FormulariosPage() {
         <div className={cn(
           "backdrop-blur-md border rounded-xl p-8 md:p-12 text-center",
           theme === 'dark'
-            ? "bg-black/20 border-white/10"
-            : "bg-white border-yellow-400/90 shadow-md"
+            ? "bg-gray-800/30 border-white/10"
+            : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
         )}>
           <FileText className={cn(
             "w-12 h-12 mx-auto mb-4",
@@ -205,7 +205,7 @@ export default function FormulariosPage() {
                   "block backdrop-blur-md border rounded-xl p-4 md:p-6 transition-all hover:scale-[1.02]",
                   theme === 'dark'
                     ? "bg-black/30 border-white/10 hover:border-yellow-400/50"
-                    : "bg-gray-50 border-gray-200 hover:border-yellow-400 shadow-sm hover:shadow-md"
+                    : "bg-yellow-500/10 border-yellow-400/50 hover:border-yellow-400 shadow-sm hover:shadow-md"
                 )}
               >
                 <div className="flex items-start justify-between gap-4">

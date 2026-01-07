@@ -373,8 +373,8 @@ export default function RankingPage() {
                   ? 'bg-red-500/10 border-red-500/30 text-red-300'
                   : 'bg-red-50 border-red-200 text-red-700'
                 : theme === 'dark'
-                  ? 'bg-black/20 border-white/10 text-gray-300'
-                  : 'bg-white border-gray-200 text-gray-700'
+                  ? 'bg-gray-800/30 border-white/10 text-gray-300'
+                  : 'bg-yellow-500/10 border-yellow-400/50 text-gray-700'
             )}
           >
             {loading && 'Carregando ranking...'}
@@ -387,8 +387,8 @@ export default function RankingPage() {
       <div className={cn(
         "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
         theme === 'dark'
-          ? "bg-black/20 border-white/10"
-          : "bg-white border-yellow-400/90 shadow-md"
+          ? "bg-gray-800/30 border-white/10"
+          : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
       )}>
         <h2 className={cn(
           "text-lg md:text-xl font-bold mb-4 md:mb-6 text-center",
@@ -402,7 +402,7 @@ export default function RankingPage() {
           "backdrop-blur-sm border rounded-lg p-1.5 mb-4 transition-colors duration-300 overflow-x-auto",
           theme === 'dark'
             ? "bg-black/30 border-white/10"
-            : "bg-gray-50 border-gray-200"
+            : "bg-yellow-500/10 border-yellow-400/50"
         )}>
           <div className="flex gap-1.5 min-w-max justify-center md:justify-start">
             {meses.map((mes) => {
@@ -562,8 +562,8 @@ export default function RankingPage() {
         <div className={cn(
           "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
           theme === 'dark'
-            ? "bg-black/20 border-white/10"
-            : "bg-white border-yellow-400/90 shadow-md"
+            ? "bg-gray-800/30 border-white/10"
+            : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
         )}>
           <h2 className={cn(
             "text-lg md:text-xl font-bold mb-4 md:mb-6 text-center",
@@ -579,7 +579,7 @@ export default function RankingPage() {
                   "backdrop-blur-sm border rounded-lg p-4 transition-colors duration-300",
                   theme === 'dark'
                     ? "bg-black/30 border-white/10 hover:border-yellow-400/50"
-                    : "bg-gray-50 border-gray-200 hover:border-yellow-300"
+                    : "bg-yellow-500/10 border-yellow-400/50 hover:border-yellow-300"
                 )}
               >
                 <div className="text-center mb-2">
@@ -658,8 +658,8 @@ export default function RankingPage() {
       <div className={cn(
         "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
         theme === 'dark'
-          ? "bg-black/20 border-white/10"
-          : "bg-white border-yellow-400/90 shadow-md"
+          ? "bg-gray-800/30 border-white/10"
+          : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
       )}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3 md:mb-4">
           <h2 className={cn(
@@ -677,7 +677,7 @@ export default function RankingPage() {
                 loading && "opacity-50 cursor-not-allowed",
                 theme === 'dark'
                   ? "bg-black/30 border-white/10 text-gray-300 hover:bg-black/50 hover:border-yellow-400/50"
-                  : "bg-white border-yellow-400/70 text-gray-700 hover:bg-yellow-50 hover:border-yellow-500"
+                  : "bg-yellow-500/10 border-yellow-400/70 text-gray-700 hover:bg-yellow-500/20 hover:border-yellow-500"
               )}
             >
               <RefreshCw className={cn("w-3 h-3 md:w-4 md:h-4", loading && "animate-spin")} />
@@ -819,7 +819,7 @@ export default function RankingPage() {
                 "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
                 theme === 'dark' 
                   ? "bg-black/30 border-white/10" 
-                  : "bg-gray-50 border-gray-200"
+                  : "bg-yellow-500/10 border-yellow-400/50"
               )}>
                 <span className={cn(
                   "text-xs md:text-sm flex-1 min-w-0",
@@ -838,7 +838,7 @@ export default function RankingPage() {
                 "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
                 theme === 'dark' 
                   ? "bg-black/30 border-white/10" 
-                  : "bg-gray-50 border-gray-200"
+                  : "bg-yellow-500/10 border-yellow-400/50"
               )}>
                 <span className={cn(
                   "text-xs md:text-sm flex-1 min-w-0",
@@ -857,7 +857,7 @@ export default function RankingPage() {
                 "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
                 theme === 'dark' 
                   ? "bg-black/30 border-white/10" 
-                  : "bg-gray-50 border-gray-200"
+                  : "bg-yellow-500/10 border-yellow-400/50"
               )}>
                 <span className={cn(
                   "text-xs md:text-sm flex-1 min-w-0 break-words",
@@ -893,7 +893,7 @@ export default function RankingPage() {
               "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
               theme === 'dark' 
                 ? "bg-black/30 border-white/10" 
-                : "bg-gray-50 border-gray-200"
+                : "bg-yellow-500/10 border-yellow-400/50"
             )}>
               <span className={cn(
                 "text-xs md:text-sm flex-1 min-w-0",
@@ -934,7 +934,7 @@ export default function RankingPage() {
               "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
               theme === 'dark' 
                 ? "bg-black/30 border-white/10" 
-                : "bg-gray-50 border-gray-200"
+                : "bg-yellow-500/10 border-yellow-400/50"
             )}>
               <span className={cn(
                 "text-xs md:text-sm flex-1 min-w-0",
@@ -969,7 +969,7 @@ export default function RankingPage() {
               "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
               theme === 'dark' 
                 ? "bg-black/30 border-white/10" 
-                : "bg-gray-50 border-gray-200"
+                : "bg-yellow-500/10 border-yellow-400/50"
             )}>
               <span className={cn(
                 "text-xs md:text-sm flex-1 min-w-0",
@@ -1076,7 +1076,7 @@ export default function RankingPage() {
               "p-3 md:p-4 rounded-lg border",
               theme === 'dark' 
                 ? "bg-black/30 border-white/10" 
-                : "bg-gray-50 border-gray-200"
+                : "bg-yellow-500/10 border-yellow-400/50"
             )}>
               <div className="flex items-start gap-3 mb-3">
                 <BadgeDisplay badgeType="top_member" className="flex-shrink-0" />

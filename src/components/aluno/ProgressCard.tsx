@@ -37,8 +37,8 @@ function ProgressCard({
       "backdrop-blur-md border rounded-xl overflow-hidden transition-all duration-300",
       bgGradientClasses[color as keyof typeof bgGradientClasses] || bgGradientClasses.yellow,
       theme === 'dark'
-        ? "bg-black/20 border-white/10 hover:border-white/20"
-        : "bg-white border-yellow-400/90 hover:border-yellow-500 shadow-md"
+        ? "bg-gray-800/30 border-white/10 hover:border-white/20"
+        : "bg-yellow-500/10 border-yellow-400/90 hover:border-yellow-500 shadow-md"
     )}>
       <CardHeader className="flex flex-row items-center justify-between pb-2 p-4 md:p-5">
         <CardTitle className={cn(

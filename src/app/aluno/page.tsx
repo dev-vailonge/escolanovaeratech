@@ -72,8 +72,8 @@ const AnnouncementCard = memo(function AnnouncementCard({ title, message, type, 
     <div className={cn(
       "w-full p-4 md:p-5 rounded-xl backdrop-blur-md border shadow-lg flex flex-col gap-2 transition-colors duration-300",
       theme === 'dark'
-        ? "bg-black/20 border-white/10"
-        : "bg-white/80 border-yellow-400/90 shadow-md"
+        ? "bg-gray-800/30 border-white/10"
+        : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
     )}>
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <h3 className={cn(
@@ -315,8 +315,8 @@ export default function AlunoDashboard() {
       <div className={cn(
         "backdrop-blur-md bg-gradient-to-r rounded-xl p-4 md:p-6 border transition-colors duration-300",
         theme === 'dark'
-          ? "bg-black/20 from-yellow-400/10 to-transparent border-yellow-400/20"
-          : "bg-yellow-50/80 from-yellow-100/50 to-transparent border-yellow-400/90 shadow-md"
+          ? "bg-gray-800/30 from-yellow-400/10 to-transparent border-yellow-400/20"
+          : "bg-yellow-500/10 from-yellow-100/50 to-transparent border-yellow-400/90 shadow-md"
       )}>
         <h1 className={cn(
           "text-2xl md:text-3xl font-bold mb-2",
@@ -384,8 +384,8 @@ export default function AlunoDashboard() {
         <div className={cn(
           "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
           theme === 'dark'
-            ? "bg-black/20 border-white/10"
-            : "bg-white border-yellow-400/90 shadow-md"
+            ? "bg-gray-800/30 border-white/10"
+            : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
         )}>
           <h2 className={cn(
             "text-lg md:text-xl font-bold mb-3 md:mb-4",
@@ -400,8 +400,8 @@ export default function AlunoDashboard() {
               className={cn(
                 "flex items-center gap-2 md:gap-3 p-3 md:p-4 backdrop-blur-sm border rounded-lg hover:border-yellow-400/50 transition-all active:scale-[0.98] min-h-[72px]",
                 theme === 'dark'
-                  ? "bg-black/30 border-white/10"
-                  : "bg-yellow-50/50 border-yellow-400/70 hover:border-yellow-500/80"
+                  ? "bg-gray-800/30 border-white/10"
+                  : "bg-yellow-500/10 border-yellow-400/70 hover:border-yellow-500/80"
               )}
             >
               <MessageCircle className={cn(
@@ -429,8 +429,8 @@ export default function AlunoDashboard() {
               className={cn(
                 "flex items-center gap-2 md:gap-3 p-3 md:p-4 backdrop-blur-sm border rounded-lg hover:border-yellow-400/50 transition-all active:scale-[0.98] min-h-[72px]",
                 theme === 'dark'
-                  ? "bg-black/30 border-white/10"
-                  : "bg-yellow-50/50 border-yellow-400/70 hover:border-yellow-500/80"
+                  ? "bg-gray-800/30 border-white/10"
+                  : "bg-yellow-500/10 border-yellow-400/70 hover:border-yellow-500/80"
               )}
             >
               <HelpCircle className="w-4 h-4 md:w-5 md:h-5 text-blue-400 flex-shrink-0" />
@@ -455,8 +455,8 @@ export default function AlunoDashboard() {
               className={cn(
                 "flex items-center gap-2 md:gap-3 p-3 md:p-4 backdrop-blur-sm border rounded-lg hover:border-yellow-400/50 transition-all active:scale-[0.98] min-h-[72px]",
                 theme === 'dark'
-                  ? "bg-black/30 border-white/10"
-                  : "bg-yellow-50/50 border-yellow-400/70 hover:border-yellow-500/80"
+                  ? "bg-gray-800/30 border-white/10"
+                  : "bg-yellow-500/10 border-yellow-400/70 hover:border-yellow-500/80"
               )}
             >
               <Target className="w-4 h-4 md:w-5 md:h-5 text-green-400 flex-shrink-0" />
@@ -482,8 +482,8 @@ export default function AlunoDashboard() {
         <div className={cn(
           "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
           theme === 'dark'
-            ? "bg-black/20 border-white/10"
-            : "bg-white border-yellow-400/90 shadow-md"
+            ? "bg-gray-800/30 border-white/10"
+            : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
         )}>
           <div className="flex items-center justify-between mb-3 md:mb-4">
             <h2 className={cn(
@@ -525,8 +525,8 @@ export default function AlunoDashboard() {
                   className={cn(
                     "flex items-center gap-2 md:gap-3 p-3 md:p-4 backdrop-blur-sm border rounded-lg transition-colors duration-300 min-h-[72px]",
                     theme === 'dark'
-                      ? "bg-black/30 border-white/10"
-                      : "bg-yellow-50/80 border-yellow-400/70"
+                      ? "bg-gray-800/30 border-white/10"
+                      : "bg-yellow-500/10 border-yellow-400/70"
                   )}
                 >
                   <div className={cn(
@@ -587,8 +587,8 @@ export default function AlunoDashboard() {
         <div className={cn(
           "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
           theme === 'dark'
-            ? "bg-black/20 border-white/10"
-            : "bg-white border-yellow-400/90 shadow-md"
+            ? "bg-gray-800/30 border-white/10"
+            : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
         )}>
           <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4">
             <Clock className="w-5 h-5 md:w-6 md:h-6 text-purple-400 flex-shrink-0" />
@@ -616,8 +616,8 @@ export default function AlunoDashboard() {
         <div className={cn(
           "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
           theme === 'dark'
-            ? "bg-black/20 border-white/10"
-            : "bg-white border-yellow-400/90 shadow-md"
+            ? "bg-gray-800/30 border-white/10"
+            : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
         )}>
           <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4">
             <MessageCircle className="w-5 h-5 md:w-6 md:h-6 text-green-400 flex-shrink-0" />

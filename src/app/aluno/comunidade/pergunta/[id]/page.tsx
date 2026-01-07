@@ -606,11 +606,11 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
         'backdrop-blur-md border rounded-xl p-4 md:p-6 transition-all duration-300',
         pergunta.resolvida
           ? theme === 'dark'
-            ? 'bg-gray-800/30 border-green-500/30'
+            ? 'bg-green-500/10 border-green-500/30'
             : 'bg-green-50 border-green-400/90 shadow-md'
           : theme === 'dark'
             ? 'bg-gray-800/30 border-white/10'
-            : 'bg-white border-yellow-400/90 shadow-md'
+            : 'bg-yellow-500/10 border-yellow-400/90 shadow-md'
       )}>
         <div className="flex gap-3 md:gap-4">
           {/* Votes */}
@@ -780,7 +780,7 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
         <div className={cn(
           'backdrop-blur-md border rounded-xl p-4 md:p-6',
           theme === 'dark'
-            ? 'bg-gray-800/30 border-green-500/30'
+            ? 'bg-green-500/10 border-green-500/30'
             : 'bg-green-50 border-green-400/90 shadow-md'
         )}>
           <div className="flex items-center gap-2 mb-2">
@@ -798,102 +798,6 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
           )}>
             Esta pergunta já foi marcada como resolvida. Não é possível adicionar novas respostas ou comentários.
           </p>
-        </div>
-      )}
-
-      {/* Formulário de Resposta */}
-      {canCreate && !pergunta.resolvida && (
-        <div className={cn(
-          'backdrop-blur-md border rounded-xl p-4 md:p-6',
-          theme === 'dark'
-            ? 'bg-gray-800/30 border-white/10'
-            : 'bg-white border-yellow-400/90 shadow-md'
-        )}>
-          <h2 className={cn(
-            'text-lg font-bold mb-3',
-            theme === 'dark' ? 'text-white' : 'text-gray-900'
-          )}>
-            Sua Resposta
-          </h2>
-          <div className="mb-3">
-            <textarea
-              ref={respostaTextareaRef}
-              value={respostaConteudo}
-              onChange={handleRespostaTextChange}
-              placeholder="Digite @username para mencionar alguém..."
-              rows={6}
-              className={cn(
-                'w-full px-3 py-2 rounded-lg border text-sm',
-                theme === 'dark'
-                  ? 'bg-black/30 border-white/10 text-white placeholder-gray-500'
-                  : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
-              )}
-            />
-            {/* Dropdown de sugestões de menções */}
-            {showMentionSuggestions && mentionUsers.length > 0 && (
-              <div
-                ref={mentionDropdownRef}
-                className={cn(
-                  'z-50 mt-1 max-h-48 overflow-y-auto rounded-lg border shadow-lg',
-                  theme === 'dark'
-                    ? 'bg-black/95 border-white/20 backdrop-blur-md'
-                    : 'bg-white border-gray-200 shadow-xl'
-                )}
-              >
-                {mentionUsers.map((user) => (
-                  <button
-                    key={user.id}
-                    type="button"
-                    onClick={() => selectRespostaUser(user)}
-                    className={cn(
-                      'w-full text-left px-3 py-2 text-xs hover:bg-opacity-50 transition-colors border-b last:border-b-0 flex items-center gap-2',
-                      theme === 'dark'
-                        ? 'hover:bg-white/10 text-white border-white/5'
-                        : 'hover:bg-yellow-50 text-gray-900 border-gray-100'
-                    )}
-                  >
-                    {user.avatar_url ? (
-                      <img
-                        src={user.avatar_url}
-                        alt={user.name}
-                        className="w-5 h-5 rounded-full object-cover flex-shrink-0"
-                      />
-                    ) : (
-                      <div className={cn(
-                        'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0',
-                        theme === 'dark'
-                          ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-black'
-                          : 'bg-gradient-to-br from-yellow-600 to-yellow-700 text-white'
-                      )}>
-                        {user.name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <span className="truncate">{user.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="mb-3">
-            <QuestionImageUpload
-              onImageChange={setRespostaImagem}
-              resetTrigger={respostaImagemResetTrigger}
-            />
-          </div>
-          <button
-            onClick={submitResposta}
-            disabled={isSubmitting || !respostaConteudo.trim()}
-            className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
-              theme === 'dark'
-                ? 'bg-yellow-400 text-black hover:bg-yellow-500'
-                : 'bg-yellow-500 text-white hover:bg-yellow-600',
-              (isSubmitting || !respostaConteudo.trim()) && 'opacity-50 cursor-not-allowed'
-            )}
-          >
-            <Send className="w-4 h-4" />
-            {isSubmitting ? 'Enviando...' : 'Enviar Resposta'}
-          </button>
         </div>
       )}
 
@@ -958,17 +862,37 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
             <div
               key={resposta.id}
               className={cn(
-                'backdrop-blur-md border rounded-xl p-4 md:p-6',
+                'backdrop-blur-md border rounded-xl p-4 md:p-6 relative',
                 resposta.melhorResposta
                   ? theme === 'dark'
-                    ? 'bg-gray-800/30 border-green-500/30'
-                    : 'bg-green-50 border-green-300'
+                    ? 'bg-gray-800/30 border-green-500/50 shadow-lg shadow-green-500/10'
+                    : 'bg-green-50 border-green-400 shadow-md'
                   : theme === 'dark'
                     ? 'bg-gray-800/30 border-white/10'
-                    : 'bg-white border-yellow-400/90 shadow-md'
+                    : 'bg-yellow-500/10 border-yellow-400/90 shadow-md'
               )}
             >
-              <div className="flex gap-3 md:gap-4">
+              {/* Badge de Resposta Certa - Destaque no topo */}
+              {resposta.melhorResposta && (
+                <div className={cn(
+                  'absolute top-0 left-0 right-0 flex items-center justify-center py-1.5 px-3 rounded-t-xl border-b',
+                  theme === 'dark'
+                    ? 'bg-green-500/20 border-green-500/50'
+                    : 'bg-green-100 border-green-300'
+                )}>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    <span className={cn(
+                      'text-xs font-bold',
+                      theme === 'dark' ? 'text-green-400' : 'text-green-700'
+                    )}>
+                      ✓ RESPOSTA CERTA
+                    </span>
+                  </div>
+                </div>
+              )}
+              
+              <div className={cn("flex gap-3 md:gap-4", resposta.melhorResposta && "mt-6")}>
                 <div className="flex flex-col items-center gap-1 flex-shrink-0">
                   <ThumbsUp className={cn(
                     'w-4 h-4',
@@ -977,7 +901,7 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
                       : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                   )} />
                   {resposta.melhorResposta && (
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    <CheckCircle2 className="w-5 h-5 text-green-500" />
                   )}
                 </div>
 
@@ -1087,6 +1011,102 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
           })()
         )}
       </div>
+
+      {/* Formulário de Resposta - Sempre abaixo das respostas */}
+      {canCreate && !pergunta.resolvida && (
+        <div className={cn(
+          'backdrop-blur-md border rounded-xl p-4 md:p-6',
+          theme === 'dark'
+            ? 'bg-gray-800/30 border-white/10'
+            : 'bg-yellow-500/10 border-yellow-400/90 shadow-md'
+        )}>
+          <h2 className={cn(
+            'text-lg font-bold mb-3',
+            theme === 'dark' ? 'text-white' : 'text-gray-900'
+          )}>
+            Sua Resposta
+          </h2>
+          <div className="mb-3">
+            <textarea
+              ref={respostaTextareaRef}
+              value={respostaConteudo}
+              onChange={handleRespostaTextChange}
+              placeholder="Digite @username para mencionar alguém..."
+              rows={6}
+              className={cn(
+                'w-full px-3 py-2 rounded-lg border text-sm',
+                theme === 'dark'
+                  ? 'bg-black/30 border-white/10 text-white placeholder-gray-500'
+                  : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+              )}
+            />
+            {/* Dropdown de sugestões de menções */}
+            {showMentionSuggestions && mentionUsers.length > 0 && (
+              <div
+                ref={mentionDropdownRef}
+                className={cn(
+                  'z-50 mt-1 max-h-48 overflow-y-auto rounded-lg border shadow-lg',
+                  theme === 'dark'
+                    ? 'bg-black/95 border-white/20 backdrop-blur-md'
+                    : 'bg-white border-gray-200 shadow-xl'
+                )}
+              >
+                {mentionUsers.map((user) => (
+                  <button
+                    key={user.id}
+                    type="button"
+                    onClick={() => selectRespostaUser(user)}
+                    className={cn(
+                      'w-full text-left px-3 py-2 text-xs hover:bg-opacity-50 transition-colors border-b last:border-b-0 flex items-center gap-2',
+                      theme === 'dark'
+                        ? 'hover:bg-white/10 text-white border-white/5'
+                        : 'hover:bg-yellow-50 text-gray-900 border-gray-100'
+                    )}
+                  >
+                    {user.avatar_url ? (
+                      <img
+                        src={user.avatar_url}
+                        alt={user.name}
+                        className="w-5 h-5 rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className={cn(
+                        'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0',
+                        theme === 'dark'
+                          ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-black'
+                          : 'bg-gradient-to-br from-yellow-600 to-yellow-700 text-white'
+                      )}>
+                        {user.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="truncate">{user.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="mb-3">
+            <QuestionImageUpload
+              onImageChange={setRespostaImagem}
+              resetTrigger={respostaImagemResetTrigger}
+            />
+          </div>
+          <button
+            onClick={submitResposta}
+            disabled={isSubmitting || !respostaConteudo.trim()}
+            className={cn(
+              'px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
+              theme === 'dark'
+                ? 'bg-yellow-400 text-black hover:bg-yellow-500'
+                : 'bg-yellow-500 text-white hover:bg-yellow-600',
+              (isSubmitting || !respostaConteudo.trim()) && 'opacity-50 cursor-not-allowed'
+            )}
+          >
+            <Send className="w-4 h-4" />
+            {isSubmitting ? 'Enviando...' : 'Enviar Resposta'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
