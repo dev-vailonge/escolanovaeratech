@@ -408,10 +408,10 @@ export default function AlunoHeader() {
                   <div
                     key={entry.id}
                     className={cn(
-                      "flex items-center gap-3 p-2 rounded-lg border",
+                      "flex items-center gap-3 p-2 rounded-lg border backdrop-blur-sm",
                       theme === 'dark'
-                        ? "bg-black/20 border-white/10"
-                        : "bg-yellow-50/50 border-yellow-400/50"
+                        ? "bg-gray-800/30 border-white/10"
+                        : "bg-yellow-500/10 border-yellow-400/50"
                     )}
                   >
                     <div className={cn(
@@ -456,7 +456,10 @@ export default function AlunoHeader() {
             </div>
           )}
 
-          <div className="pt-4 border-t border-white/10">
+          <div className={cn(
+            "pt-4 border-t",
+            theme === 'dark' ? "border-white/10" : "border-yellow-400/30"
+          )}>
             <button
               onClick={() => {
                 setXpModalOpen(false)

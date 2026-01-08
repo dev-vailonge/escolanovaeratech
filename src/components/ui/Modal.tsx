@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 interface ModalProps {
   isOpen: boolean
   onClose: () => void
-  title: string
+  title: string | React.ReactNode
   children: React.ReactNode
   size?: 'sm' | 'md' | 'lg' | 'xl'
 }
@@ -87,10 +87,10 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
       {/* Modal Content */}
       <div
         className={cn(
-          "relative w-full rounded-xl shadow-xl transition-all",
+          "relative w-full rounded-xl shadow-xl transition-all backdrop-blur-xl",
           sizeClasses[size],
           theme === 'dark'
-            ? "bg-black/90 border border-white/10"
+            ? "bg-gray-800/30 border border-white/10"
             : "bg-white border border-yellow-400/90"
         )}
         onClick={(e) => e.stopPropagation()}
@@ -101,15 +101,23 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
       >
         {/* Header */}
         <div className={cn(
-          "flex items-center justify-between p-4 md:p-6 border-b",
-          theme === 'dark' ? "border-white/10" : "border-yellow-400/30"
+          "flex items-center justify-between p-4 md:p-6 border-b backdrop-blur-xl",
+          theme === 'dark' 
+            ? "bg-gray-800/30 border-white/10" 
+            : "bg-white border-yellow-400/30"
         )}>
-          <h2 className={cn(
-            "text-lg md:text-xl font-bold",
-            theme === 'dark' ? "text-white" : "text-gray-900"
-          )}>
-            {title}
-          </h2>
+          <div className="flex items-center gap-3">
+            {typeof title === 'string' ? (
+              <h2 className={cn(
+                "text-lg md:text-xl font-bold",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                {title}
+              </h2>
+            ) : (
+              title
+            )}
+          </div>
           <button
             onClick={onClose}
             className={cn(

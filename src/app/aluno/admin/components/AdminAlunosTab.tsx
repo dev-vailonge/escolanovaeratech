@@ -121,7 +121,7 @@ export default function AdminAlunosTab() {
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await carregarUsersLocal()
+      await carregarUsersLocal()
     setRefreshing(false)
   }
 
@@ -250,7 +250,7 @@ export default function AdminAlunosTab() {
       )}
 
       {/* Lista de Usuários */}
-      {loadingLocal ? (
+          {loadingLocal ? (
             <div className={cn(
               "flex items-center justify-center p-8",
               theme === 'dark' ? "text-gray-400" : "text-gray-600"
@@ -461,7 +461,7 @@ export default function AdminAlunosTab() {
                 )
               })}
             </div>
-          )}
+      )}
     </div>
   )
 }
