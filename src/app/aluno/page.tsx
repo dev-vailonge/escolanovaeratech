@@ -3,13 +3,14 @@
 import { useEffect, useState, useCallback, memo, useMemo } from 'react'
 import Image from 'next/image'
 import ProgressCard from '@/components/aluno/ProgressCard'
-import { BookOpen, Trophy, HelpCircle, Target, Clock, MessageCircle } from 'lucide-react'
+import { BookOpen, Trophy, HelpCircle, Target, Clock, MessageCircle, ChevronDown, ChevronUp, Bell } from 'lucide-react'
 import Link from 'next/link'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { getNotificacoesAtivas } from '@/lib/database'
+import { getLevelBorderColor } from '@/lib/gamification'
 import type { DatabaseNotificacao } from '@/types/database'
 
 // Tipos para estatísticas do usuário
@@ -142,6 +143,7 @@ export default function AlunoDashboard() {
   
   // Estado para avisos/notificações reais
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [showAllAnnouncements, setShowAllAnnouncements] = useState(false)
   
   // Estado para ranking real
   const [topRanking, setTopRanking] = useState<RankingUser[]>([])
@@ -249,7 +251,20 @@ export default function AlunoDashboard() {
       if (notificacoesResult.status === 'fulfilled') {
         const notificacoes = notificacoesResult.value || []
         console.log('[Dashboard] Notificações recebidas:', notificacoes.length)
-        setAnnouncements(notificacoes.map(convertNotificacaoToAnnouncement))
+        
+        // Filtrar apenas avisos gerais (gerados pelo admin):
+        // - target_user_id é null (avisos gerais)
+        // - is_sugestao_bug não é true (excluir sugestões/bugs enviadas por alunos)
+        // - created_by é null ou é do admin (avisos criados pelo admin, não por alunos)
+        const avisosGerais = notificacoes.filter((notif: DatabaseNotificacao) => 
+          !notif.target_user_id && 
+          !notif.is_sugestao_bug &&
+          !notif.created_by // Apenas notificações sem created_by (criadas pelo admin) ou podemos verificar se é admin
+        )
+        
+        // Converter para formato de anúncio
+        const avisosConvertidos = avisosGerais.map(convertNotificacaoToAnnouncement)
+        setAnnouncements(avisosConvertidos)
       } else if (notificacoesResult.status === 'rejected') {
         console.error('[Dashboard] Erro ao buscar notificações:', notificacoesResult.reason)
       }
@@ -361,22 +376,81 @@ export default function AlunoDashboard() {
       </div>
 
       {/* Avisos da Escola */}
-      {announcements.length > 0 && (
-        <section className="w-full flex flex-col gap-3 md:gap-4">
-          <h2 className={cn(
-            "text-lg md:text-xl font-bold",
-            theme === 'dark' ? "text-white" : "text-gray-900"
-          )}>
-            Avisos da Escola
-          </h2>
+      <section className="w-full flex flex-col gap-3 md:gap-4">
+        <h2 className={cn(
+          "text-lg md:text-xl font-bold",
+          theme === 'dark' ? "text-white" : "text-gray-900"
+        )}>
+          Avisos da Escola
+        </h2>
 
-          <div className="flex flex-col gap-3 md:gap-4">
-            {announcements.map(announcement => (
-              <AnnouncementCard key={announcement.id} {...announcement} />
-            ))}
+        {announcements.length === 0 ? (
+          <div className={cn(
+            "backdrop-blur-md border rounded-xl p-8 md:p-12 text-center",
+            theme === 'dark'
+              ? "bg-gray-800/30 border-white/10"
+              : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
+          )}>
+            <div className={cn(
+              "w-16 h-16 md:w-20 md:h-20 rounded-full border-4 flex items-center justify-center mb-6 mx-auto",
+              theme === 'dark' 
+                ? "border-yellow-400/30 bg-yellow-400/10" 
+                : "border-yellow-500/30 bg-yellow-500/10"
+            )}>
+              <Bell className={cn(
+                "w-10 h-10 md:w-12 md:h-12",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )} />
+            </div>
+            <h3 className={cn(
+              "text-lg md:text-xl font-semibold mb-2",
+              theme === 'dark' ? "text-white" : "text-gray-900"
+            )}>
+              Nenhum aviso no momento
+            </h3>
+            <p className={cn(
+              "text-sm md:text-base",
+              theme === 'dark' ? "text-gray-400" : "text-gray-600"
+            )}>
+              Quando houver avisos importantes da escola, eles aparecerão aqui.
+            </p>
           </div>
-        </section>
-      )}
+        ) : (
+          <>
+            <div className="flex flex-col gap-3 md:gap-4">
+              {/* Mostrar apenas os 3 últimos ou todos se expandido */}
+              {(showAllAnnouncements ? announcements : announcements.slice(0, 3)).map(announcement => (
+                <AnnouncementCard key={announcement.id} {...announcement} />
+              ))}
+            </div>
+
+            {/* Botão para expandir/colapsar se houver mais de 3 avisos */}
+            {announcements.length > 3 && (
+              <button
+                onClick={() => setShowAllAnnouncements(!showAllAnnouncements)}
+                className={cn(
+                  "flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors",
+                  theme === 'dark'
+                    ? "bg-gray-800/30 border border-white/10 text-white hover:bg-gray-800/50"
+                    : "bg-yellow-500/10 border border-yellow-400/70 text-gray-900 hover:bg-yellow-500/20"
+                )}
+              >
+                {showAllAnnouncements ? (
+                  <>
+                    <ChevronUp className="w-4 h-4" />
+                    Ver menos
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-4 h-4" />
+                    Ver mais ({announcements.length - 3} avisos)
+                  </>
+                )}
+              </button>
+            )}
+          </>
+        )}
+      </section>
 
       {/* Quick Actions & Ranking */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
@@ -541,16 +615,20 @@ export default function AlunoDashboard() {
                       alt={user.name}
                       width={40}
                       height={40}
-                      className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover flex-shrink-0 border border-yellow-400/50"
+                      className={cn(
+                        "w-8 h-8 md:w-10 md:h-10 rounded-full object-cover flex-shrink-0 border-[3px]",
+                        getLevelBorderColor(user.level, theme === 'dark')
+                      )}
                       loading="lazy"
                       unoptimized
                     />
                   ) : (
                     <div className={cn(
-                      "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-base flex-shrink-0",
+                      "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-base flex-shrink-0 border-[3px]",
                       theme === 'dark'
                         ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
-                        : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white"
+                        : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white",
+                      getLevelBorderColor(user.level, theme === 'dark')
                     )}>
                       {user.name.charAt(0)}
                     </div>

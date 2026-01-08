@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { Loader2, RefreshCw, Mail, Calendar, Search, Database, Trophy, Zap, Coins, Shield, User, Lock, Unlock } from 'lucide-react'
 import { getAllUsers, updateUserRole, updateUserAccessLevel } from '@/lib/database'
 import type { DatabaseUser } from '@/types/database'
+import Pagination from '@/components/ui/Pagination'
 
 export default function AdminAlunosTab() {
   const { theme } = useTheme()
@@ -19,6 +20,8 @@ export default function AdminAlunosTab() {
   const [refreshing, setRefreshing] = useState(false)
   const [updatingRole, setUpdatingRole] = useState<string | null>(null)
   const [updatingAccess, setUpdatingAccess] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   useEffect(() => {
     carregarUsersLocal()
@@ -141,13 +144,27 @@ export default function AdminAlunosTab() {
 
 
   // Filtrar usuários locais por termo de busca
-  const usersLocalFiltrados = usersLocal.filter((user) => {
-    const termo = searchTerm.toLowerCase()
-    return (
-      user.name.toLowerCase().includes(termo) ||
-      user.email.toLowerCase().includes(termo)
-    )
-  })
+  const usersLocalFiltrados = useMemo(() => {
+    return usersLocal.filter((user) => {
+      const termo = searchTerm.toLowerCase()
+      return (
+        user.name.toLowerCase().includes(termo) ||
+        user.email.toLowerCase().includes(termo)
+      )
+    })
+  }, [usersLocal, searchTerm])
+
+  // Resetar página ao mudar busca
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
+
+  // Paginação - calcular usuários paginados
+  const usersPaginados = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return usersLocalFiltrados.slice(startIndex, endIndex)
+  }, [usersLocalFiltrados, currentPage, itemsPerPage])
 
   const getRoleBadge = (role: string) => {
     if (role === 'admin') {
@@ -270,8 +287,9 @@ export default function AdminAlunosTab() {
                 : 'Nenhum usuário cadastrado no sistema.'}
             </div>
           ) : (
-            <div className="space-y-3">
-              {usersLocalFiltrados.map((user) => {
+            <>
+              <div className="space-y-3">
+                {usersPaginados.map((user) => {
                 const roleBadge = getRoleBadge(user.role)
                 const accessBadge = getAccessBadge(user.access_level)
 
@@ -461,6 +479,15 @@ export default function AdminAlunosTab() {
                 )
               })}
             </div>
+            
+            <Pagination
+              currentPage={currentPage}
+              totalPages={Math.ceil(usersLocalFiltrados.length / itemsPerPage)}
+              onPageChange={setCurrentPage}
+              itemsPerPage={itemsPerPage}
+              totalItems={usersLocalFiltrados.length}
+            />
+          </>
       )}
     </div>
   )

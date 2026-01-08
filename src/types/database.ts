@@ -96,9 +96,22 @@ export interface DatabaseNotificacao {
   target_user_id?: string | null // Se preenchido, notificação individual
   related_desafio_id?: string | null // Referência ao desafio (se aplicável)
   action_url?: string | null // URL para navegação quando a notificação é clicada
+  is_sugestao_bug?: boolean | null // Indica se é sugestão/bug enviada por aluno
+  imagem_url?: string | null // URL da imagem anexada (para sugestões/bugs)
   created_at: string
   updated_at: string
   created_by: string | null
+}
+
+// Notificação com dados do usuário que criou (para sugestões/bugs)
+export interface NotificacaoWithUser extends DatabaseNotificacao {
+  user?: {
+    id: string
+    name: string
+    email: string
+    avatar_url?: string | null
+    level?: number
+  }
 }
 
 // Pergunta do formulário

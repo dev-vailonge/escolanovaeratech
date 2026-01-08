@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
@@ -9,6 +9,7 @@ import CreateFormularioModal from './CreateFormularioModal'
 import ViewRespostasModal from './ViewRespostasModal'
 import { getAllFormularios, createFormulario, updateFormulario, deleteFormulario, toggleFormularioAtivo, getRespostasFormulario, createNotificacao } from '@/lib/database'
 import type { DatabaseFormulario } from '@/types/database'
+import Pagination from '@/components/ui/Pagination'
 
 export default function AdminFormulariosTab() {
   const { theme } = useTheme()
@@ -20,10 +21,19 @@ export default function AdminFormulariosTab() {
   const [viewingRespostas, setViewingRespostas] = useState<DatabaseFormulario | null>(null)
   const [error, setError] = useState('')
   const [respostasCount, setRespostasCount] = useState<Record<string, number>>({})
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   useEffect(() => {
     carregarFormularios()
   }, [])
+
+  // Paginação - calcular formulários paginados
+  const formulariosPaginados = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return formularios.slice(startIndex, endIndex)
+  }, [formularios, currentPage, itemsPerPage])
 
   const carregarFormularios = async (retryCount = 0) => {
     const maxRetries = 2
@@ -275,8 +285,9 @@ export default function AdminFormulariosTab() {
           Nenhum formulário cadastrado ainda. Clique em "Criar Formulário" para começar.
         </div>
       ) : (
-        <div className="space-y-3">
-          {formularios.map((formulario) => (
+        <>
+          <div className="space-y-3">
+            {formulariosPaginados.map((formulario) => (
             <div
               key={formulario.id}
               className={cn(
@@ -380,6 +391,15 @@ export default function AdminFormulariosTab() {
             </div>
           ))}
         </div>
+        
+        <Pagination
+          currentPage={currentPage}
+          totalPages={Math.ceil(formularios.length / itemsPerPage)}
+          onPageChange={setCurrentPage}
+          itemsPerPage={itemsPerPage}
+          totalItems={formularios.length}
+        />
+      </>
       )}
     </div>
   )

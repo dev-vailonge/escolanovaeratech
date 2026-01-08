@@ -1,6 +1,6 @@
 'use client'
 
-import { HelpCircle, CheckCircle2, Play, Trophy, Lock, Loader2, BookOpen, Lightbulb, Sparkles } from 'lucide-react'
+import { HelpCircle, CheckCircle2, Play, Trophy, Lock, Loader2, BookOpen, Lightbulb, Sparkles, RefreshCw, Plus } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { hasFullAccess } from '@/lib/types/auth'
@@ -762,19 +762,51 @@ export default function QuizPage() {
       )}
 
       {/* Header */}
-      <div>
-        <h1 className={cn(
-          "text-2xl md:text-3xl font-bold mb-2",
-          theme === 'dark' ? "text-white" : "text-gray-900"
-        )}>
-          Quiz
-        </h1>
-        <p className={cn(
-          "text-sm md:text-base",
-          theme === 'dark' ? "text-gray-400" : "text-gray-600"
-        )}>
-          Teste seus conhecimentos e ganhe XP
-        </p>
+      <div className={cn(
+        "flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4 md:mb-6",
+        quizesCompletos.length === 0 && "sm:justify-start"
+      )}>
+        <div>
+          <h1 className={cn(
+            "text-2xl md:text-3xl font-bold mb-2",
+            theme === 'dark' ? "text-white" : "text-gray-900"
+          )}>
+            Quiz
+          </h1>
+          <p className={cn(
+            "text-sm md:text-base",
+            theme === 'dark' ? "text-gray-400" : "text-gray-600"
+          )}>
+            Teste seus conhecimentos e ganhe XP
+          </p>
+        </div>
+        {quizesCompletos.length > 0 && (
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => fetchQuizzes()}
+              disabled={loading}
+              className={cn(
+                "flex items-center justify-center gap-2 px-4 py-2 rounded-lg border transition-colors",
+                theme === 'dark'
+                  ? "bg-black/50 border-white/10 text-white hover:bg-black/70 hover:border-white/20"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400",
+                loading && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <RefreshCw className={cn("w-4 h-4 md:w-5 md:h-5", loading && "animate-spin")} />
+              <span className="text-sm md:text-base">Atualizar</span>
+            </button>
+            {canParticipate && (
+              <button 
+                className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto"
+                onClick={handleFazerQuiz}
+              >
+                <Plus className="w-4 h-4 md:w-5 md:h-5" />
+                <span className="text-sm md:text-base">Fazer Quiz</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Conteúdo Principal */}
@@ -810,48 +842,25 @@ export default function QuizPage() {
             )}>
               Escolha uma tecnologia e nível para começar um novo quiz e ganhar XP!
             </p>
-            <button
-              onClick={handleFazerQuiz}
-              disabled={!canParticipate}
-              className={cn(
-                "px-6 py-3 rounded-lg font-semibold text-base md:text-lg transition-all",
-                !canParticipate
-                  ? "opacity-50 cursor-not-allowed bg-gray-400 text-white"
-                  : theme === 'dark'
+            {canParticipate && (
+              <button
+                onClick={handleFazerQuiz}
+                className={cn(
+                  "px-6 py-3 rounded-lg font-semibold text-base md:text-lg transition-all flex items-center justify-center gap-2",
+                  theme === 'dark'
                     ? "bg-yellow-400 hover:bg-yellow-500 text-black"
                     : "bg-yellow-500 hover:bg-yellow-600 text-white"
-              )}
-            >
-              {!canParticipate ? 'Acesso Limitado' : 'Fazer Quiz'}
-            </button>
+                )}
+              >
+                <Plus className="w-5 h-5" />
+                Fazer Quiz
+              </button>
+            )}
           </div>
         </div>
       ) : (
-        // Quando há histórico - mostrar botão no topo e lista de quizzes
+        // Quando há histórico - mostrar lista de quizzes (botão já está no header)
         <div className="space-y-4 md:space-y-6">
-          {/* Botão Fazer Quiz no topo */}
-          <div className={cn(
-            "backdrop-blur-md border rounded-xl p-4 transition-colors duration-300",
-            theme === 'dark'
-              ? "bg-gray-800/30 border-white/10"
-              : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
-          )}>
-            <button
-              onClick={handleFazerQuiz}
-              disabled={!canParticipate}
-              className={cn(
-                "w-full px-6 py-3 rounded-lg font-semibold text-base md:text-lg transition-all",
-                !canParticipate
-                  ? "opacity-50 cursor-not-allowed bg-gray-400 text-white"
-                  : theme === 'dark'
-                    ? "bg-yellow-400 hover:bg-yellow-500 text-black"
-                    : "bg-yellow-500 hover:bg-yellow-600 text-white"
-              )}
-            >
-              {!canParticipate ? 'Acesso Limitado' : 'Fazer Quiz'}
-            </button>
-          </div>
-
           {/* Card de Estatísticas */}
           <div className={cn(
             "backdrop-blur-md border rounded-xl p-3 md:p-4 transition-colors duration-300",
