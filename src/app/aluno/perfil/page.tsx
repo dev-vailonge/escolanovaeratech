@@ -1,7 +1,7 @@
 'use client'
 
 import { mockUser } from '@/data/aluno/mockUser'
-import { Edit2, Trophy, Lock, HelpCircle, BookOpen, Target, MessageCircle, Send, Bug, Lightbulb, Loader2 } from 'lucide-react'
+import { Edit2, Trophy, Lock, HelpCircle, BookOpen, Target, MessageCircle, Loader2 } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { isFeatureEnabled } from '@/lib/features'
@@ -11,7 +11,6 @@ import Modal from '@/components/ui/Modal'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getLevelBorderColor, getLevelRequirements, getXPForNextLevel, getLevelCategory, calculateLevel } from '@/lib/gamification'
 import type { DatabaseUserXpHistory } from '@/types/database'
-import QuestionImageUpload from '@/components/comunidade/QuestionImageUpload'
 
 export default function PerfilPage() {
   const { user: authUser, refreshSession } = useAuth()
@@ -68,14 +67,6 @@ export default function PerfilPage() {
   const [success, setSuccess] = useState('')
   const [xpHistory, setXpHistory] = useState<DatabaseUserXpHistory[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
-  const [sugestaoModalOpen, setSugestaoModalOpen] = useState(false)
-  const [tipoSugestao, setTipoSugestao] = useState<'melhoria' | 'bug'>('melhoria')
-  const [sugestaoTexto, setSugestaoTexto] = useState('')
-  const [sugestaoImagem, setSugestaoImagem] = useState<File | null>(null)
-  const [sugestaoImagemResetTrigger, setSugestaoImagemResetTrigger] = useState(0)
-  const [enviandoSugestao, setEnviandoSugestao] = useState(false)
-  const [sugestaoErro, setSugestaoErro] = useState('')
-  const [sugestaoSucesso, setSugestaoSucesso] = useState('')
 
   // Crop state (zoom + mover)
   const cropBoxRef = useRef<HTMLDivElement | null>(null)
@@ -927,41 +918,6 @@ export default function PerfilPage() {
             </div>
           )}
         </div>
-
-        {/* Card de Sugestões/Bugs */}
-        <div className={cn(
-          "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
-          theme === 'dark'
-            ? "bg-gray-800/30 border-white/10"
-            : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
-        )}>
-          <div className="mb-4">
-            <h2 className={cn(
-              "text-lg md:text-xl font-bold mb-2",
-              theme === 'dark' ? "text-white" : "text-gray-900"
-            )}>
-              Sugestões e Bugs
-            </h2>
-            <p className={cn(
-              "text-sm",
-              theme === 'dark' ? "text-gray-400" : "text-gray-600"
-            )}>
-              Envie sugestões de melhorias ou relate bugs encontrados. Seu feedback é muito importante!
-            </p>
-          </div>
-          <button
-            onClick={() => setSugestaoModalOpen(true)}
-            className={cn(
-              "w-full px-4 py-3 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2",
-              theme === 'dark'
-                ? "bg-yellow-400/20 text-yellow-400 border border-yellow-400/30 hover:bg-yellow-400/30"
-                : "bg-yellow-500 text-white hover:bg-yellow-600"
-            )}
-          >
-            <Send className="w-4 h-4" />
-            Enviar Sugestão ou Relatar Bug
-          </button>
-        </div>
       </div>
 
       {/* Modal de Níveis */}
@@ -1116,266 +1072,6 @@ export default function PerfilPage() {
                 </div>
               )
             })}
-          </div>
-        </div>
-      </Modal>
-
-      {/* Modal de Sugestões/Bugs */}
-      <Modal
-        isOpen={sugestaoModalOpen}
-        onClose={() => {
-          setSugestaoModalOpen(false)
-          setSugestaoTexto('')
-          setSugestaoImagem(null)
-          setSugestaoImagemResetTrigger(prev => prev + 1)
-          setTipoSugestao('melhoria')
-          setSugestaoErro('')
-          setSugestaoSucesso('')
-        }}
-        title={
-          <div className="flex items-center gap-2">
-            {tipoSugestao === 'melhoria' ? (
-              <Lightbulb className={cn("w-5 h-5", theme === 'dark' ? "text-yellow-400" : "text-yellow-600")} />
-            ) : (
-              <Bug className={cn("w-5 h-5", theme === 'dark' ? "text-red-400" : "text-red-600")} />
-            )}
-            <span className={cn(theme === 'dark' ? "text-white" : "text-gray-900")}>
-              {tipoSugestao === 'melhoria' ? 'Sugestão de Melhoria' : 'Relato de Bug'}
-            </span>
-          </div>
-        }
-        size="md"
-      >
-        <div className="space-y-4">
-          {/* Seletor de tipo */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setTipoSugestao('melhoria')}
-              className={cn(
-                "flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2 border",
-                tipoSugestao === 'melhoria'
-                  ? theme === 'dark'
-                    ? "bg-yellow-400 text-black border-yellow-400"
-                    : "bg-yellow-500 text-white border-yellow-500"
-                  : theme === 'dark'
-                  ? "bg-black/50 border-white/10 text-gray-400 hover:text-white hover:bg-black/70"
-                  : "bg-white border-gray-300 text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-              )}
-            >
-              <Lightbulb className="w-4 h-4" />
-              Melhoria
-            </button>
-            <button
-              onClick={() => setTipoSugestao('bug')}
-              className={cn(
-                "flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2 border",
-                tipoSugestao === 'bug'
-                  ? theme === 'dark'
-                    ? "bg-red-400 text-white border-red-400"
-                    : "bg-red-500 text-white border-red-500"
-                  : theme === 'dark'
-                  ? "bg-black/50 border-white/10 text-gray-400 hover:text-white hover:bg-black/70"
-                  : "bg-white border-gray-300 text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-              )}
-            >
-              <Bug className="w-4 h-4" />
-              Bug
-            </button>
-          </div>
-
-          {/* Textarea */}
-          <div className="space-y-2">
-            <label className={cn(
-              "block text-sm font-medium",
-              theme === 'dark' ? "text-gray-300" : "text-gray-700"
-            )}>
-              {tipoSugestao === 'melhoria' ? 'Descreva sua sugestão de melhoria' : 'Descreva o bug encontrado'}
-            </label>
-            <textarea
-              value={sugestaoTexto}
-              onChange={(e) => setSugestaoTexto(e.target.value)}
-              placeholder={tipoSugestao === 'melhoria' 
-                ? 'Ex: Seria interessante adicionar um filtro de busca na página de aulas...'
-                : 'Ex: Ao clicar no botão X, a página não atualiza corretamente...'}
-              className={cn(
-                "w-full px-4 py-2 rounded-lg border text-sm min-h-[120px] focus:outline-none focus:ring-2 transition-colors resize-none",
-                theme === 'dark'
-                  ? "bg-black/50 border-white/10 text-white placeholder-gray-500 focus:border-yellow-400 focus:ring-yellow-400/20"
-                  : "bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-yellow-500 focus:ring-yellow-500/20"
-              )}
-              maxLength={1000}
-            />
-            <p className={cn("text-xs", theme === 'dark' ? "text-gray-400" : "text-gray-600")}>
-              {sugestaoTexto.length}/1000
-            </p>
-          </div>
-
-          {/* Upload de Imagem */}
-          <QuestionImageUpload
-            onImageChange={setSugestaoImagem}
-            currentImageUrl={null}
-            resetTrigger={sugestaoImagemResetTrigger}
-          />
-
-          {/* Mensagens de erro/sucesso */}
-          {sugestaoErro && (
-            <div className={cn(
-              "p-3 rounded-lg border text-sm",
-              theme === 'dark'
-                ? "bg-red-500/10 border-red-500/30 text-red-400"
-                : "bg-red-50 border-red-200 text-red-700"
-            )}>
-              {sugestaoErro}
-            </div>
-          )}
-
-          {sugestaoSucesso && (
-            <div className={cn(
-              "p-3 rounded-lg border text-sm",
-              theme === 'dark'
-                ? "bg-green-500/10 border-green-500/30 text-green-400"
-                : "bg-green-50 border-green-200 text-green-700"
-            )}>
-              {sugestaoSucesso}
-            </div>
-          )}
-
-          {/* Botões */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t" style={{
-            borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(234, 179, 8, 0.3)'
-          }}>
-            <button
-              type="button"
-              className={cn(
-                "px-4 py-2 rounded-lg font-medium transition-colors text-sm",
-                theme === 'dark'
-                  ? "bg-white/10 text-gray-300 hover:bg-white/20 disabled:opacity-50"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
-              )}
-              onClick={() => {
-                setSugestaoModalOpen(false)
-                setSugestaoTexto('')
-                setTipoSugestao('melhoria')
-                setSugestaoErro('')
-                setSugestaoSucesso('')
-              }}
-              disabled={enviandoSugestao}
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              className={cn(
-                "px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors",
-                theme === 'dark'
-                  ? "bg-yellow-400 text-black hover:bg-yellow-300 disabled:opacity-50"
-                  : "bg-yellow-500 text-white hover:bg-yellow-600 disabled:opacity-50",
-                enviandoSugestao && "cursor-not-allowed"
-              )}
-              onClick={async () => {
-                if (!authUser?.id) {
-                  setSugestaoErro('Você precisa estar logado para enviar sugestões.')
-                  return
-                }
-
-                const textoLimpo = sugestaoTexto.trim()
-                if (textoLimpo.length < 10) {
-                  setSugestaoErro('Por favor, descreva melhor sua sugestão ou bug (mínimo 10 caracteres).')
-                  return
-                }
-
-                setSugestaoErro('')
-                setSugestaoSucesso('')
-                setEnviandoSugestao(true)
-
-                try {
-                  const { data: { session } } = await supabase.auth.getSession()
-                  const token = session?.access_token
-                  if (!token) {
-                    throw new Error('Não autenticado')
-                  }
-
-                  const res = await fetch('/api/sugestoes/enviar', {
-                    method: 'POST',
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                      tipo: tipoSugestao,
-                      mensagem: textoLimpo
-                    })
-                  })
-
-                  const json = await res.json()
-                  if (!res.ok) {
-                    throw new Error(json?.error || 'Erro ao enviar sugestão')
-                  }
-
-                  // Upload de imagem se houver
-                  if (sugestaoImagem && json.id) {
-                    try {
-                      const formData = new FormData()
-                      formData.append('imagem', sugestaoImagem)
-                      
-                      const resImagem = await fetch(`/api/sugestoes/${json.id}/imagem`, {
-                        method: 'POST',
-                        headers: { Authorization: `Bearer ${token}` },
-                        body: formData,
-                      })
-                      
-                      const jsonImagem = await resImagem.json()
-                      
-                      if (!resImagem.ok) {
-                        console.error('Erro ao fazer upload de imagem:', jsonImagem)
-                        setSugestaoErro(`Sugestão enviada, mas houve erro ao fazer upload da imagem: ${jsonImagem.error || 'Erro desconhecido'}`)
-                        setSugestaoSucesso('✅ Sugestão enviada com sucesso!')
-                      } else if (jsonImagem.success && jsonImagem.imagem_url) {
-                        console.log('✅ Imagem enviada com sucesso:', jsonImagem.imagem_url)
-                        setSugestaoSucesso('✅ Sugestão enviada com imagem com sucesso!')
-                      } else {
-                        console.warn('Upload de imagem retornou sucesso mas sem URL:', jsonImagem)
-                        setSugestaoSucesso('✅ Sugestão enviada! (A imagem pode não ter sido enviada)')
-                      }
-                    } catch (imgError: any) {
-                      console.error('Erro ao fazer upload de imagem:', imgError)
-                      setSugestaoErro(`Sugestão enviada, mas houve erro ao fazer upload da imagem: ${imgError.message || 'Erro desconhecido'}`)
-                      setSugestaoSucesso('✅ Sugestão enviada com sucesso!')
-                    }
-                  } else {
-                    setSugestaoSucesso('✅ Sugestão enviada com sucesso! Obrigado pelo feedback.')
-                  }
-
-                  setSugestaoTexto('')
-                  setSugestaoImagem(null)
-                  setSugestaoImagemResetTrigger(prev => prev + 1)
-                  
-                  setTimeout(() => {
-                    setSugestaoModalOpen(false)
-                    setSugestaoSucesso('')
-                    setSugestaoErro('')
-                    setTipoSugestao('melhoria')
-                  }, 2000)
-                } catch (error: any) {
-                  setSugestaoErro(error?.message || 'Erro ao enviar sugestão. Tente novamente.')
-                } finally {
-                  setEnviandoSugestao(false)
-                }
-              }}
-              disabled={enviandoSugestao}
-            >
-              {enviandoSugestao ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  Enviar
-                </>
-              )}
-            </button>
           </div>
         </div>
       </Modal>

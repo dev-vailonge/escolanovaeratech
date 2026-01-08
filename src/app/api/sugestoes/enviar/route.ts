@@ -76,41 +76,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Erro ao enviar sugestão' }, { status: 500 })
     }
 
-    // Buscar todos os admins para criar notificações individuais
-    const { data: admins, error: adminsError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('role', 'admin')
-      .eq('access_level', 'full')
+    // Chamar função SECURITY DEFINER para notificar admins
+    // Isso funciona com RLS pois a função tem SECURITY DEFINER
+    const { error: rpcError } = await supabase.rpc('notificar_admins_sugestao', {
+      p_tipo: tipo,
+      p_action_url: actionUrl
+    })
 
-    if (adminsError) {
-      console.error('Erro ao buscar admins:', adminsError)
-      // Continuar mesmo se der erro ao buscar admins
-    } else if (admins && admins.length > 0) {
-      // Criar notificação individual para cada admin
-      const notificacoesAdmin = admins.map(admin => ({
-        titulo: tipo === 'melhoria' ? '💡 Nova Sugestão de Melhoria' : '🐛 Novo Relato de Bug',
-        mensagem: `Um aluno enviou uma ${tipo === 'melhoria' ? 'sugestão de melhoria' : 'relato de bug'}. Clique para ver detalhes.`,
-        tipo: 'info' as const,
-        data_inicio: agora.toISOString(),
-        data_fim: dataFim.toISOString(),
-        publico_alvo: 'todos' as const,
-        target_user_id: admin.id, // Notificação individual para cada admin
-        created_by: null, // Criada pelo sistema
-        action_url: actionUrl, // URL para redirecionar admin
-        is_sugestao_bug: false, // Não é sugestão/bug em si, é notificação sobre sugestão/bug
-      }))
-
-      const { error: notifAdminError } = await supabase
-        .from('notificacoes')
-        .insert(notificacoesAdmin)
-
-      if (notifAdminError) {
-        console.error('Erro ao criar notificações para admins:', notifAdminError)
-        // Continuar mesmo se der erro - a sugestão já foi criada
-      } else {
-        console.log(`✅ Notificações criadas para ${admins.length} admin(s)`)
-      }
+    if (rpcError) {
+      console.error('Erro ao notificar admins (não crítico):', rpcError)
+      // Continuar mesmo se der erro - a sugestão já foi criada
+    } else {
+      console.log('✅ Admins notificados via função RPC')
     }
 
     return NextResponse.json({ 
