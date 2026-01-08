@@ -14,6 +14,13 @@ import type { DatabaseQuiz } from '@/types/database'
 import type { QuizQuestion } from '@/types/quiz'
 import QuizPlayer, { QuizResult } from '@/components/quiz/QuizPlayer'
 
+// Interface para respostas salvas
+interface QuizResposta {
+  questionId: string
+  selectedOptionId: string
+  correct: boolean
+}
+
 // Interface para quiz na UI (com progresso do usuário)
 interface QuizUI {
   id: string
@@ -32,6 +39,7 @@ interface QuizUI {
   disponivel: boolean
   xpTotalGanho?: number // XP total já ganho deste quiz
   dataConclusao?: string // Data/hora de conclusão do quiz
+  respostas?: QuizResposta[] // Respostas da última tentativa
 }
 
 export default function QuizPage() {
@@ -43,6 +51,8 @@ export default function QuizPage() {
   const [loading, setLoading] = useState(true)
   const [selectedQuiz, setSelectedQuiz] = useState<QuizUI | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isReviewing, setIsReviewing] = useState(false)
+  const [reviewAnswers, setReviewAnswers] = useState<Record<string, string>>({})
   const [error, setError] = useState<string>('')
   const [success, setSuccess] = useState<string>('')
   
@@ -195,11 +205,11 @@ export default function QuizPage() {
       // Buscar quizzes, progresso e XP ganho em paralelo para melhor performance
       const [dbQuizzes, progressResult, xpHistoryResult] = await Promise.allSettled([
         getAllQuizzes(),
-        // Buscar progresso do usuário se logado
+        // Buscar progresso do usuário se logado (incluindo respostas)
         authUser?.id
           ? supabase
               .from('user_quiz_progress')
-              .select('quiz_id, tentativas, melhor_pontuacao, completo, updated_at')
+              .select('quiz_id, tentativas, melhor_pontuacao, completo, updated_at, respostas')
               .eq('user_id', authUser.id)
               .then(({ data, error }) => {
                 if (error) {
@@ -232,14 +242,15 @@ export default function QuizPage() {
       }
       
       // Processar progresso
-      let userProgress: Record<string, { tentativas: number; melhor_pontuacao: number | null; completo: boolean; dataConclusao?: string }> = {}
+      let userProgress: Record<string, { tentativas: number; melhor_pontuacao: number | null; completo: boolean; dataConclusao?: string; respostas?: QuizResposta[] }> = {}
       if (progressResult.status === 'fulfilled' && Array.isArray(progressResult.value)) {
         progressResult.value.forEach((p: any) => {
           userProgress[p.quiz_id] = {
             tentativas: p.tentativas || 0,
             melhor_pontuacao: p.melhor_pontuacao,
             completo: p.completo || false,
-            dataConclusao: p.completo ? p.updated_at : undefined
+            dataConclusao: p.completo ? p.updated_at : undefined,
+            respostas: p.respostas || undefined
           }
         })
       }
@@ -278,7 +289,8 @@ export default function QuizPage() {
             melhorPontuacao: progress?.melhor_pontuacao ?? undefined,
             disponivel: q.disponivel,
             xpTotalGanho: xpGanhoPorQuiz[q.id] || 0,
-            dataConclusao: progress?.dataConclusao
+            dataConclusao: progress?.dataConclusao,
+            respostas: progress?.respostas
           }
         })
       
@@ -401,6 +413,31 @@ export default function QuizPage() {
     setSuccess('')
     setSelectedQuiz(quiz)
     setIsPlaying(true)
+    setIsReviewing(false)
+  }
+
+  // Revisar quiz concluído
+  const handleReviewQuiz = (quiz: QuizUI) => {
+    if (!quiz.respostas || quiz.respostas.length === 0) {
+      setError('Não há respostas salvas para este quiz. Refaça o quiz para poder revisar.')
+      return
+    }
+    if (quiz.numQuestoes === 0) {
+      setError('Este quiz não tem perguntas cadastradas.')
+      return
+    }
+    setError('')
+    setSuccess('')
+    
+    // Converter respostas para o formato do QuizPlayer (Record<string, string>)
+    const answers: Record<string, string> = {}
+    quiz.respostas.forEach(r => {
+      answers[r.questionId] = r.selectedOptionId
+    })
+    setReviewAnswers(answers)
+    setSelectedQuiz(quiz)
+    setIsPlaying(true)
+    setIsReviewing(true)
   }
 
   // Completar quiz
@@ -434,10 +471,17 @@ export default function QuizPage() {
       const token = await getToken()
       if (!token) throw new Error('Não autenticado')
 
+      // Preparar respostas no formato simplificado para salvar
+      const respostasParaSalvar = result.respostas.map(r => ({
+        questionId: r.questionId,
+        selectedOptionId: r.selectedOptionId,
+        correct: r.correct
+      }))
+
       const res = await fetch(`/api/quiz/${selectedQuiz.id}/completar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ pontuacao: result.pontuacao }),
+        body: JSON.stringify({ pontuacao: result.pontuacao, respostas: respostasParaSalvar }),
       })
       
       const json = await res.json().catch(() => ({}))
@@ -500,6 +544,8 @@ export default function QuizPage() {
   const handleCloseQuiz = () => {
     setSelectedQuiz(null)
     setIsPlaying(false)
+    setIsReviewing(false)
+    setReviewAnswers({})
   }
 
   if (loading) {
@@ -547,6 +593,9 @@ export default function QuizPage() {
             xpTotal={selectedQuiz.xpGanho}
             onComplete={handleCompleteQuiz}
             onCancel={handleCloseQuiz}
+            reviewMode={isReviewing}
+            reviewAnswers={isReviewing ? reviewAnswers : undefined}
+            reviewScore={isReviewing ? selectedQuiz.melhorPontuacao : undefined}
           />
         )}
       </Modal>
@@ -1057,20 +1106,41 @@ export default function QuizPage() {
                         </div>
                       </div>
                     )}
-                    <button 
-                      className={cn(
-                        "btn-primary w-full md:w-auto",
-                        (!canParticipate || quiz.numQuestoes === 0) && "opacity-50 cursor-not-allowed"
+                    <div className="flex gap-2">
+                      {/* Botão Revisar - só aparece se não teve 100% E tem respostas salvas */}
+                      {quiz.melhorPontuacao !== undefined && quiz.melhorPontuacao < 100 && quiz.respostas && quiz.respostas.length > 0 && (
+                        <button 
+                          className={cn(
+                            "px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2",
+                            theme === 'dark'
+                              ? "bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30"
+                              : "bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-200"
+                          )}
+                          onClick={() => handleReviewQuiz(quiz)}
+                        >
+                          <BookOpen className="w-4 h-4" />
+                          Revisar
+                        </button>
                       )}
-                      disabled={!quiz.disponivel || !canParticipate || quiz.numQuestoes === 0}
-                      onClick={() => handleStartQuiz(quiz)}
-                    >
-                      {!canParticipate 
-                        ? 'Acesso Limitado' 
-                        : quiz.numQuestoes === 0
-                          ? 'Sem perguntas'
-                          : 'Refazer'}
-                    </button>
+                      <button 
+                        className={cn(
+                          "px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2",
+                          theme === 'dark'
+                            ? "bg-yellow-400 text-black hover:bg-yellow-300"
+                            : "bg-yellow-500 text-white hover:bg-yellow-600",
+                          (!canParticipate || quiz.numQuestoes === 0) && "opacity-50 cursor-not-allowed"
+                        )}
+                        disabled={!quiz.disponivel || !canParticipate || quiz.numQuestoes === 0}
+                        onClick={() => handleStartQuiz(quiz)}
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        {!canParticipate 
+                          ? 'Acesso Limitado' 
+                          : quiz.numQuestoes === 0
+                            ? 'Sem perguntas'
+                            : 'Refazer'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

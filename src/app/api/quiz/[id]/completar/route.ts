@@ -14,12 +14,13 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     const body = await request.json().catch(() => ({}))
     const pontuacao = Number(body?.pontuacao)
+    const respostas = body?.respostas // Array de { questionId, selectedOptionId, correct }
 
     if (!Number.isFinite(pontuacao) || pontuacao < 0 || pontuacao > 100) {
       return NextResponse.json({ error: 'pontuacao inválida (0-100)' }, { status: 400 })
     }
 
-    const result = await completarQuiz({ userId, quizId, pontuacao, accessToken })
+    const result = await completarQuiz({ userId, quizId, pontuacao, respostas, accessToken })
     return NextResponse.json({ success: true, result })
   } catch (error: any) {
     console.error('Erro ao completar quiz:', error)
