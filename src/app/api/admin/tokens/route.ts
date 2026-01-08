@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
         estimated_cost_usd,
         metadata,
         created_at
-      `)
+      `, { count: 'exact' })
       .order('created_at', { ascending: false })
 
     // Filtros
@@ -72,8 +72,119 @@ export async function GET(request: NextRequest) {
       query = query.eq('user_id', filterUserId)
     }
 
-    const { data: records, error } = await query
+    // Se não houver filtros de data, buscar apenas os últimos 30 dias por padrão
+    if (!startDate && !endDate) {
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      query = query.gte('created_at', thirtyDaysAgo.toISOString())
+    }
 
+    // Buscar todos os registros usando paginação (Supabase tem limite padrão de 1000)
+    // Vamos buscar em lotes de 1000 até obter todos
+    let allRecords: any[] = []
+    let page = 0
+    const pageSize = 1000
+    let hasMore = true
+    let totalCount = 0
+    let queryError: any = null
+
+    // Primeiro, obter o count total
+    const countQuery = supabase
+      .from('openai_token_usage')
+      .select('*', { count: 'exact', head: true })
+    
+    // Aplicar os mesmos filtros
+    if (startDate) {
+      countQuery.gte('created_at', startDate)
+    }
+    if (endDate) {
+      countQuery.lte('created_at', endDate)
+    }
+    if (filterUserId) {
+      countQuery.eq('user_id', filterUserId)
+    }
+    if (!startDate && !endDate) {
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      countQuery.gte('created_at', thirtyDaysAgo.toISOString())
+    }
+    
+    const { count: initialCount } = await countQuery
+    totalCount = initialCount || 0
+    console.log(`[API /admin/tokens] Total de registros no banco: ${totalCount}`)
+
+    // Agora buscar em páginas
+    while (hasMore) {
+      // Construir query para esta página
+      let pageQuery = supabase
+        .from('openai_token_usage')
+        .select(`
+          id,
+          user_id,
+          feature,
+          endpoint,
+          model,
+          prompt_tokens,
+          completion_tokens,
+          total_tokens,
+          estimated_cost_usd,
+          metadata,
+          created_at
+        `)
+        .order('created_at', { ascending: false })
+        .range(page * pageSize, (page + 1) * pageSize - 1)
+
+      // Aplicar os mesmos filtros
+      if (startDate) {
+        pageQuery = pageQuery.gte('created_at', startDate)
+      }
+      if (endDate) {
+        pageQuery = pageQuery.lte('created_at', endDate)
+      }
+      if (filterUserId) {
+        pageQuery = pageQuery.eq('user_id', filterUserId)
+      }
+      if (!startDate && !endDate) {
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        pageQuery = pageQuery.gte('created_at', thirtyDaysAgo.toISOString())
+      }
+
+      const { data: pageRecords, error: pageError } = await pageQuery
+
+      if (pageError) {
+        console.error(`[API /admin/tokens] Erro na página ${page}:`, pageError)
+        queryError = pageError
+        // Se for erro na primeira página, retornar erro
+        if (page === 0) {
+          break
+        }
+        // Se for erro em página subsequente, parar e retornar o que temos
+        break
+      }
+
+      if (!pageRecords || pageRecords.length === 0) {
+        hasMore = false
+      } else {
+        allRecords = [...allRecords, ...pageRecords]
+        const oldestRecord = pageRecords[pageRecords.length - 1]
+        const oldestDate = oldestRecord ? new Date(oldestRecord.created_at).toLocaleDateString('pt-BR') : 'N/A'
+        console.log(`[API /admin/tokens] Página ${page + 1}: ${pageRecords.length} registros (Total acumulado: ${allRecords.length}, Registro mais antigo: ${oldestDate})`)
+        
+        // Se retornou menos que pageSize, não há mais páginas
+        if (pageRecords.length < pageSize) {
+          hasMore = false
+        } else {
+          page++
+        }
+      }
+    }
+
+    const records = allRecords
+    const error = queryError
+    
+    console.log(`[API /admin/tokens] Total de registros carregados: ${records.length} de ${totalCount}`)
+    
     if (error) {
       console.error('Erro ao buscar tokens:', error)
       console.error('Detalhes do erro:', {
@@ -157,6 +268,8 @@ export async function GET(request: NextRequest) {
     // CALCULAR ESTATÍSTICAS GERAIS
     // ====================================================
 
+    console.log(`[API /admin/tokens] Calculando summary com ${formattedRecords.length} registros formatados`)
+
     const totalRequests = formattedRecords.length
     const totalTokens = formattedRecords.reduce(
       (sum, r) => sum + r.total_tokens,
@@ -166,6 +279,8 @@ export async function GET(request: NextRequest) {
       (sum, r) => sum + r.estimated_cost_usd,
       0
     )
+
+    console.log(`[API /admin/tokens] Summary calculado: ${totalRequests} requisições, ${totalTokens} tokens, $${totalCost.toFixed(6)} custo`)
 
     // ====================================================
     // AGRUPAR POR USUÁRIO
@@ -195,6 +310,8 @@ export async function GET(request: NextRequest) {
       (a, b) => b.cost - a.cost
     )
 
+    console.log(`[API /admin/tokens] Top alunos: ${byUser.length} usuários únicos`)
+
     // ====================================================
     // AGRUPAR POR FEATURE
     // ====================================================
@@ -221,6 +338,8 @@ export async function GET(request: NextRequest) {
     const byFeature = Array.from(byFeatureMap.values()).sort(
       (a, b) => b.cost - a.cost
     )
+
+    console.log(`[API /admin/tokens] Features: ${byFeature.length} features únicas`)
 
     // ====================================================
     // RETORNAR RESPOSTA

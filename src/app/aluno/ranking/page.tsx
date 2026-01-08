@@ -10,7 +10,8 @@ import Modal from '@/components/ui/Modal'
 import { calculateLevel, getLevelBorderColor, getLevelRequirements, getLevelCategory } from '@/lib/gamification'
 import BadgeDisplay from '@/components/comunidade/BadgeDisplay'
 import CountdownTimer from '@/components/ui/countdown-timer'
-import html2canvas from 'html2canvas'
+import { toPng } from 'html-to-image'
+import Image from 'next/image'
 
 // Função para verificar se o mês atual já fechou
 // O mês anterior é considerado fechado no dia 1 (a partir de 00:01)
@@ -49,7 +50,108 @@ export default function RankingPage() {
   const [tipoMural, setTipoMural] = useState<'mensal' | 'geral'>('mensal')
   const [rankingGeral, setRankingGeral] = useState<any[] | null>(null)
   const [gerandoImagem, setGerandoImagem] = useState(false)
+  const [gerandoImagemRanking, setGerandoImagemRanking] = useState(false)
+  const [gerandoImagemCard, setGerandoImagemCard] = useState(false)
+  const [cardModalOpen, setCardModalOpen] = useState(false)
+  const [cardSelecionado, setCardSelecionado] = useState<{ mes: { key: string; nome: string; nomeAbreviado: string; date: Date }; campeao: any; posicaoGeral: number | null } | null>(null)
   const muralRef = useRef<HTMLDivElement>(null)
+  const rankingRef = useRef<HTMLDivElement>(null)
+  const cardModalRef = useRef<HTMLDivElement>(null)
+  const confettiCanvasRef = useRef<HTMLCanvasElement>(null)
+
+  // Função para disparar confetes na tela inteira
+  const dispararConfetes = () => {
+    if (typeof window === 'undefined') return
+    import('canvas-confetti').then((confettiModule) => {
+      const confetti = confettiModule.default
+      const duration = 6000 // Aumentado de 3000 para 6000 (6 segundos)
+      const animationEnd = Date.now() + duration
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 99999 }
+      function randomInRange(min: number, max: number) {
+        return Math.random() * (max - min) + min
+      }
+      const interval: any = setInterval(function() {
+        const timeLeft = animationEnd - Date.now()
+        if (timeLeft <= 0) {
+          return clearInterval(interval)
+        }
+        const particleCount = 50 * (timeLeft / duration)
+        confetti({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+        })
+        confetti({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+        })
+      }, 250)
+    }).catch((error) => {
+      console.error('Erro ao carregar confetti:', error)
+    })
+  }
+
+  // Função para criar confetes no canvas da modal para aparecer na imagem
+  const criarConfetesNoCanvas = async () => {
+    if (!confettiCanvasRef.current) return
+    
+    try {
+      const confettiModule = await import('canvas-confetti')
+      const confetti = confettiModule.default
+      const canvas = confettiCanvasRef.current
+      
+      // Ajustar tamanho do canvas
+      const rect = canvas.getBoundingClientRect()
+      canvas.width = rect.width
+      canvas.height = rect.height
+      
+      // Criar instância do confetti no canvas específico
+      const confettiInstance = confetti.create(canvas, { 
+        resize: true,
+        useWorker: false
+      })
+      
+      const duration = 2000
+      const animationEnd = Date.now() + duration
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 99999 }
+      
+      function randomInRange(min: number, max: number) {
+        return Math.random() * (max - min) + min
+      }
+      
+      // Disparar confetes no canvas
+      const interval: any = setInterval(function() {
+        const timeLeft = animationEnd - Date.now()
+        if (timeLeft <= 0) {
+          return clearInterval(interval)
+        }
+        const particleCount = 50 * (timeLeft / duration)
+        
+        // Confetes da esquerda
+        confettiInstance({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+        })
+        
+        // Confetes da direita
+        confettiInstance({
+          ...defaults,
+          particleCount,
+          origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+        })
+      }, 250)
+    } catch (error) {
+      console.error('Erro ao criar confetes no canvas:', error)
+    }
+  }
+
+  useEffect(() => {
+    if (cardModalOpen) {
+      dispararConfetes()
+    }
+  }, [cardModalOpen])
   
   // Buscar ranking mensal para o Card Mural
   // Se o mês fechou (dia >= 2), busca o campeão do mês anterior que acabou de fechar
@@ -262,6 +364,7 @@ export default function RankingPage() {
         if (!res.ok || !mounted) return
 
         const historico = json?.historico || []
+        
         setHistoricoCampeoes(historico)
       } catch (e: any) {
         console.error('Erro ao buscar histórico:', e)
@@ -412,13 +515,17 @@ export default function RankingPage() {
         shareButton.style.display = 'none'
       }
 
-      // Gerar imagem do mural usando html2canvas
-      const canvas = await html2canvas(muralRef.current, {
+      // Aguardar um frame para garantir que o botão foi escondido
+      await new Promise(resolve => {
+        requestAnimationFrame(resolve)
+      })
+
+      // Gerar imagem usando html-to-image (melhor suporte para flexbox e alinhamento)
+      const dataUrl = await toPng(muralRef.current, {
         backgroundColor: theme === 'dark' ? '#000000' : '#ffffff',
-        scale: 2, // Maior qualidade
-        logging: false,
-        useCORS: true,
-        allowTaint: false,
+        pixelRatio: 2, // Maior qualidade
+        quality: 1,
+        cacheBust: true,
       })
 
       // Restaurar visibilidade do botão
@@ -426,47 +533,111 @@ export default function RankingPage() {
         shareButton.style.display = originalDisplay || ''
       }
 
-      // Converter canvas para blob
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          console.error('Erro ao gerar imagem')
-          setGerandoImagem(false)
+      // Converter data URL para blob
+      const response = await fetch(dataUrl)
+      const blob = await response.blob()
+
+      // Criar URL temporária
+      const url = URL.createObjectURL(blob)
+
+      // Tentar usar Web Share API se disponível (mobile)
+      if (navigator.share && navigator.canShare) {
+        const file = new File([blob], 'mural-campeoes.png', { type: 'image/png' })
+        if (navigator.canShare({ files: [file] })) {
+          navigator.share({
+            title: 'Mural dos Campeões - Escola Nova Era Tech',
+            text: 'Confira o Mural dos Campeões Mensais!',
+            files: [file],
+          }).then(() => {
+            URL.revokeObjectURL(url)
+            setGerandoImagem(false)
+          }).catch((error) => {
+            console.error('Erro ao compartilhar:', error)
+            // Fallback para download
+            downloadImage(url)
+          })
           return
         }
+      }
 
-        // Criar URL temporária
-        const url = URL.createObjectURL(blob)
-
-        // Tentar usar Web Share API se disponível (mobile)
-        if (navigator.share && navigator.canShare) {
-          const file = new File([blob], 'mural-campeoes.png', { type: 'image/png' })
-          if (navigator.canShare({ files: [file] })) {
-            navigator.share({
-              title: 'Mural dos Campeões - Escola Nova Era Tech',
-              text: 'Confira o Mural dos Campeões Mensais!',
-              files: [file],
-            }).then(() => {
-              URL.revokeObjectURL(url)
-              setGerandoImagem(false)
-            }).catch((error) => {
-              console.error('Erro ao compartilhar:', error)
-              // Fallback para download
-              downloadImage(url)
-            })
-            return
-          }
-        }
-
-        // Fallback: download da imagem
-        downloadImage(url)
-      }, 'image/png', 0.95)
+      // Fallback: download da imagem
+      downloadImage(url)
     } catch (error) {
       console.error('Erro ao gerar imagem do mural:', error)
       setGerandoImagem(false)
     }
   }
 
-  // Função auxiliar para fazer download da imagem
+  // Função para gerar e compartilhar imagem do ranking completo
+  const handleCompartilharRanking = async () => {
+    if (!rankingRef.current) return
+
+    setGerandoImagemRanking(true)
+    try {
+      // Temporariamente esconder os botões e status para não aparecer na imagem
+      // Encontrar o container que contém os três elementos (Compartilhar, Atualizar, Status)
+      const buttonsContainer = rankingRef.current.querySelector('div.flex.items-center.gap-3') as HTMLElement
+      
+      const originalDisplay = buttonsContainer?.style.display || ''
+      
+      if (buttonsContainer) {
+        buttonsContainer.style.display = 'none'
+      }
+
+      // Aguardar um frame para garantir que os elementos foram escondidos
+      await new Promise(resolve => {
+        requestAnimationFrame(resolve)
+      })
+
+      // Gerar imagem usando html-to-image (melhor suporte para flexbox e alinhamento)
+      const dataUrl = await toPng(rankingRef.current, {
+        backgroundColor: theme === 'dark' ? '#000000' : '#ffffff',
+        pixelRatio: 2, // Maior qualidade
+        quality: 1,
+        cacheBust: true,
+      })
+
+      // Restaurar visibilidade do container
+      if (buttonsContainer) {
+        buttonsContainer.style.display = originalDisplay || ''
+      }
+
+      // Converter data URL para blob
+      const response = await fetch(dataUrl)
+      const blob = await response.blob()
+
+      // Criar URL temporária
+      const url = URL.createObjectURL(blob)
+
+      // Tentar usar Web Share API se disponível (mobile)
+      if (navigator.share && navigator.canShare) {
+        const file = new File([blob], 'ranking-completo.png', { type: 'image/png' })
+        if (navigator.canShare({ files: [file] })) {
+          navigator.share({
+            title: 'Ranking Completo - Escola Nova Era Tech',
+            text: 'Confira o Ranking Completo!',
+            files: [file],
+          }).then(() => {
+            URL.revokeObjectURL(url)
+            setGerandoImagemRanking(false)
+          }).catch((error) => {
+            console.error('Erro ao compartilhar:', error)
+            // Fallback para download
+            downloadImageRanking(url)
+          })
+          return
+        }
+      }
+
+      // Fallback: download da imagem
+      downloadImageRanking(url)
+    } catch (error) {
+      console.error('Erro ao gerar imagem do ranking:', error)
+      setGerandoImagemRanking(false)
+    }
+  }
+
+  // Função auxiliar para fazer download da imagem do mural
   const downloadImage = (url: string) => {
     const link = document.createElement('a')
     link.href = url
@@ -476,6 +647,157 @@ export default function RankingPage() {
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
     setGerandoImagem(false)
+  }
+
+  // Função auxiliar para fazer download da imagem do ranking
+  const downloadImageRanking = (url: string) => {
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `ranking-completo-${new Date().getTime()}.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    setGerandoImagemRanking(false)
+  }
+
+  // Função para gerar e compartilhar imagem do card individual
+  const handleCompartilharCard = async () => {
+    if (!cardModalRef.current || !cardSelecionado) return
+
+    setGerandoImagemCard(true)
+    try {
+      // Encontrar o elemento da modal completa no DOM (o container que tem o header e o content)
+      // A modal é renderizada via portal, então precisamos buscar pelo elemento que contém tudo
+      // O elemento da modal tem as classes: rounded-xl shadow-xl backdrop-blur-xl
+      // IMPORTANTE: Queremos apenas o card da modal, não o backdrop blur ao redor
+      let modalContainer = cardModalRef.current.closest('.rounded-xl.shadow-xl.backdrop-blur-xl') as HTMLElement
+      
+      // Fallback: buscar pelo elemento com z-index 10000
+      if (!modalContainer) {
+        modalContainer = cardModalRef.current.closest('[style*="z-index: 10000"]') as HTMLElement
+      }
+      
+      // Fallback: buscar pelo elemento pai que contém border
+      if (!modalContainer) {
+        modalContainer = cardModalRef.current.closest('[class*="border"]')?.parentElement as HTMLElement
+      }
+      
+      if (!modalContainer) {
+        console.error('Modal container não encontrado, usando cardModalRef')
+        modalContainer = cardModalRef.current
+      }
+      
+      // Remover o backdrop blur do fundo - vamos capturar apenas o card da modal
+      // O backdrop está no elemento pai que tem a classe "fixed inset-0"
+      // Vamos garantir que capturamos apenas o card, não o backdrop
+
+      // Esconder o botão de compartilhar
+      const shareButton = cardModalRef.current.querySelector('button[data-share-button="true"]') as HTMLElement
+      const originalDisplayShare = shareButton?.style.display
+      if (shareButton) shareButton.style.display = 'none'
+
+      // Esconder o botão de fechar (X) da modal
+      const closeButton = modalContainer.querySelector('button[aria-label="Fechar"]') as HTMLElement
+      const originalDisplayClose = closeButton?.style.display
+      if (closeButton) closeButton.style.display = 'none'
+
+      // Encontrar o container pai que inclui o backdrop blur
+      // Este container tem "fixed inset-0 flex items-center justify-center"
+      const modalWrapper = modalContainer.closest('[style*="z-index: 9999"]') as HTMLElement || 
+                          modalContainer.parentElement as HTMLElement
+
+      // Criar confetes no canvas da modal para aparecer na imagem
+      await criarConfetesNoCanvas()
+      
+      // Aguardar um pouco para os confetes aparecerem no canvas antes de gerar a imagem
+      await new Promise(resolve => {
+        requestAnimationFrame(() => {
+          setTimeout(resolve, 800) // Aguardar 800ms para os confetes aparecerem no canvas
+        })
+      })
+
+      // Gerar imagem usando html-to-image - capturar o wrapper que inclui o backdrop blur ao redor
+      // Isso vai incluir um pouco do blur ao redor do card e os confetes no canvas
+      const dataUrl = await toPng(modalWrapper || modalContainer, {
+        backgroundColor: theme === 'dark' ? '#000000' : '#FFFFFF',
+        pixelRatio: 2,
+        quality: 1,
+        cacheBust: true,
+      })
+
+      // Restaurar os botões
+      if (shareButton) shareButton.style.display = originalDisplayShare || ''
+      if (closeButton) closeButton.style.display = originalDisplayClose || ''
+
+      // Converter data URL para blob
+      const response = await fetch(dataUrl)
+      const blob = await response.blob()
+
+      // Criar URL temporária
+      const url = URL.createObjectURL(blob)
+
+      // Tentar usar Web Share API se disponível (mobile)
+      if (navigator.share && navigator.canShare) {
+        const file = new File([blob], `campeao-${cardSelecionado.mes.nomeAbreviado.toLowerCase()}.png`, { type: 'image/png' })
+        if (navigator.canShare({ files: [file] })) {
+          navigator.share({
+            title: `Campeão de ${cardSelecionado.mes.nome} - Escola Nova Era Tech`,
+            text: `Sou o campeão de ${cardSelecionado.mes.nome}! 🏆`,
+            files: [file],
+          }).then(() => {
+            URL.revokeObjectURL(url)
+            // Restaurar os botões após compartilhamento bem-sucedido
+            const shareButton = cardModalRef.current?.querySelector('button[data-share-button="true"]') as HTMLElement
+            const closeButton = modalContainer?.querySelector('button[aria-label="Fechar"]') as HTMLElement
+            if (shareButton) shareButton.style.display = ''
+            if (closeButton) closeButton.style.display = ''
+            setGerandoImagemCard(false)
+          }).catch((error) => {
+            console.error('Erro ao compartilhar:', error)
+            // Restaurar os botões em caso de erro
+            const shareButton = cardModalRef.current?.querySelector('button[data-share-button="true"]') as HTMLElement
+            const closeButton = modalContainer?.querySelector('button[aria-label="Fechar"]') as HTMLElement
+            if (shareButton) shareButton.style.display = ''
+            if (closeButton) closeButton.style.display = ''
+            downloadImageCard(url)
+          })
+          return
+        }
+      }
+
+      // Fallback: download da imagem
+      downloadImageCard(url)
+    } catch (error) {
+      console.error('Erro ao gerar imagem do card:', error)
+      // Restaurar os botões em caso de erro
+      const shareButton = cardModalRef.current?.querySelector('button[data-share-button="true"]') as HTMLElement
+      const modalContainer = cardModalRef.current?.closest('.rounded-xl.shadow-xl.backdrop-blur-xl') as HTMLElement || 
+                            cardModalRef.current?.closest('[style*="z-index: 10000"]') as HTMLElement
+      const closeButton = modalContainer?.querySelector('button[aria-label="Fechar"]') as HTMLElement
+      if (shareButton) shareButton.style.display = ''
+      if (closeButton) closeButton.style.display = ''
+      setGerandoImagemCard(false)
+    }
+  }
+
+  // Função auxiliar para fazer download da imagem do card
+  const downloadImageCard = (url: string) => {
+    // Restaurar os botões antes do download
+    const shareButton = cardModalRef.current?.querySelector('button[data-share-button="true"]') as HTMLElement
+    const modalContainer = cardModalRef.current?.closest('.rounded-xl.shadow-xl.backdrop-blur-xl') as HTMLElement || 
+                          cardModalRef.current?.closest('[style*="z-index: 10000"]') as HTMLElement
+    const closeButton = modalContainer?.querySelector('button[aria-label="Fechar"]') as HTMLElement
+    if (shareButton) shareButton.style.display = ''
+    if (closeButton) closeButton.style.display = ''
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `campeao-${cardSelecionado?.mes.nomeAbreviado.toLowerCase() || 'mes'}-${new Date().getTime()}.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    setGerandoImagemCard(false)
   }
 
   return (
@@ -531,7 +853,7 @@ export default function RankingPage() {
       </div>
 
       {/* Ranking Completo */}
-      <div className={cn(
+      <div ref={rankingRef} className={cn(
         "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
         theme === 'dark'
           ? "bg-gray-800/30 border-white/10"
@@ -546,10 +868,34 @@ export default function RankingPage() {
           </h2>
           <div className="flex items-center gap-3">
             <button
+              onClick={handleCompartilharRanking}
+              disabled={gerandoImagemRanking}
+              className={cn(
+                "flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-xs md:text-sm",
+                gerandoImagemRanking && "opacity-50 cursor-not-allowed",
+                theme === 'dark'
+                  ? "bg-black/30 border-white/10 text-gray-300 hover:bg-black/50 hover:border-yellow-400/50"
+                  : "bg-yellow-500/10 border-yellow-400/70 text-gray-700 hover:bg-yellow-500/20 hover:border-yellow-500"
+              )}
+              title="Compartilhar ranking nas redes sociais"
+            >
+              {gerandoImagemRanking ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Gerando...
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-4 h-4" />
+                  Compartilhar
+                </>
+              )}
+            </button>
+            <button
               onClick={() => setRefreshTrigger((prev) => prev + 1)}
               disabled={loading}
               className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-colors text-xs md:text-sm",
+                "flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-xs md:text-sm",
                 loading && "opacity-50 cursor-not-allowed",
                 theme === 'dark'
                   ? "bg-black/30 border-white/10 text-gray-300 hover:bg-black/50 hover:border-yellow-400/50"
@@ -760,7 +1106,7 @@ export default function RankingPage() {
             <button
               onClick={() => setTipoMural('mensal')}
               className={cn(
-                "px-4 py-2 rounded-md font-medium transition-all text-sm flex-1",
+                "px-4 py-2 rounded-md font-medium transition-all text-sm flex-1 flex items-center justify-center",
                 tipoMural === 'mensal'
                   ? theme === 'dark'
                     ? "bg-yellow-400 text-black shadow-md"
@@ -775,7 +1121,7 @@ export default function RankingPage() {
             <button
               onClick={() => setTipoMural('geral')}
               className={cn(
-                "px-4 py-2 rounded-md font-medium transition-all text-sm flex-1",
+                "px-4 py-2 rounded-md font-medium transition-all text-sm flex-1 flex items-center justify-center",
                 tipoMural === 'geral'
                   ? theme === 'dark'
                     ? "bg-yellow-400 text-black shadow-md"
@@ -799,13 +1145,47 @@ export default function RankingPage() {
             return (
               <div
                 key={mes.key}
+                onClick={() => {
+                  // Tornar todos os cards clicáveis
+                  if (campeao) {
+                    setCardSelecionado({ mes, campeao, posicaoGeral: posicaoGeral || null })
+                  } else {
+                    // Para cards sem campeão, ainda abrir a modal mas sem dados do campeão
+                    setCardSelecionado({ mes, campeao: null, posicaoGeral: null })
+                  }
+                  setCardModalOpen(true)
+                }}
                 className={cn(
-                  "flex flex-col items-center p-3 md:p-4 rounded-lg transition-all duration-300 relative",
+                  "flex flex-col items-center p-3 md:p-4 rounded-lg transition-all duration-300 relative cursor-pointer",
                   theme === 'dark'
                     ? "bg-black/30 border border-white/10 hover:border-white/20"
                     : "bg-yellow-500/10 border border-yellow-400/50 hover:border-yellow-300"
                 )}
               >
+                {/* Ícone de compartilhar - aparece apenas quando há campeão */}
+                {campeao && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      // O clique no ícone também abre a modal e dispara confetes
+                      setCardSelecionado({ mes, campeao, posicaoGeral: posicaoGeral || null })
+                      setCardModalOpen(true)
+                    }}
+                    className={cn(
+                      "absolute top-2 right-2 p-1.5 rounded-full transition-colors z-10",
+                      theme === 'dark'
+                        ? "bg-black/40 border border-white/10 hover:bg-black/60 hover:border-yellow-400/50"
+                        : "bg-yellow-500/20 border border-yellow-400/50 hover:bg-yellow-500/30 hover:border-yellow-500"
+                    )}
+                    title="Abrir card para compartilhar"
+                  >
+                    <Share2 className={cn(
+                      "w-3.5 h-3.5 md:w-4 md:h-4",
+                      theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                    )} />
+                  </button>
+                )}
+                
                 {/* Troféu no topo */}
                 <Trophy className={cn(
                   "w-5 h-5 md:w-6 md:h-6 mb-2",
@@ -817,26 +1197,46 @@ export default function RankingPage() {
                 {/* Avatar com borda colorida baseada no nível */}
                 {campeao ? (
                   <>
-                    {campeao.avatarUrl ? (
-                      <img
-                        src={campeao.avatarUrl}
-                        alt={campeao.name}
-                        className={cn(
-                          "w-12 h-12 md:w-16 md:h-16 rounded-full mb-2 object-cover border-[3px]",
+                    <div className="relative mb-2">
+                      {campeao.avatarUrl ? (
+                        <img
+                          src={campeao.avatarUrl}
+                          alt={campeao.name}
+                          className={cn(
+                            "w-12 h-12 md:w-16 md:h-16 rounded-full object-cover border-[3px]",
+                            getLevelBorderColor(campeao.level, theme === 'dark')
+                          )}
+                        />
+                      ) : (
+                        <div className={cn(
+                          "w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center font-bold text-lg md:text-xl border-[3px]",
+                          theme === 'dark'
+                            ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
+                            : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white",
                           getLevelBorderColor(campeao.level, theme === 'dark')
-                        )}
-                      />
-                    ) : (
+                        )}>
+                          {campeao.name.charAt(0)}
+                        </div>
+                      )}
+                      
+                      {/* Nível na borda do avatar (badge) */}
                       <div className={cn(
-                        "w-12 h-12 md:w-16 md:h-16 rounded-full mb-2 flex items-center justify-center font-bold text-lg md:text-xl border-[3px]",
-                        theme === 'dark'
-                          ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
-                          : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white",
-                        getLevelBorderColor(campeao.level, theme === 'dark')
+                        "absolute -bottom-1 -right-1 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center text-[10px] md:text-xs font-bold border-2",
+                        category === 'iniciante'
+                          ? theme === 'dark'
+                            ? "bg-yellow-500 border-yellow-500 text-black"
+                            : "bg-yellow-500 border-yellow-500 text-black"
+                          : category === 'intermediario'
+                          ? theme === 'dark'
+                            ? "bg-blue-500 border-blue-500 text-white"
+                            : "bg-blue-500 border-blue-500 text-white"
+                          : theme === 'dark'
+                          ? "bg-purple-600 border-purple-600 text-white"
+                          : "bg-purple-600 border-purple-600 text-white"
                       )}>
-                        {campeao.name.charAt(0)}
+                        {campeao.level}
                       </div>
-                    )}
+                    </div>
                     
                     {/* Nome completo */}
                     <p className={cn(
@@ -862,24 +1262,6 @@ export default function RankingPage() {
                         #{posicaoGeral || '?'} Geral
                       </p>
                     )}
-                    
-                    {/* Nível na borda (badge) */}
-                    <div className={cn(
-                      "absolute -bottom-1 -right-1 rounded-full w-6 h-6 md:w-7 md:h-7 flex items-center justify-center text-xs font-bold border-2",
-                      category === 'iniciante'
-                        ? theme === 'dark'
-                          ? "bg-yellow-500/20 border-yellow-500 text-yellow-400"
-                          : "bg-yellow-500/30 border-yellow-500 text-yellow-700"
-                        : category === 'intermediario'
-                        ? theme === 'dark'
-                          ? "bg-blue-500/20 border-blue-500 text-blue-400"
-                          : "bg-blue-500/30 border-blue-500 text-blue-700"
-                        : theme === 'dark'
-                        ? "bg-purple-600/20 border-purple-600 text-purple-400"
-                        : "bg-purple-600/30 border-purple-600 text-purple-700"
-                    )}>
-                      {campeao.level}
-                    </div>
                   </>
                 ) : (
                   <>
@@ -891,7 +1273,7 @@ export default function RankingPage() {
                         : "border-gray-300 bg-gray-100"
                     )}>
                       <span className={cn(
-                        "text-xs md:text-sm",
+                        "text-lg md:text-xl font-bold leading-none",
                         theme === 'dark' ? "text-gray-600" : "text-gray-400"
                       )}>
                         ?
@@ -1268,6 +1650,219 @@ export default function RankingPage() {
             </div>
           </div>
         </div>
+      </Modal>
+
+      {/* Modal Card Individual do Campeão */}
+      <Modal
+        isOpen={cardModalOpen}
+        onClose={() => {
+          setCardModalOpen(false)
+          setCardSelecionado(null)
+        }}
+        title={
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-yellow-400/10 border-2 border-yellow-400/30 flex items-center justify-center overflow-hidden flex-shrink-0">
+                <div className="relative w-full h-full flex items-center justify-center scale-150">
+                  <Image
+                    src="/logo light .svg"
+                    alt="Nova Era Tech"
+                    width={40}
+                    height={40}
+                    quality={100}
+                    priority
+                    unoptimized={true}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              </div>
+              <h2 className={cn(
+                "text-base md:text-lg font-semibold",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )}>
+                Escola Nova Era Tech
+              </h2>
+            </div>
+            <h3 className={cn(
+              "text-base md:text-lg font-bold",
+              theme === 'dark' ? "text-white" : "text-gray-900"
+            )}>
+              Campeão de {cardSelecionado?.mes.nome || ''}
+            </h3>
+          </div>
+        }
+        size="sm"
+      >
+        {cardSelecionado && (
+          <div ref={cardModalRef} className="flex flex-col items-center relative">
+            {/* Canvas para confetes - será capturado na imagem, mas fica atrás do conteúdo */}
+            <canvas
+              ref={confettiCanvasRef}
+              className="absolute inset-0 pointer-events-none z-0"
+              style={{ width: '100%', height: '100%' }}
+            />
+            {cardSelecionado.campeao ? (
+              <>
+              <div className={cn(
+                "flex flex-col items-center p-6 md:p-8 rounded-lg transition-all duration-300 relative w-full z-10",
+                theme === 'dark'
+                  ? "bg-black/30 border border-white/10"
+                  : "bg-yellow-500/10 border border-yellow-400/50"
+              )}>
+                {/* Troféu */}
+                <Trophy className={cn(
+                  "w-8 h-8 md:w-10 md:h-10 mb-4",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )} />
+                
+                {/* Avatar com borda colorida baseada no nível */}
+                <div className="relative mb-4">
+                  {cardSelecionado.campeao.avatarUrl ? (
+                  <img
+                    src={cardSelecionado.campeao.avatarUrl}
+                    alt={cardSelecionado.campeao.name}
+                    className={cn(
+                      "w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-[3px]",
+                      getLevelBorderColor(cardSelecionado.campeao.level, theme === 'dark')
+                    )}
+                  />
+                ) : (
+                  <div className={cn(
+                    "w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center font-bold text-2xl md:text-3xl border-[3px]",
+                    theme === 'dark'
+                      ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
+                      : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white",
+                    getLevelBorderColor(cardSelecionado.campeao.level, theme === 'dark')
+                  )}>
+                    {cardSelecionado.campeao.name.charAt(0)}
+                  </div>
+                )}
+                
+                {/* Nível na borda do avatar (badge) */}
+                <div className={cn(
+                  "absolute -bottom-1 -right-1 rounded-full w-7 h-7 md:w-8 md:h-8 flex items-center justify-center text-xs md:text-sm font-bold border-2",
+                  getLevelCategory(cardSelecionado.campeao.level) === 'iniciante'
+                    ? theme === 'dark'
+                      ? "bg-yellow-500 border-yellow-500 text-black"
+                      : "bg-yellow-500 border-yellow-500 text-black"
+                    : getLevelCategory(cardSelecionado.campeao.level) === 'intermediario'
+                    ? theme === 'dark'
+                      ? "bg-blue-500 border-blue-500 text-white"
+                      : "bg-blue-500 border-blue-500 text-white"
+                    : theme === 'dark'
+                    ? "bg-purple-600 border-purple-600 text-white"
+                    : "bg-purple-600 border-purple-600 text-white"
+                )}>
+                  {cardSelecionado.campeao.level}
+                </div>
+              </div>
+              
+              {/* Nome completo */}
+              <p className={cn(
+                "font-bold text-lg md:text-xl text-center mb-2",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                {cardSelecionado.campeao.name}
+              </p>
+              
+              {/* XP do mês ou Posição Geral */}
+              {tipoMural === 'mensal' ? (
+                <p className={cn(
+                  "font-bold text-base md:text-lg text-center mb-2",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )}>
+                  {cardSelecionado.campeao.xpMensal.toLocaleString('pt-BR')} XP
+                </p>
+              ) : (
+                <p className={cn(
+                  "font-bold text-base md:text-lg text-center mb-2",
+                  theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                )}>
+                  #{cardSelecionado.posicaoGeral || '?'} Geral
+                </p>
+              )}
+              
+              {/* Nome do mês */}
+              <p className={cn(
+                "text-sm md:text-base text-center mt-2 font-medium",
+                theme === 'dark' ? "text-gray-400" : "text-gray-600"
+              )}>
+                {cardSelecionado.mes.nome}
+              </p>
+            </div>
+
+            {/* Botão de compartilhar */}
+            <button
+              onClick={handleCompartilharCard}
+              disabled={gerandoImagemCard}
+              data-share-button="true"
+              className={cn(
+                "w-full mt-6 px-4 py-3 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2 relative z-10",
+                gerandoImagemCard && "opacity-50 cursor-not-allowed",
+                theme === 'dark'
+                  ? "bg-yellow-400/20 text-yellow-400 border border-yellow-400/30 hover:bg-yellow-400/30"
+                  : "bg-yellow-500 text-white hover:bg-yellow-600"
+              )}
+            >
+              {gerandoImagemCard ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Gerando...
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-4 h-4" />
+                  Compartilhar
+                </>
+              )}
+            </button>
+            </>
+            ) : (
+              <div className={cn(
+                "flex flex-col items-center p-6 md:p-8 rounded-lg transition-all duration-300 relative w-full z-10",
+                theme === 'dark'
+                  ? "bg-black/30 border border-white/10"
+                  : "bg-yellow-500/10 border border-yellow-400/50"
+              )}>
+                {/* Troféu cinza */}
+                <Trophy className={cn(
+                  "w-8 h-8 md:w-10 md:h-10 mb-4",
+                  theme === 'dark' ? "text-gray-600" : "text-gray-400"
+                )} />
+                
+                {/* Placeholder */}
+                <div className={cn(
+                  "w-20 h-20 md:w-24 md:h-24 rounded-full mb-4 flex items-center justify-center border-[3px] border-dashed",
+                  theme === 'dark'
+                    ? "border-gray-600 bg-gray-800/30"
+                    : "border-gray-300 bg-gray-100"
+                )}>
+                  <span className={cn(
+                    "text-3xl md:text-4xl font-bold leading-none",
+                    theme === 'dark' ? "text-gray-600" : "text-gray-400"
+                  )}>
+                    ?
+                  </span>
+                </div>
+                
+                {/* Mensagem */}
+                <p className={cn(
+                  "font-bold text-lg md:text-xl text-center mb-2",
+                  theme === 'dark' ? "text-white" : "text-gray-900"
+                )}>
+                  Sem campeão
+                </p>
+                
+                <p className={cn(
+                  "text-sm md:text-base text-center mt-2 font-medium",
+                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                )}>
+                  {cardSelecionado.mes.nome}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
     </div>
   )

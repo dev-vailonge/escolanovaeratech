@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
@@ -9,6 +9,7 @@ import CreateQuizModal from './CreateQuizModal'
 import { getAllQuizzes } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import type { DatabaseQuiz } from '@/types/database'
+import Pagination from '@/components/ui/Pagination'
 
 export default function AdminQuizTab() {
   const { theme } = useTheme()
@@ -18,10 +19,19 @@ export default function AdminQuizTab() {
   const [isCreating, setIsCreating] = useState(false)
   const [editingQuiz, setEditingQuiz] = useState<DatabaseQuiz | null>(null)
   const [error, setError] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   useEffect(() => {
     carregarQuizzes()
   }, [])
+
+  // Paginação - calcular itens da página atual
+  const quizzesPaginados = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return quizzes.slice(startIndex, endIndex)
+  }, [quizzes, currentPage, itemsPerPage])
 
   const carregarQuizzes = async (retryCount = 0) => {
     const maxRetries = 2
@@ -309,8 +319,9 @@ export default function AdminQuizTab() {
           Nenhum quiz cadastrado ainda. Clique em "Criar Quiz" para começar.
         </div>
       ) : (
-        <div className="space-y-3">
-          {quizzes.map((quiz) => (
+        <>
+          <div className="space-y-3">
+            {quizzesPaginados.map((quiz) => (
             <div
               key={quiz.id}
               className={cn(
@@ -414,8 +425,17 @@ export default function AdminQuizTab() {
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          
+          <Pagination
+            currentPage={currentPage}
+            totalPages={Math.ceil(quizzes.length / itemsPerPage)}
+            onPageChange={setCurrentPage}
+            itemsPerPage={itemsPerPage}
+            totalItems={quizzes.length}
+          />
+        </>
       )}
 
       {/* Botão Gerar com IA (placeholder) */}

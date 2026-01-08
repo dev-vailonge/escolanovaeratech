@@ -101,12 +101,22 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       
       // Query para notificações individuais do usuário
       console.log('🔍 [NotificationsContext] Buscando notificações para usuário:', user.id, 'role:', user?.role, 'accessLevel:', user?.accessLevel)
-      const { data: individualNotifs, error: error1 } = await supabase
+      
+      // Query para notificações individuais do usuário
+      let individualQuery = supabase
         .from('notificacoes')
         .select('*')
         .eq('target_user_id', user.id)
         .lte('data_inicio', now)
         .gte('data_fim', now)
+      
+      if (user?.role === 'aluno') {
+        // Alunos não devem ver notificações de sugestões/bugs
+        // Usar neq para excluir is_sugestao_bug = true
+        individualQuery = individualQuery.or('is_sugestao_bug.is.null,is_sugestao_bug.eq.false')
+      }
+      
+      const { data: individualNotifs, error: error1 } = await individualQuery
         .order('created_at', { ascending: false })
       
       if (error1) {
@@ -116,12 +126,19 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       }
       
       // Query para notificações broadcast (sem target_user_id)
-      const { data: broadcastNotifs, error: error2 } = await supabase
+      let broadcastQuery = supabase
         .from('notificacoes')
         .select('*')
         .is('target_user_id', null)
         .lte('data_inicio', now)
         .gte('data_fim', now)
+      
+      // Para alunos, excluir notificações de sugestões/bugs
+      if (user?.role === 'aluno') {
+        broadcastQuery = broadcastQuery.or('is_sugestao_bug.is.null,is_sugestao_bug.eq.false')
+      }
+      
+      const { data: broadcastNotifs, error: error2 } = await broadcastQuery
         .order('created_at', { ascending: false })
 
       if (error1) {
@@ -150,8 +167,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       })
 
       // Combinar e ordenar por data de criação
-      const allNotifications = [...(individualNotifs || []), ...filteredBroadcast]
+      let allNotifications = [...(individualNotifs || []), ...filteredBroadcast]
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+      // Filtrar notificações de sugestões/bugs para alunos (apenas admins devem ver)
+      if (user?.role === 'aluno') {
+        allNotifications = allNotifications.filter(notif => !notif.is_sugestao_bug)
+      }
 
       setNotifications(allNotifications)
     } catch (error) {
@@ -186,6 +208,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         (payload) => {
           console.log('Nova notificação recebida:', payload)
           const newNotification = payload.new as DatabaseNotificacao
+          
+          if (!newNotification) return
+
+          // Filtrar notificações de sugestões/bugs para alunos (apenas admins devem ver)
+          if (user?.role === 'aluno' && newNotification.is_sugestao_bug) {
+            console.log('⏭️ [NotificationsContext] Ignorando notificação de sugestão/bug para aluno')
+            return
+          }
           
           // Verificar se a notificação está ativa (dentro do período)
           const now = new Date()

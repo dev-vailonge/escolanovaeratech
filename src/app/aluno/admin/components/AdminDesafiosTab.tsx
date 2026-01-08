@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
@@ -13,6 +13,7 @@ import { getCursoNome, CURSOS_COM_GERAL, type CursoId } from '@/lib/constants/cu
 import { supabase } from '@/lib/supabase'
 import Modal from '@/components/ui/Modal'
 import { getLevelCategory, getLevelBorderColor } from '@/lib/gamification'
+import Pagination from '@/components/ui/Pagination'
 
 type TabType = 'desafios' | 'submissions'
 type StatusFilter = 'pendente' | 'aprovado' | 'rejeitado' | 'todos'
@@ -35,6 +36,8 @@ export default function AdminDesafiosTab() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [filtroCurso, setFiltroCurso] = useState<CursoId | 'todos'>('todos')
+  const [currentPageDesafios, setCurrentPageDesafios] = useState(1)
+  const itemsPerPage = 10
 
   // Estados para submissions
   const [submissions, setSubmissions] = useState<DesafioSubmissionWithUser[]>([])
@@ -43,6 +46,7 @@ export default function AdminDesafiosTab() {
   const [reviewingSubmission, setReviewingSubmission] = useState<DesafioSubmissionWithUser | null>(null)
   const [adminNotes, setAdminNotes] = useState('')
   const [isApproving, setIsApproving] = useState(false)
+  const [currentPageSubmissions, setCurrentPageSubmissions] = useState(1)
 
   useEffect(() => {
     carregarDesafios()
@@ -51,8 +55,36 @@ export default function AdminDesafiosTab() {
   useEffect(() => {
     if (activeTab === 'submissions') {
       carregarSubmissions()
+      setCurrentPageSubmissions(1) // Resetar página ao mudar filtro
     }
   }, [activeTab, statusFilter])
+
+  // Resetar página de desafios ao mudar filtro de curso
+  useEffect(() => {
+    setCurrentPageDesafios(1)
+  }, [filtroCurso])
+
+  // Paginação - calcular desafios filtrados e paginados
+  const desafiosFiltrados = useMemo(() => {
+    return desafios.filter((desafio) => {
+      if (filtroCurso === 'todos') return true
+      if (filtroCurso === null) return !desafio.curso_id
+      return desafio.curso_id === filtroCurso
+    })
+  }, [desafios, filtroCurso])
+
+  const desafiosPaginados = useMemo(() => {
+    const startIndex = (currentPageDesafios - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return desafiosFiltrados.slice(startIndex, endIndex)
+  }, [desafiosFiltrados, currentPageDesafios, itemsPerPage])
+
+  // Paginação - calcular submissions paginados
+  const submissionsPaginados = useMemo(() => {
+    const startIndex = (currentPageSubmissions - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return submissions.slice(startIndex, endIndex)
+  }, [submissions, currentPageSubmissions, itemsPerPage])
 
   const carregarDesafios = async (retryCount = 0) => {
     const maxRetries = 2
@@ -269,8 +301,8 @@ export default function AdminDesafiosTab() {
             "px-4 py-2 rounded-t-lg font-medium transition-colors text-sm",
             activeTab === 'desafios'
               ? theme === 'dark'
-                ? "bg-[#FFF420]/20 text-[#FFF420] border-b-2 border-[#FFF420]"
-                : "bg-[#FFF420] text-[#FFF420] border-b-2 border-[#FFF420]"
+                ? "bg-yellow-400/20 text-yellow-400 border-b-2 border-yellow-400"
+                : "bg-yellow-500 text-white border-b-2 border-yellow-600"
               : theme === 'dark'
                 ? "text-gray-400 hover:text-white"
                 : "text-gray-600 hover:text-gray-900"
@@ -285,8 +317,8 @@ export default function AdminDesafiosTab() {
             "px-4 py-2 rounded-t-lg font-medium transition-colors text-sm flex items-center gap-2",
             activeTab === 'submissions'
               ? theme === 'dark'
-                ? "bg-[#FFF420]/20 text-[#FFF420] border-b-2 border-[#FFF420]"
-                : "bg-[#FFF420] text-[#FFF420] border-b-2 border-[#FFF420]"
+                ? "bg-yellow-400/20 text-yellow-400 border-b-2 border-yellow-400"
+                : "bg-yellow-500 text-white border-b-2 border-yellow-600"
               : theme === 'dark'
                 ? "text-gray-400 hover:text-white"
                 : "text-gray-600 hover:text-gray-900"
@@ -351,8 +383,8 @@ export default function AdminDesafiosTab() {
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors text-sm md:text-base",
                 theme === 'dark'
-                  ? "bg-[#FFF420] text-black hover:bg-[#FFF420]"
-                  : "bg-[#FFF420] text-white hover:bg-[#FFF420]"
+                  ? "bg-yellow-400 text-black hover:bg-yellow-300"
+                  : "bg-yellow-500 text-white hover:bg-yellow-600"
               )}
             >
               <Plus className="w-4 h-4" />
@@ -385,8 +417,8 @@ export default function AdminDesafiosTab() {
                 className={cn(
                   "px-3 py-1.5 rounded-lg border text-sm focus:outline-none focus:ring-2 transition-colors",
                   theme === 'dark'
-                    ? "bg-black/50 border-white/10 text-white focus:border-[#FFF420] focus:ring-[#FFF420]/20"
-                    : "bg-white border-gray-300 text-gray-900 focus:border-[#FFF420] focus:ring-[#FFF420]/20"
+                    ? "bg-black/50 border-white/10 text-white focus:border-yellow-400 focus:ring-yellow-400/20"
+                    : "bg-white border-gray-300 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500/20"
                 )}
               >
                 <option value="todos">Todos os cursos</option>
@@ -417,21 +449,16 @@ export default function AdminDesafiosTab() {
               Nenhum desafio cadastrado ainda. Clique em "Criar Desafio" para começar.
             </div>
           ) : (
-            <div className="space-y-3">
-              {desafios
-                .filter((desafio) => {
-                  if (filtroCurso === 'todos') return true
-                  if (filtroCurso === null) return !desafio.curso_id
-                  return desafio.curso_id === filtroCurso
-                })
-                .map((desafio) => (
+            <>
+              <div className="space-y-3">
+                {desafiosPaginados.map((desafio) => (
                 <div
                   key={desafio.id}
                   className={cn(
                     "p-4 rounded-lg border transition-colors",
                     theme === 'dark'
-                      ? "bg-black/30 border-white/10 hover:border-[#FFF420]/50"
-                      : "bg-gray-50 border-gray-200 hover:border-[#FFF420]"
+                      ? "bg-black/30 border-white/10 hover:border-yellow-400/50"
+                      : "bg-gray-50 border-gray-200 hover:border-yellow-400"
                   )}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -456,8 +483,8 @@ export default function AdminDesafiosTab() {
                         <span className={cn(
                           "px-2 py-1 text-xs rounded-full border capitalize",
                           theme === 'dark'
-                            ? "bg-[#FFF420]/20 text-[#FFF420] border-[#FFF420]/30"
-                            : "bg-[#FFF420] text-[#FFF420] border-[#FFF420]"
+                            ? "bg-yellow-400/20 text-yellow-400 border-yellow-400/30"
+                            : "bg-yellow-500 text-white border-yellow-600"
                         )}>
                           {desafio.dificuldade}
                         </span>
@@ -483,7 +510,7 @@ export default function AdminDesafiosTab() {
                       <div className="flex items-center gap-4 text-xs">
                         <span className={cn(
                           "font-semibold",
-                          theme === 'dark' ? "text-[#FFF420]" : "text-[#FFF420]"
+                          theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                         )}>
                           +{desafio.xp} XP
                         </span>
@@ -524,6 +551,15 @@ export default function AdminDesafiosTab() {
                 </div>
               ))}
             </div>
+            
+            <Pagination
+              currentPage={currentPageDesafios}
+              totalPages={Math.ceil(desafiosFiltrados.length / itemsPerPage)}
+              onPageChange={setCurrentPageDesafios}
+              itemsPerPage={itemsPerPage}
+              totalItems={desafiosFiltrados.length}
+            />
+          </>
           )}
         </>
       )}
@@ -560,8 +596,8 @@ export default function AdminDesafiosTab() {
               className={cn(
                 "px-3 py-1.5 rounded-lg border text-sm focus:outline-none focus:ring-2 transition-colors",
                 theme === 'dark'
-                  ? "bg-black/50 border-white/10 text-white focus:border-[#FFF420] focus:ring-[#FFF420]/20"
-                  : "bg-white border-gray-300 text-gray-900 focus:border-[#FFF420] focus:ring-[#FFF420]/20"
+                  ? "bg-black/50 border-white/10 text-white focus:border-yellow-400 focus:ring-yellow-400/20"
+                  : "bg-white border-gray-300 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500/20"
               )}
             >
               <option value="pendente">Pendentes</option>
@@ -593,7 +629,7 @@ export default function AdminDesafiosTab() {
                   let levelBadgeBg = ''
                   let levelBadgeText = ''
                   if (levelCategory === 'iniciante') {
-                    levelBadgeBg = 'bg-[#FFF420]'
+                    levelBadgeBg = 'bg-yellow-500'
                     levelBadgeText = 'text-white'
                   } else if (levelCategory === 'intermediario') {
                     levelBadgeBg = 'bg-blue-500'
@@ -677,7 +713,7 @@ export default function AdminDesafiosTab() {
                 {/* Info do Desafio */}
                 <div className={cn(
                   "p-3 rounded-lg border",
-                  theme === 'dark' ? "bg-[#FFF420]/10 border-[#FFF420]/20" : "bg-[#FFF420] border-rgba(255, 244, 32, 0.4)"
+                  theme === 'dark' ? "bg-yellow-400/10 border-yellow-400/20" : "bg-yellow-500 border-yellow-400/40"
                 )}>
                   <p className={cn("text-sm font-medium", theme === 'dark' ? "text-white" : "text-gray-900")}>
                     {reviewingSubmission.desafio?.titulo}
@@ -788,8 +824,9 @@ export default function AdminDesafiosTab() {
               }
             </div>
           ) : (
-            <div className="space-y-3">
-              {submissions.map((submission) => (
+            <>
+              <div className="space-y-3">
+                {submissionsPaginados.map((submission) => (
                 <div
                   key={submission.id}
                   className={cn(
@@ -815,7 +852,7 @@ export default function AdminDesafiosTab() {
                         {submission.status === 'pendente' && (
                           <span className={cn(
                             "px-2 py-0.5 text-xs rounded-full flex items-center gap-1",
-                            theme === 'dark' ? "bg-[#FFF420]/20 text-[#FFF420]" : "bg-[#FFF420] text-[#FFF420]"
+                            theme === 'dark' ? "bg-yellow-400/20 text-yellow-400" : "bg-yellow-500 text-white"
                           )}>
                             <Clock className="w-3 h-3" />
                             Pendente
@@ -881,8 +918,8 @@ export default function AdminDesafiosTab() {
                         className={cn(
                           "px-4 py-2 rounded-lg font-medium transition-colors text-sm",
                           theme === 'dark'
-                            ? "bg-[#FFF420] text-black hover:bg-[#FFF420]"
-                            : "bg-[#FFF420] text-white hover:bg-[#FFF420]"
+                            ? "bg-yellow-400 text-black hover:bg-yellow-300"
+                            : "bg-yellow-500 text-white hover:bg-yellow-600"
                         )}
                       >
                         Revisar
@@ -892,6 +929,15 @@ export default function AdminDesafiosTab() {
                 </div>
               ))}
             </div>
+            
+            <Pagination
+              currentPage={currentPageSubmissions}
+              totalPages={Math.ceil(submissions.length / itemsPerPage)}
+              onPageChange={setCurrentPageSubmissions}
+              itemsPerPage={itemsPerPage}
+              totalItems={submissions.length}
+            />
+          </>
           )}
         </>
       )}
