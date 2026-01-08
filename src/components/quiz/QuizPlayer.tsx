@@ -24,6 +24,10 @@ interface QuizPlayerProps {
   xpTotal: number
   onComplete: (resultado: QuizResult) => Promise<void>
   onCancel: () => void
+  // Modo de revisão - mostra as respostas do usuário sem permitir jogar
+  reviewMode?: boolean
+  reviewAnswers?: Record<string, string> // questionId -> selectedOptionId
+  reviewScore?: number // Pontuação obtida
 }
 
 export interface QuizResult {
@@ -47,13 +51,18 @@ export default function QuizPlayer({
   questoes, 
   xpTotal, 
   onComplete, 
-  onCancel 
+  onCancel,
+  reviewMode = false,
+  reviewAnswers = {},
+  reviewScore = 0
 }: QuizPlayerProps) {
   const { theme } = useTheme()
   
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [answers, setAnswers] = useState<Record<string, string>>({}) // questionId -> selectedOptionId
-  const [quizState, setQuizState] = useState<QuizState>('playing')
+  // Se estiver em modo de revisão, usar as respostas fornecidas
+  const [answers, setAnswers] = useState<Record<string, string>>(reviewMode ? reviewAnswers : {})
+  // Se estiver em modo de revisão, começar direto no estado de revisão
+  const [quizState, setQuizState] = useState<QuizState>(reviewMode ? 'reviewing' : 'playing')
   const [showExplanation, setShowExplanation] = useState(false)
   const [startTime] = useState(Date.now())
   const [isSubmitting, setIsSubmitting] = useState(false)

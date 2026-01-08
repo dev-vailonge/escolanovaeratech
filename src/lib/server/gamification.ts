@@ -265,7 +265,13 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
   return { awarded: true as const, xp: xpDesafio }
 }
 
-export async function completarQuiz(params: { userId: string; quizId: string; pontuacao: number; accessToken?: string }) {
+export async function completarQuiz(params: { 
+  userId: string; 
+  quizId: string; 
+  pontuacao: number; 
+  respostas?: { questionId: string; selectedOptionId: string; correct: boolean }[];
+  accessToken?: string 
+}) {
   const supabase = await getSupabaseClient(params.accessToken)
 
   const { data: quiz, error: quizError } = await supabase
@@ -294,13 +300,19 @@ export async function completarQuiz(params: { userId: string; quizId: string; po
       ? params.pontuacao
       : Math.max(existing.melhor_pontuacao, params.pontuacao)
 
-  const upsertPayload = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const upsertPayload: any = {
     user_id: params.userId,
     quiz_id: params.quizId,
     completo: true,
     pontuacao: params.pontuacao,
     tentativas: newTentativas,
     melhor_pontuacao: bestScore,
+  }
+
+  // Adicionar respostas se fornecidas
+  if (params.respostas && params.respostas.length > 0) {
+    upsertPayload.respostas = params.respostas
   }
 
   const { error: upsertError } = await supabase
