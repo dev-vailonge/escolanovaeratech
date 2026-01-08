@@ -44,6 +44,7 @@ const baseMenuModalItems = [
   { icon: BookOpen, label: 'Plano de Estudos', href: '/aluno/aulas' },
   { icon: HelpCircle, label: 'Quiz', href: '/aluno/quiz' },
   { icon: Target, label: 'Desafios', href: '/aluno/desafios' },
+  { icon: ClipboardList, label: 'Central de Ajuda', href: '/aluno/central-de-ajuda' },
 ]
 
 // Menu items secundários (apenas no sidebar desktop)
@@ -55,6 +56,7 @@ const secondaryMenuItems = [
   { icon: HelpCircle, label: 'Quiz', href: '/aluno/quiz' },
   { icon: Target, label: 'Desafios', href: '/aluno/desafios' },
 ]
+const helpCenterItem = { icon: ClipboardList, label: 'Central de Ajuda', href: '/aluno/central-de-ajuda' }
 
 // Menu items administrativos (apenas para admins)
 const adminMenuItems = [
@@ -637,6 +639,50 @@ export default function AlunoSidebar() {
               </Link>
             )
           })}
+
+          {/* Separador antes da Central de Ajuda */}
+          <div className={cn(
+            "my-4 border-t",
+            theme === 'dark' ? "border-white/10" : "border-yellow-500/30"
+          )} />
+
+          {/* Central de Ajuda */}
+          {(() => {
+            const Icon = helpCenterItem.icon
+            const isActive = pathname === helpCenterItem.href || pathname.startsWith(helpCenterItem.href + '/')
+            return (
+              <Link
+                href={helpCenterItem.href}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg transition-all group relative',
+                  isExpanded ? 'px-4 py-3' : 'px-3 py-3 justify-center',
+                  isActive
+                    ? theme === 'dark'
+                      ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/30'
+                      : 'bg-yellow-600/30 text-yellow-900 border border-yellow-700/40'
+                    : theme === 'dark'
+                      ? 'text-gray-400 hover:text-white hover:bg-white/5'
+                      : 'text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20'
+                )}
+                title={!isExpanded ? helpCenterItem.label : undefined}
+              >
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                {isExpanded && (
+                  <span className="font-medium">{helpCenterItem.label}</span>
+                )}
+                {!isExpanded && (
+                  <div className={cn(
+                    "absolute left-full ml-2 px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50",
+                    theme === 'dark'
+                      ? "bg-[#111]/90 border border-white/10 text-white"
+                      : "bg-yellow-500/95 border border-yellow-600/30 text-gray-900"
+                  )}>
+                    {helpCenterItem.label}
+                  </div>
+                )}
+              </Link>
+            )
+          })()}
 
           {/* Separador Admin - apenas se for admin */}
           {isExpanded && isAdmin && (
