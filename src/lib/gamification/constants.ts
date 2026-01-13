@@ -6,15 +6,15 @@
  * PONTUAÇÕES OFICIAIS (XP de 0 a 100):
  * 
  * Comunidade:
- * - Pergunta: 10 XP
+ * - Pergunta: 5 XP
  * - Resposta: 1 XP
- * - Resposta marcada como certa pelo autor: 100 XP
+ * - Resposta marcada como certa pelo autor: 30 XP
  * 
  * Quiz:
- * - Quiz completo: 20 XP (se acertar tudo, ou percentual de quantas acertar)
+ * - Quiz completo: 10 XP (se acertar tudo, ou percentual de quantas acertar)
  * 
  * Desafios:
- * - Desafio concluído: 50 XP
+ * - Desafio concluído: 150 XP
  * 
  * Formulários:
  * - Formulário preenchido: 1 XP
@@ -24,15 +24,15 @@
 
 export const XP_CONSTANTS = {
   comunidade: {
-    pergunta: 10,
+    pergunta: 5,
     resposta: 1,
-    respostaCerta: 100,
+    respostaCerta: 30,
   },
   quiz: {
-    maximo: 20,
+    maximo: 10,
   },
   desafio: {
-    completo: 50,
+    completo: 150,
   },
   formulario: {
     preenchido: 1,
