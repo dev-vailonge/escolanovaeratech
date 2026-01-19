@@ -13,6 +13,8 @@ import CommentThread from '@/components/comunidade/CommentThread'
 import QuestionImageUpload from '@/components/comunidade/QuestionImageUpload'
 import { getUserBadges } from '@/lib/badges'
 import { formatDateTime, wasEdited } from '@/lib/utils/dateFormat'
+import SafeLoading from '@/components/ui/SafeLoading'
+import { safeFetch } from '@/lib/utils/safeSupabaseQuery'
 
 interface Autor {
   id: string
@@ -67,7 +69,7 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
   const { user } = useAuth()
   const [pergunta, setPergunta] = useState<Pergunta | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string>('')
+  const [error, setError] = useState<string | null>(null)
   const [respostaConteudo, setRespostaConteudo] = useState('')
   const [respostaImagem, setRespostaImagem] = useState<File | null>(null)
   const [respostaImagemResetTrigger, setRespostaImagemResetTrigger] = useState(0)
@@ -91,46 +93,53 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
   const currentUserId = user?.id
 
   // Buscar pergunta
-  useEffect(() => {
-    const fetchPergunta = async () => {
-      try {
-        setLoading(true)
-        const res = await fetch(`/api/comunidade/perguntas/${params.id}`)
-        const json = await res.json()
+  const fetchPergunta = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const res = await safeFetch(`/api/comunidade/perguntas/${params.id}`, {
+        timeout: 10000,
+        retry: true,
+        retryAttempts: 2
+      })
 
-        if (!res.ok) {
-          throw new Error(json?.error || 'Erro ao buscar pergunta')
-        }
-
-        if (json.success && json.pergunta) {
-          setPergunta(json.pergunta)
-
-          // Buscar badges dos autores
-          const userIds = new Set<string>()
-          if (json.pergunta.autor?.id) userIds.add(json.pergunta.autor.id)
-          json.pergunta.respostas?.forEach((r: Resposta) => {
-            if (r.autor?.id) userIds.add(r.autor.id)
-            r.comentarios?.forEach((c: Comentario) => {
-              if (c.autor?.id) userIds.add(c.autor.id)
-            })
-          })
-
-          const badges = new Map<string, string[]>()
-          const token = await getAuthToken()
-          for (const userId of userIds) {
-            const userBadges = await getUserBadges(userId, token || undefined)
-            badges.set(userId, userBadges.map((b) => b.type))
-          }
-          setBadgesMap(badges)
-        }
-      } catch (e: any) {
-        console.error('Erro ao buscar pergunta:', e)
-        setError(e?.message || 'Erro ao carregar pergunta')
-      } finally {
-        setLoading(false)
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json?.error || 'Erro ao buscar pergunta')
       }
-    }
 
+      const json = await res.json()
+
+      if (json.success && json.pergunta) {
+        setPergunta(json.pergunta)
+
+        // Buscar badges dos autores
+        const userIds = new Set<string>()
+        if (json.pergunta.autor?.id) userIds.add(json.pergunta.autor.id)
+        json.pergunta.respostas?.forEach((r: Resposta) => {
+          if (r.autor?.id) userIds.add(r.autor.id)
+          r.comentarios?.forEach((c: Comentario) => {
+            if (c.autor?.id) userIds.add(c.autor.id)
+          })
+        })
+
+        const badges = new Map<string, string[]>()
+        const token = await getAuthToken()
+        for (const userId of userIds) {
+          const userBadges = await getUserBadges(userId, token || undefined)
+          badges.set(userId, userBadges.map((b) => b.type))
+        }
+        setBadgesMap(badges)
+      }
+    } catch (e: any) {
+      console.error('Erro ao buscar pergunta:', e)
+      setError(e?.message || 'Erro ao carregar pergunta')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     fetchPergunta()
   }, [params.id])
 
@@ -504,19 +513,15 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
     }
   }
 
-  if (loading) {
+  if (loading || error) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className={cn(
-            'animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4',
-            theme === 'dark' ? 'border-yellow-400' : 'border-yellow-600'
-          )} />
-          <p className={cn('text-sm', theme === 'dark' ? 'text-gray-400' : 'text-gray-600')}>
-            Carregando pergunta...
-          </p>
-        </div>
-      </div>
+      <SafeLoading
+        loading={loading}
+        error={error}
+        onRetry={fetchPergunta}
+        loadingMessage="Carregando pergunta..."
+        errorMessage="Não foi possível carregar a pergunta. Tente novamente."
+      />
     )
   }
 

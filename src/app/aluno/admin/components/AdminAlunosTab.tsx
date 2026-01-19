@@ -7,6 +7,7 @@ import { Loader2, RefreshCw, Mail, Calendar, Search, Database, Trophy, Zap, Coin
 import { getAllUsers, updateUserRole, updateUserAccessLevel } from '@/lib/database'
 import type { DatabaseUser } from '@/types/database'
 import Pagination from '@/components/ui/Pagination'
+import SafeLoading from '@/components/ui/SafeLoading'
 
 export default function AdminAlunosTab() {
   const { theme } = useTheme()
@@ -15,7 +16,7 @@ export default function AdminAlunosTab() {
   const [usersLocal, setUsersLocal] = useState<DatabaseUser[]>([])
   const [loadingLocal, setLoadingLocal] = useState(true)
   
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [updatingRole, setUpdatingRole] = useState<string | null>(null)
@@ -27,20 +28,23 @@ export default function AdminAlunosTab() {
     carregarUsersLocal()
   }, [])
   
-  const carregarUsersLocal = async (retryCount = 0) => {
-    const maxRetries = 2
+  const carregarUsersLocal = async () => {
     try {
       setLoadingLocal(true)
-      const users = await getAllUsers()
+      setError(null)
+      
+      // Usar Promise.race com timeout para getAllUsers
+      const timeoutPromise = new Promise<DatabaseUser[]>((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout ao carregar usuários')), 10000)
+      })
+      
+      const dataPromise = getAllUsers()
+      const users = await Promise.race([dataPromise, timeoutPromise])
+      
       setUsersLocal(users)
     } catch (err: any) {
       console.error('Erro ao carregar usuários locais:', err)
-      // Retry logic
-      if (retryCount < maxRetries) {
-        console.log(`🔄 Tentando novamente (tentativa ${retryCount + 1}/${maxRetries})...`)
-        setTimeout(() => carregarUsersLocal(retryCount + 1), 1000 * (retryCount + 1))
-        return
-      }
+      setError(err.message || 'Erro ao carregar usuários. Tente novamente.')
     } finally {
       setLoadingLocal(false)
     }
@@ -267,14 +271,14 @@ export default function AdminAlunosTab() {
       )}
 
       {/* Lista de Usuários */}
-          {loadingLocal ? (
-            <div className={cn(
-              "flex items-center justify-center p-8",
-              theme === 'dark' ? "text-gray-400" : "text-gray-600"
-            )}>
-              <Loader2 className="w-6 h-6 animate-spin mr-2" />
-              <span>Carregando usuários...</span>
-            </div>
+          {loadingLocal || error ? (
+            <SafeLoading
+              loading={loadingLocal}
+              error={error}
+              onRetry={carregarUsersLocal}
+              loadingMessage="Carregando usuários..."
+              errorMessage="Não foi possível carregar os usuários. Tente novamente."
+            />
           ) : usersLocalFiltrados.length === 0 ? (
             <div className={cn(
               "p-8 text-center rounded-lg border",

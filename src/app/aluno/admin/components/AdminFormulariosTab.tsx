@@ -10,6 +10,7 @@ import ViewRespostasModal from './ViewRespostasModal'
 import { getAllFormularios, createFormulario, updateFormulario, deleteFormulario, toggleFormularioAtivo, getRespostasFormulario, createNotificacao } from '@/lib/database'
 import type { DatabaseFormulario } from '@/types/database'
 import Pagination from '@/components/ui/Pagination'
+import SafeLoading from '@/components/ui/SafeLoading'
 
 export default function AdminFormulariosTab() {
   const { theme } = useTheme()
@@ -19,7 +20,7 @@ export default function AdminFormulariosTab() {
   const [isCreating, setIsCreating] = useState(false)
   const [editingFormulario, setEditingFormulario] = useState<DatabaseFormulario | null>(null)
   const [viewingRespostas, setViewingRespostas] = useState<DatabaseFormulario | null>(null)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [respostasCount, setRespostasCount] = useState<Record<string, number>>({})
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
@@ -35,13 +36,20 @@ export default function AdminFormulariosTab() {
     return formularios.slice(startIndex, endIndex)
   }, [formularios, currentPage, itemsPerPage])
 
-  const carregarFormularios = async (retryCount = 0) => {
-    const maxRetries = 2
+  const carregarFormularios = async () => {
     try {
       setLoading(true)
-      setError('')
+      setError(null)
       console.log('🔄 Carregando formulários...')
-      const dados = await getAllFormularios()
+      
+      // Usar Promise.race com timeout para getAllFormularios
+      const timeoutPromise = new Promise<DatabaseFormulario[]>((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout ao carregar formulários')), 10000)
+      })
+      
+      const dataPromise = getAllFormularios()
+      const dados = await Promise.race([dataPromise, timeoutPromise])
+      
       console.log(`📊 Formulários carregados: ${dados.length}`)
       console.log('📋 Dados:', dados)
       setFormularios(dados)
@@ -60,15 +68,9 @@ export default function AdminFormulariosTab() {
         })
         setRespostasCount(counts)
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao carregar formulários:', err)
-      // Retry logic
-      if (retryCount < maxRetries) {
-        console.log(`🔄 Tentando novamente (tentativa ${retryCount + 1}/${maxRetries})...`)
-        setTimeout(() => carregarFormularios(retryCount + 1), 1000 * (retryCount + 1))
-        return
-      }
-      setError('Erro ao carregar formulários. Tente novamente.')
+      setError(err.message || 'Erro ao carregar formulários. Tente novamente.')
     } finally {
       setLoading(false)
     }
@@ -201,15 +203,15 @@ export default function AdminFormulariosTab() {
     }
   }
 
-  if (loading) {
+  if (loading || error) {
     return (
-      <div className={cn(
-        "flex items-center justify-center p-8",
-        theme === 'dark' ? "text-gray-400" : "text-gray-600"
-      )}>
-        <Loader2 className="w-6 h-6 animate-spin mr-2" />
-        <span>Carregando formulários...</span>
-      </div>
+      <SafeLoading
+        loading={loading}
+        error={error}
+        onRetry={carregarFormularios}
+        loadingMessage="Carregando formulários..."
+        errorMessage="Não foi possível carregar os formulários. Tente novamente."
+      />
     )
   }
 

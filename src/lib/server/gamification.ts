@@ -322,23 +322,88 @@ export async function completarQuiz(params: {
   if (upsertError) throw upsertError
 
   // Buscar XP total já ganho deste quiz específico
+  // IMPORTANTE: Garantir que source_id seja comparado como UUID/text corretamente
+  // Usar casting explícito para garantir matching correto
   const { data: xpHistory, error: xpHistoryError } = await supabase
     .from('user_xp_history')
-    .select('amount')
+    .select('id, amount, source_id, description, created_at')
     .eq('user_id', params.userId)
     .eq('source', 'quiz')
+    // Usar filtro mais específico: garantir que source_id seja exatamente o quizId
     .eq('source_id', params.quizId)
+    // Adicionar filtro adicional para garantir que não há entradas com source_id NULL ou incorreto
+    .not('source_id', 'is', null)
 
-  if (xpHistoryError) throw xpHistoryError
+  if (xpHistoryError) {
+    console.error(`❌ [completarQuiz] Erro ao buscar histórico de XP:`, xpHistoryError)
+    throw xpHistoryError
+  }
+
+  // Log detalhado do histórico encontrado
+  console.log(`🔍 [completarQuiz] Histórico de XP encontrado:`, {
+    quizId: params.quizId,
+    quizIdType: typeof params.quizId,
+    totalEntries: xpHistory?.length || 0,
+    entries: xpHistory?.map(e => ({
+      id: e.id,
+      source_id: e.source_id,
+      source_id_type: typeof e.source_id,
+      amount: e.amount,
+      description: e.description,
+      created_at: e.created_at
+    })) || []
+  })
 
   // Calcular XP total já ganho
-  const xpTotalGanho = (xpHistory || []).reduce((sum, entry) => sum + (entry.amount || 0), 0)
+  // IMPORTANTE: Filtrar apenas entradas onde source_id corresponde EXATAMENTE ao quizId
+  // Isso previne bugs onde XP de outros quizzes seja contado incorretamente
+  let entradasFiltradas = 0
+  const xpTotalGanho = (xpHistory || []).reduce((sum, entry) => {
+    // Verificar se o source_id realmente corresponde ao quizId
+    // Comparar como string para garantir matching correto
+    const entrySourceId = entry.source_id?.toString() || ''
+    const quizIdStr = params.quizId.toString()
+    const sourceIdMatch = entrySourceId === quizIdStr
+    
+    if (!sourceIdMatch) {
+      entradasFiltradas++
+      console.warn(`⚠️ [completarQuiz] source_id não corresponde ao quizId - IGNORANDO entrada:`, {
+        entry_source_id: entry.source_id,
+        entry_source_id_str: entrySourceId,
+        quizId: params.quizId,
+        quizId_str: quizIdStr,
+        entry: entry
+      })
+      // NÃO somar esta entrada - ela não pertence a este quiz
+      return sum
+    }
+    
+    // Somar apenas se source_id corresponder exatamente
+    return sum + (entry.amount || 0)
+  }, 0)
+  
+  if (entradasFiltradas > 0) {
+    console.warn(`⚠️ [completarQuiz] ${entradasFiltradas} entradas de XP foram filtradas (source_id não corresponde ao quizId)`)
+  }
   
   // Calcular XP remanescente (limite máximo oficial de 20 XP menos o que já foi ganho)
   const xpRemanescente = Math.max(0, xpMaximoQuiz - xpTotalGanho)
   
+  // Log detalhado para debug
+  console.log(`📊 [completarQuiz] Cálculo de XP:`, {
+    userId: params.userId,
+    quizId: params.quizId,
+    pontuacao: params.pontuacao,
+    xpMaximoQuiz,
+    xpHistoryEntries: xpHistory?.length || 0,
+    xpTotalGanho,
+    xpRemanescente,
+    historicoDetalhado: xpHistory?.map(e => e.amount) || []
+  })
+  
   // Se não há XP remanescente, não conceder XP
   if (xpRemanescente <= 0) {
+    console.log(`⚠️ [completarQuiz] Limite de XP atingido para quiz ${params.quizId}`)
     return { 
       awarded: false as const, 
       reason: 'xp_limit_reached' as const,
@@ -352,6 +417,12 @@ export async function completarQuiz(params: {
   // Se pontuacao = 100%, ganha 100% do XP remanescente
   // Se pontuacao = 50%, ganha 50% do XP remanescente
   const xpGanho = Math.round((params.pontuacao / 100) * xpRemanescente)
+  
+  console.log(`✅ [completarQuiz] XP calculado:`, {
+    xpGanho,
+    calculo: `(${params.pontuacao}% / 100) * ${xpRemanescente} = ${xpGanho}`,
+    novoXpTotal: xpTotalGanho + xpGanho
+  })
   
   // Remover nível de dificuldade do título (iniciante, intermediário, avançado)
   const tituloLimpo = quiz.titulo

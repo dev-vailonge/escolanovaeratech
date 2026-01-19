@@ -5,7 +5,8 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
-import { HelpCircle, Target, Bell, FileText, Users, Loader2, DollarSign } from 'lucide-react'
+import { HelpCircle, Target, Bell, FileText, Users, Loader2, DollarSign, Settings } from 'lucide-react'
+import SafeLoading from '@/components/ui/SafeLoading'
 
 // Lazy loading dos componentes das abas para melhor performance
 const AdminQuizTab = lazy(() => import('./components/AdminQuizTab'))
@@ -14,22 +15,21 @@ const AdminNotificacoesTab = lazy(() => import('./components/AdminNotificacoesTa
 const AdminFormulariosTab = lazy(() => import('./components/AdminFormulariosTab'))
 const AdminAlunosTab = lazy(() => import('./components/AdminAlunosTab'))
 const AdminTokensTab = lazy(() => import('./components/AdminTokensTab'))
+const AdminCorrigirXPTab = lazy(() => import('./components/AdminCorrigirXPTab'))
 
-type AdminTab = 'quiz' | 'desafios' | 'notificacoes' | 'formularios' | 'alunos' | 'tokens'
+type AdminTab = 'quiz' | 'desafios' | 'notificacoes' | 'formularios' | 'alunos' | 'tokens' | 'corrigir-xp'
 
 // Lista de abas válidas para validação
-const validTabs: AdminTab[] = ['quiz', 'desafios', 'notificacoes', 'formularios', 'alunos', 'tokens']
+const validTabs: AdminTab[] = ['quiz', 'desafios', 'notificacoes', 'formularios', 'alunos', 'tokens', 'corrigir-xp']
 
 // Componente de loading para Suspense
 const TabLoading = memo(function TabLoading({ theme }: { theme: string }) {
   return (
-    <div className={cn(
-      "flex items-center justify-center p-8",
-      theme === 'dark' ? "text-gray-400" : "text-gray-600"
-    )}>
-      <Loader2 className="w-6 h-6 animate-spin mr-2" />
-      <span>Carregando...</span>
-    </div>
+    <SafeLoading
+      loading={true}
+      error={null}
+      loadingMessage="Carregando..."
+    />
   )
 })
 
@@ -71,6 +71,8 @@ export default function AdminPage() {
       import('./components/AdminAlunosTab')
     } else if (tabToPreload === 'tokens') {
       import('./components/AdminTokensTab')
+    } else if (tabToPreload === 'corrigir-xp') {
+      import('./components/AdminCorrigirXPTab')
     }
   }, [tabFromUrl]) // Executar quando a aba da URL mudar
 
@@ -146,6 +148,7 @@ export default function AdminPage() {
     { id: 'formularios', label: 'Formulários', icon: FileText },
     { id: 'alunos', label: 'Alunos', icon: Users },
     { id: 'tokens', label: 'Tokens', icon: DollarSign },
+    { id: 'corrigir-xp', label: 'Manutenção de XP', icon: Settings },
   ]
 
   return (
@@ -228,6 +231,9 @@ export default function AdminPage() {
           </div>
           <div style={{ display: activeTab === 'tokens' ? 'block' : 'none' }}>
             {(activeTab === 'tokens' || visitedTabs.has('tokens')) && <AdminTokensTab />}
+          </div>
+          <div style={{ display: activeTab === 'corrigir-xp' ? 'block' : 'none' }}>
+            {(activeTab === 'corrigir-xp' || visitedTabs.has('corrigir-xp')) && <AdminCorrigirXPTab />}
           </div>
         </Suspense>
       </div>

@@ -14,6 +14,8 @@ import { supabase } from '@/lib/supabase'
 import Modal from '@/components/ui/Modal'
 import { getLevelCategory, getLevelBorderColor } from '@/lib/gamification'
 import Pagination from '@/components/ui/Pagination'
+import SafeLoading from '@/components/ui/SafeLoading'
+import { safeFetch } from '@/lib/utils/safeSupabaseQuery'
 
 type TabType = 'desafios' | 'submissions'
 type StatusFilter = 'pendente' | 'aprovado' | 'rejeitado' | 'todos'
@@ -33,7 +35,7 @@ export default function AdminDesafiosTab() {
   const [loading, setLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
   const [editingDesafio, setEditingDesafio] = useState<DatabaseDesafio | null>(null)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState('')
   const [filtroCurso, setFiltroCurso] = useState<CursoId | 'todos'>('todos')
   const [currentPageDesafios, setCurrentPageDesafios] = useState(1)
@@ -86,63 +88,54 @@ export default function AdminDesafiosTab() {
     return submissions.slice(startIndex, endIndex)
   }, [submissions, currentPageSubmissions, itemsPerPage])
 
-  const carregarDesafios = async (retryCount = 0) => {
-    const maxRetries = 2
+  const carregarDesafios = async () => {
     try {
       setLoading(true)
-      setError('')
-      const dados = await getAllDesafios()
+      setError(null)
+      
+      // Usar Promise.race com timeout para getAllDesafios
+      const timeoutPromise = new Promise<DatabaseDesafio[]>((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout ao carregar desafios')), 10000)
+      })
+      
+      const dataPromise = getAllDesafios()
+      const dados = await Promise.race([dataPromise, timeoutPromise])
+      
       setDesafios(dados)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao carregar desafios:', err)
-      // Retry logic
-      if (retryCount < maxRetries) {
-        console.log(`🔄 Tentando novamente (tentativa ${retryCount + 1}/${maxRetries})...`)
-        setTimeout(() => carregarDesafios(retryCount + 1), 1000 * (retryCount + 1))
-        return
-      }
-      setError('Erro ao carregar desafios. Tente novamente.')
+      setError(err.message || 'Erro ao carregar desafios. Tente novamente.')
     } finally {
       setLoading(false)
     }
   }
 
-  const carregarSubmissions = useCallback(async (retryCount = 0) => {
-    const maxRetries = 2
+  const carregarSubmissions = useCallback(async () => {
     try {
       setLoadingSubmissions(true)
-      setError('')
+      setError(null)
 
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
       if (!token) throw new Error('Não autenticado')
 
-      // Timeout de 10 segundos
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000)
-
-      const res = await fetch(`/api/admin/submissions?status=${statusFilter}`, {
+      const res = await safeFetch(`/api/admin/submissions?status=${statusFilter}`, {
         headers: { Authorization: `Bearer ${token}` },
-        signal: controller.signal
+        timeout: 10000,
+        retry: true,
+        retryAttempts: 2
       })
 
-      clearTimeout(timeoutId)
-
-      const json = await res.json()
       if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
         throw new Error(json?.error || 'Erro ao carregar submissions')
       }
 
+      const json = await res.json()
       setSubmissions(json.submissions || [])
     } catch (err: any) {
       console.error('Erro ao carregar submissions:', err)
-      // Retry logic
-      if (retryCount < maxRetries && !err?.message?.includes('abort')) {
-        console.log(`🔄 Tentando novamente (tentativa ${retryCount + 1}/${maxRetries})...`)
-        setTimeout(() => carregarSubmissions(retryCount + 1), 1000 * (retryCount + 1))
-        return
-      }
-      setError(err?.message || 'Erro ao carregar submissions')
+      setError(err.message || 'Erro ao carregar submissions. Tente novamente.')
     } finally {
       setLoadingSubmissions(false)
     }
@@ -431,14 +424,14 @@ export default function AdminDesafiosTab() {
             </div>
           )}
 
-          {loading ? (
-            <div className={cn(
-              "flex items-center justify-center p-8",
-              theme === 'dark' ? "text-gray-400" : "text-gray-600"
-            )}>
-              <Loader2 className="w-6 h-6 animate-spin mr-2" />
-              <span>Carregando desafios...</span>
-            </div>
+          {loading || error ? (
+            <SafeLoading
+              loading={loading}
+              error={error}
+              onRetry={carregarDesafios}
+              loadingMessage="Carregando desafios..."
+              errorMessage="Não foi possível carregar os desafios. Tente novamente."
+            />
           ) : desafios.length === 0 ? (
             <div className={cn(
               "p-8 text-center rounded-lg border",
@@ -803,14 +796,14 @@ export default function AdminDesafiosTab() {
             )}
           </Modal>
 
-          {loadingSubmissions ? (
-            <div className={cn(
-              "flex items-center justify-center p-8",
-              theme === 'dark' ? "text-gray-400" : "text-gray-600"
-            )}>
-              <Loader2 className="w-6 h-6 animate-spin mr-2" />
-              <span>Carregando submissões...</span>
-            </div>
+          {loadingSubmissions || error ? (
+            <SafeLoading
+              loading={loadingSubmissions}
+              error={error}
+              onRetry={carregarSubmissions}
+              loadingMessage="Carregando submissões..."
+              errorMessage="Não foi possível carregar as submissões. Tente novamente."
+            />
           ) : submissions.length === 0 ? (
             <div className={cn(
               "p-8 text-center rounded-lg border",

@@ -10,6 +10,8 @@ import { getAllQuizzes } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
 import type { DatabaseQuiz } from '@/types/database'
 import Pagination from '@/components/ui/Pagination'
+import SafeLoading from '@/components/ui/SafeLoading'
+import { safeFetch } from '@/lib/utils/safeSupabaseQuery'
 
 export default function AdminQuizTab() {
   const { theme } = useTheme()
@@ -18,7 +20,7 @@ export default function AdminQuizTab() {
   const [loading, setLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
   const [editingQuiz, setEditingQuiz] = useState<DatabaseQuiz | null>(null)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
@@ -33,22 +35,23 @@ export default function AdminQuizTab() {
     return quizzes.slice(startIndex, endIndex)
   }, [quizzes, currentPage, itemsPerPage])
 
-  const carregarQuizzes = async (retryCount = 0) => {
-    const maxRetries = 2
+  const carregarQuizzes = async () => {
     try {
       setLoading(true)
-      setError('')
-      const dados = await getAllQuizzes()
+      setError(null)
+      
+      // Usar Promise.race com timeout para getAllQuizzes
+      const timeoutPromise = new Promise<DatabaseQuiz[]>((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout ao carregar quizzes')), 10000)
+      })
+      
+      const dataPromise = getAllQuizzes()
+      const dados = await Promise.race([dataPromise, timeoutPromise])
+      
       setQuizzes(dados)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao carregar quizzes:', err)
-      // Retry logic
-      if (retryCount < maxRetries) {
-        console.log(`🔄 Tentando novamente (tentativa ${retryCount + 1}/${maxRetries})...`)
-        setTimeout(() => carregarQuizzes(retryCount + 1), 1000 * (retryCount + 1))
-        return
-      }
-      setError('Erro ao carregar quizzes. Tente novamente.')
+      setError(err.message || 'Erro ao carregar quizzes. Tente novamente.')
     } finally {
       setLoading(false)
     }
@@ -237,15 +240,15 @@ export default function AdminQuizTab() {
     }
   }
 
-  if (loading) {
+  if (loading || error) {
     return (
-      <div className={cn(
-        "flex items-center justify-center p-8",
-        theme === 'dark' ? "text-gray-400" : "text-gray-600"
-      )}>
-        <Loader2 className="w-6 h-6 animate-spin mr-2" />
-        <span>Carregando quizzes...</span>
-      </div>
+      <SafeLoading
+        loading={loading}
+        error={error}
+        onRetry={carregarQuizzes}
+        loadingMessage="Carregando quizzes..."
+        errorMessage="Não foi possível carregar os quizzes. Tente novamente."
+      />
     )
   }
 
