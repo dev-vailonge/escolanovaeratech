@@ -12,6 +12,8 @@ import { supabase } from '@/lib/supabase'
 import { getNotificacoesAtivas } from '@/lib/database'
 import { getLevelBorderColor } from '@/lib/gamification'
 import type { DatabaseNotificacao } from '@/types/database'
+import SafeLoading from '@/components/ui/SafeLoading'
+import { safeFetch } from '@/lib/utils/safeSupabaseQuery'
 
 // Tipos para estatísticas do usuário
 interface UserStats {
@@ -348,13 +350,7 @@ export default function AlunoDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <ProgressCard
-          title="Aulas Completas"
-          count={stats.aulasCompletas}
-          icon={<BookOpen className="w-6 h-6 text-yellow-500" />}
-          color="yellow"
-        />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <ProgressCard
           title="Quiz Completos"
           count={stats.quizCompletos}
@@ -376,13 +372,13 @@ export default function AlunoDashboard() {
       </div>
 
       {/* Avisos da Escola */}
-      <section className="w-full flex flex-col gap-3 md:gap-4">
-        <h2 className={cn(
-          "text-lg md:text-xl font-bold",
-          theme === 'dark' ? "text-white" : "text-gray-900"
-        )}>
-          Avisos da Escola
-        </h2>
+        <section className="w-full flex flex-col gap-3 md:gap-4">
+          <h2 className={cn(
+            "text-lg md:text-xl font-bold",
+            theme === 'dark' ? "text-white" : "text-gray-900"
+          )}>
+            Avisos da Escola
+          </h2>
 
         {announcements.length === 0 ? (
           <div className={cn(
@@ -417,12 +413,12 @@ export default function AlunoDashboard() {
           </div>
         ) : (
           <>
-            <div className="flex flex-col gap-3 md:gap-4">
+          <div className="flex flex-col gap-3 md:gap-4">
               {/* Mostrar apenas os 3 últimos ou todos se expandido */}
               {(showAllAnnouncements ? announcements : announcements.slice(0, 3)).map(announcement => (
-                <AnnouncementCard key={announcement.id} {...announcement} />
-              ))}
-            </div>
+              <AnnouncementCard key={announcement.id} {...announcement} />
+            ))}
+          </div>
 
             {/* Botão para expandir/colapsar se houver mais de 3 avisos */}
             {announcements.length > 3 && (
@@ -450,7 +446,7 @@ export default function AlunoDashboard() {
             )}
           </>
         )}
-      </section>
+        </section>
 
       {/* Quick Actions & Ranking */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
@@ -579,12 +575,19 @@ export default function AlunoDashboard() {
           </div>
           <div className="space-y-2 md:space-y-3">
             {loadingData ? (
-              <div className={cn(
-                "text-center py-4 text-sm",
-                theme === 'dark' ? "text-gray-400" : "text-gray-600"
-              )}>
-                Carregando...
-              </div>
+              <SafeLoading
+                loading={loadingData}
+                timeout={15}
+                onRetry={fetchAllData}
+                errorMessage="O ranking está demorando para carregar."
+              >
+                <div className={cn(
+                  "text-center py-4 text-sm",
+                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                )}>
+                  Carregando...
+                </div>
+              </SafeLoading>
             ) : topRanking.length === 0 ? (
               <div className={cn(
                 "text-center py-4 text-sm",

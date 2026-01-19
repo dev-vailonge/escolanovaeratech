@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils'
 import { FileText, Clock, CheckCircle2, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/AuthContext'
+import SafeLoading from '@/components/ui/SafeLoading'
+import { safeSupabaseQuery } from '@/lib/utils/safeSupabaseQuery'
 
 interface Formulario {
   id: string
@@ -21,6 +23,7 @@ export default function FormulariosPage() {
   const { user } = useAuth()
   const [formularios, setFormularios] = useState<Formulario[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [respostasStatus, setRespostasStatus] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
@@ -33,6 +36,7 @@ export default function FormulariosPage() {
   const carregarFormularios = async () => {
     try {
       setLoading(true)
+      setError(null)
       
       // Buscar diretamente do Supabase usando o cliente do frontend
       if (!user) {
@@ -62,11 +66,16 @@ export default function FormulariosPage() {
         query = query.eq('ativo', true)
       }
       
-      const { data: formularios, error } = await query.order('created_at', { ascending: false })
+      const { data: formularios, error: queryError } = await safeSupabaseQuery(
+        async () => {
+          const result = await query.order('created_at', { ascending: false })
+          return result
+        },
+        { timeout: 10000, retryAttempts: 0 }
+      )
       
-      if (error) {
-        console.error('Erro ao buscar formulários:', error)
-        throw error
+      if (queryError || !formularios) {
+        throw new Error(queryError?.message || 'Erro ao buscar formulários')
       }
 
       setFormularios(formularios || [])
@@ -74,26 +83,35 @@ export default function FormulariosPage() {
       // Verificar status de respostas em paralelo usando uma única query quando possível
       if (user?.id && formularios && formularios.length > 0) {
         // Buscar todas as respostas do usuário de uma vez
-        const { data: todasRespostas } = await supabase
-          .from('formulario_respostas')
-          .select('formulario_id')
-          .eq('user_id', user.id)
-        
-        // Criar um Set para lookup rápido
-        const formulariosRespondidos = new Set(
-          (todasRespostas || []).map((r: any) => r.formulario_id)
+        const { data: todasRespostas, error: respostasError } = await safeSupabaseQuery(
+          async () => {
+            const result = await supabase
+              .from('formulario_respostas')
+              .select('formulario_id')
+              .eq('user_id', user.id)
+            return result
+          },
+          { timeout: 10000, retryAttempts: 0 }
         )
         
-        // Criar mapa de status
-        const statusMap: Record<string, boolean> = {}
-        formularios.forEach((form: Formulario) => {
-          statusMap[form.id] = formulariosRespondidos.has(form.id)
-        })
-        
-        setRespostasStatus(statusMap)
+        if (!respostasError && todasRespostas) {
+          // Criar um Set para lookup rápido
+          const formulariosRespondidos = new Set(
+            (todasRespostas || []).map((r: any) => r.formulario_id)
+          )
+          
+          // Criar mapa de status
+          const statusMap: Record<string, boolean> = {}
+          formularios.forEach((form: Formulario) => {
+            statusMap[form.id] = formulariosRespondidos.has(form.id)
+          })
+          
+          setRespostasStatus(statusMap)
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao carregar formulários:', error)
+      setError(error.message || 'Erro ao carregar formulários. Tente novamente.')
     } finally {
       setLoading(false)
     }
@@ -129,22 +147,16 @@ export default function FormulariosPage() {
     }
   }
 
-  if (loading) {
+  if (loading || error) {
     return (
       <div className="space-y-4 md:space-y-6">
-        <div className={cn(
-          "backdrop-blur-md border rounded-xl p-8 md:p-12 text-center",
-          theme === 'dark'
-            ? "bg-gray-800/30 border-white/10"
-            : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
-        )}>
-          <p className={cn(
-            "text-sm md:text-base",
-            theme === 'dark' ? "text-gray-400" : "text-gray-600"
-          )}>
-            Carregando formulários...
-          </p>
-        </div>
+        <SafeLoading
+          loading={loading}
+          error={error}
+          onRetry={carregarFormularios}
+          loadingMessage="Carregando formulários..."
+          errorMessage="Não foi possível carregar os formulários. Tente novamente."
+        />
       </div>
     )
   }

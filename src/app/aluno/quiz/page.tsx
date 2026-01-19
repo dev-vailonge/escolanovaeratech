@@ -13,6 +13,8 @@ import { getAuthToken } from '@/lib/getAuthToken'
 import type { DatabaseQuiz } from '@/types/database'
 import type { QuizQuestion } from '@/types/quiz'
 import QuizPlayer, { QuizResult } from '@/components/quiz/QuizPlayer'
+import SafeLoading from '@/components/ui/SafeLoading'
+import { safeSupabaseQuery, safeFetch } from '@/lib/utils/safeSupabaseQuery'
 
 // Interface para respostas salvas
 interface QuizResposta {
@@ -202,37 +204,47 @@ export default function QuizPage() {
     try {
       if (showLoading) setLoading(true)
       
-      // Buscar quizzes, progresso e XP ganho em paralelo para melhor performance
+      // Buscar quizzes, progresso e XP ganho em paralelo para melhor performance - com timeouts
       const [dbQuizzes, progressResult, xpHistoryResult] = await Promise.allSettled([
         getAllQuizzes(),
-        // Buscar progresso do usuário se logado (incluindo respostas)
+        // Buscar progresso do usuário se logado (incluindo respostas) - com timeout
         authUser?.id
-          ? supabase
-              .from('user_quiz_progress')
-              .select('quiz_id, tentativas, melhor_pontuacao, completo, updated_at, respostas')
-              .eq('user_id', authUser.id)
-              .then(({ data, error }) => {
-                if (error) {
-                  console.error('❌ Erro ao buscar progresso:', error)
-                  return []
-                }
-                return data || []
-              })
+          ? safeSupabaseQuery(
+              async () => {
+                const { data, error } = await supabase
+                  .from('user_quiz_progress')
+                  .select('quiz_id, tentativas, melhor_pontuacao, completo, updated_at, respostas')
+                  .eq('user_id', authUser.id)
+                return { data, error }
+              },
+              { timeout: 10000, retry: true }
+            ).then(({ data, error }) => {
+              if (error) {
+                console.error('❌ Erro ao buscar progresso:', error)
+                return []
+              }
+              return data || []
+            })
           : Promise.resolve([]),
-        // Buscar histórico de XP ganho em quizzes
+        // Buscar histórico de XP ganho em quizzes - com timeout
         authUser?.id
-          ? supabase
-              .from('user_xp_history')
-              .select('source_id, amount')
-              .eq('user_id', authUser.id)
-              .eq('source', 'quiz')
-              .then(({ data, error }) => {
-                if (error) {
-                  console.error('❌ Erro ao buscar histórico de XP:', error)
-                  return []
-                }
-                return data || []
-              })
+          ? safeSupabaseQuery(
+              async () => {
+                const { data, error } = await supabase
+                  .from('user_xp_history')
+                  .select('source_id, amount')
+                  .eq('user_id', authUser.id)
+                  .eq('source', 'quiz')
+                return { data, error }
+              },
+              { timeout: 10000, retry: true }
+            ).then(({ data, error }) => {
+              if (error) {
+                console.error('❌ Erro ao buscar histórico de XP:', error)
+                return []
+              }
+              return data || []
+            })
           : Promise.resolve([])
       ])
       
@@ -478,10 +490,13 @@ export default function QuizPage() {
         correct: r.correct
       }))
 
-      const res = await fetch(`/api/quiz/${selectedQuiz.id}/completar`, {
+      const res = await safeFetch(`/api/quiz/${selectedQuiz.id}/completar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ pontuacao: result.pontuacao, respostas: respostasParaSalvar }),
+        timeout: 15000, // 15 segundos para completar quiz
+        retry: true,
+        retryAttempts: 1
       })
       
       const json = await res.json().catch(() => ({}))
@@ -565,13 +580,20 @@ export default function QuizPage() {
             Teste seus conhecimentos e ganhe XP
           </p>
         </div>
-        <div className={cn(
-          "flex items-center justify-center p-12",
-          theme === 'dark' ? "text-gray-400" : "text-gray-600"
-        )}>
-          <Loader2 className="w-6 h-6 animate-spin mr-2" />
-          <span>Carregando quizzes...</span>
-        </div>
+        <SafeLoading
+          loading={loading}
+          timeout={15}
+          onRetry={() => fetchQuizzes(true)}
+          errorMessage="Os quizzes estão demorando para carregar. Tente novamente."
+        >
+          <div className={cn(
+            "flex items-center justify-center p-12",
+            theme === 'dark' ? "text-gray-400" : "text-gray-600"
+          )}>
+            <Loader2 className="w-6 h-6 animate-spin mr-2" />
+            <span>Carregando quizzes...</span>
+          </div>
+        </SafeLoading>
       </div>
     )
   }
@@ -1071,9 +1093,7 @@ export default function QuizPage() {
                           "font-semibold",
                           theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                         )}>
-                          {quiz.melhorPontuacao 
-                            ? Math.round((quiz.melhorPontuacao / 100) * quiz.xpGanho) 
-                            : 0}/{quiz.xpGanho} XP
+                          {quiz.xpTotalGanho || 0}/{quiz.xpGanho} XP
                         </span>
                       </p>
                       {quiz.dataConclusao && (

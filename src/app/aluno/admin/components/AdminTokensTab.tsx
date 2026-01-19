@@ -15,6 +15,8 @@ import {
   Info
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import SafeLoading from '@/components/ui/SafeLoading'
+import { safeFetch } from '@/lib/utils/safeSupabaseQuery'
 
 // Tipo dos registros de token usage
 interface TokenUsageRecord {
@@ -62,7 +64,7 @@ export default function AdminTokensTab() {
   const [records, setRecords] = useState<TokenUsageRecord[]>([])
   const [summary, setSummary] = useState<TokenUsageSummary | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
 
   // Ordenação
@@ -79,7 +81,7 @@ export default function AdminTokensTab() {
   // Carregar dados
   const carregarDados = useCallback(async () => {
     try {
-      setError('')
+      setError(null)
       const isRefresh = refreshing
       if (!isRefresh) {
         setLoading(true)
@@ -92,18 +94,22 @@ export default function AdminTokensTab() {
         return
       }
 
-      // Fazer requisição
-      const response = await fetch('/api/admin/tokens', {
+      // Fazer requisição com timeout
+      const response = await safeFetch('/api/admin/tokens', {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
-        }
+        },
+        timeout: 10000,
+        retry: true,
+        retryAttempts: 2
       })
 
-      const data = await response.json()
-
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao carregar dados')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Erro ao carregar dados')
       }
+
+      const data = await response.json()
 
       setRecords(data.records || [])
       setSummary(data.summary || null)
@@ -322,15 +328,15 @@ export default function AdminTokensTab() {
     return value.toLocaleString('pt-BR')
   }
 
-  if (loading) {
+  if (loading || error) {
     return (
-      <div className={cn(
-        "flex items-center justify-center p-12",
-        theme === 'dark' ? "text-gray-300" : "text-gray-700"
-      )}>
-        <Loader2 className="w-8 h-8 animate-spin" />
-        <span className="ml-3">Carregando dados de tokens...</span>
-      </div>
+      <SafeLoading
+        loading={loading}
+        error={error}
+        onRetry={carregarDados}
+        loadingMessage="Carregando dados de tokens..."
+        errorMessage="Não foi possível carregar os dados de tokens. Tente novamente."
+      />
     )
   }
 

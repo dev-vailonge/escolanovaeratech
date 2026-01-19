@@ -52,6 +52,15 @@ async function trackTokenUsage(params: TrackTokenUsageParams): Promise<void> {
       metadata = {},
     } = params
 
+    console.log(`📊 [trackTokenUsage] Iniciando rastreamento:`, {
+      userId,
+      feature,
+      endpoint,
+      model,
+      promptTokens,
+      completionTokens
+    })
+
     // Calcular custo estimado
     const pricing = OPENAI_PRICING[model as keyof typeof OPENAI_PRICING] || {
       input: 0,
@@ -63,9 +72,16 @@ async function trackTokenUsage(params: TrackTokenUsageParams): Promise<void> {
     const totalCost = inputCost + outputCost
     const totalTokens = promptTokens + completionTokens
 
+    // Verificar se SUPABASE_SERVICE_ROLE_KEY está configurado
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('❌ [trackTokenUsage] SUPABASE_SERVICE_ROLE_KEY não configurado! Não é possível salvar tokens.')
+      return
+    }
+
     // Salvar no banco de dados usando Supabase Admin (bypass RLS)
     const supabase = getSupabaseAdmin()
-    const { error } = await supabase.from('openai_token_usage').insert({
+    
+    const insertData = {
       user_id: userId,
       feature,
       endpoint,
@@ -75,18 +91,40 @@ async function trackTokenUsage(params: TrackTokenUsageParams): Promise<void> {
       total_tokens: totalTokens,
       estimated_cost_usd: totalCost,
       metadata,
+    }
+    
+    console.log(`📤 [trackTokenUsage] Tentando inserir no banco:`, {
+      user_id: userId,
+      feature,
+      total_tokens: totalTokens,
+      cost: totalCost
     })
 
+    const { data, error } = await supabase
+      .from('openai_token_usage')
+      .insert(insertData)
+      .select()
+
     if (error) {
-      console.error('❌ Erro ao rastrear uso de tokens:', error)
+      console.error('❌ [trackTokenUsage] Erro ao inserir no banco:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        insertData
+      })
       // Não lançar erro para não quebrar o fluxo principal
     } else {
       console.log(
-        `✅ Token usage tracked: ${totalTokens} tokens ($${totalCost.toFixed(6)}) - ${feature}`
+        `✅ [trackTokenUsage] Token usage tracked com sucesso: ${totalTokens} tokens ($${totalCost.toFixed(6)}) - ${feature} - ID: ${data?.[0]?.id}`
       )
     }
-  } catch (error) {
-    console.error('❌ Erro ao rastrear uso de tokens:', error)
+  } catch (error: any) {
+    console.error('❌ [trackTokenUsage] Erro ao rastrear uso de tokens:', {
+      message: error?.message,
+      stack: error?.stack,
+      params
+    })
     // Não lançar erro para não quebrar o fluxo principal
   }
 }

@@ -117,8 +117,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                          'Usuário'
         
         // Primeiro, tentar criar via API (se tiver service role key)
+        // Adicionar timeout de 5 segundos
         try {
-          const response = await fetch('/api/users/create', {
+          const fetchPromise = fetch('/api/users/create', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -131,6 +132,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               access_level: 'full'
             }),
           })
+          
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('fetch timeout')), 5000)
+          )
+          
+          const response = await Promise.race([fetchPromise, timeoutPromise]) as Response
+
+          if (!response || !response.ok) {
+            throw new Error('Response não OK')
+          }
 
           const result = await response.json()
 
@@ -154,12 +165,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Se ainda não conseguiu criar, aguardar um pouco e tentar buscar novamente
         // (pode ter sido criado por trigger do banco de dados que demora alguns segundos)
+        // REDUZIDO para 1.5 segundos para evitar travamento
         if (!dbUser) {
-          console.log('⏳ Aguardando 3 segundos para verificar se trigger criou o usuário...')
-          await new Promise(resolve => setTimeout(resolve, 3000))
+          console.log('⏳ Aguardando 1.5 segundos para verificar se trigger criou o usuário...')
+          await new Promise(resolve => setTimeout(resolve, 1500))
           
-          // Tentar buscar novamente após aguardar
-          dbUser = await getUserById(supabaseUser.id)
+          // Tentar buscar novamente após aguardar (com timeout)
+          try {
+            const getUserPromise = getUserById(supabaseUser.id)
+            const getUserTimeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('getUserById timeout')), 3000)
+            )
+            dbUser = await Promise.race([getUserPromise, getUserTimeoutPromise]) as DatabaseUser | null
+          } catch (error) {
+            console.warn('⚠️ getUserById timeout após aguardar:', error)
+            dbUser = null
+          }
           
           if (!dbUser) {
             // Tentar buscar por email como fallback (pode ter sido criado com ID diferente)
@@ -218,10 +239,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Verifica se Supabase está configurado antes de usar
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        const { data: { session } } = await supabase.auth.getSession()
+        // Adicionar timeout para getSession (5 segundos)
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('getSession timeout')), 5000)
+        )
+        
+        let session
+        try {
+          const result = await Promise.race([sessionPromise, timeoutPromise]) as any
+          session = result?.data
+        } catch (error) {
+          console.warn('⚠️ getSession timeout ou erro:', error)
+          session = null
+        }
+        
         if (session?.user) {
-          const authUser = await fetchUserData(session.user)
-          setUser(authUser)
+          // Adicionar timeout para fetchUserData (10 segundos)
+          const fetchUserPromise = fetchUserData(session.user)
+          const fetchTimeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('fetchUserData timeout')), 10000)
+          )
+          
+          try {
+            const authUser = await Promise.race([fetchUserPromise, fetchTimeoutPromise]) as AuthUser | null
+            setUser(authUser)
+          } catch (error) {
+            console.warn('⚠️ fetchUserData timeout ou erro:', error)
+            setUser(null)
+          }
         } else {
           setUser(null)
         }
@@ -232,6 +278,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setInitialized(true)
     } catch (error) {
       // Error getting initial session - modo mockado continua funcionando
+      console.error('❌ Erro ao inicializar autenticação:', error)
       setUser(null)
       setInitialized(true)
     } finally {
@@ -245,16 +292,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // #endregion
     try {
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        const { data: { session } } = await supabase.auth.getSession()
+        // Adicionar timeout para getSession (5 segundos)
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('getSession timeout')), 5000)
+        )
+        
+        let session
+        try {
+          const result = await Promise.race([sessionPromise, timeoutPromise]) as any
+          session = result?.data
+        } catch (error) {
+          console.warn('⚠️ refreshSession: getSession timeout ou erro:', error)
+          session = null
+        }
         // #region agent log
         fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:145',message:'getSession result',data:{hasSession:!!session,hasUser:!!session?.user,userId:session?.user?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
         // #endregion
         if (session?.user) {
-          const authUser = await fetchUserData(session.user)
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:148',message:'fetchUserData result',data:{hasAuthUser:!!authUser,userId:authUser?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
-          setUser(authUser)
+          // Adicionar timeout para fetchUserData (10 segundos)
+          const fetchUserPromise = fetchUserData(session.user)
+          const fetchTimeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('fetchUserData timeout')), 10000)
+          )
+          
+          let authUser
+          try {
+            authUser = await Promise.race([fetchUserPromise, fetchTimeoutPromise]) as AuthUser | null
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:148',message:'fetchUserData result',data:{hasAuthUser:!!authUser,userId:authUser?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
+            setUser(authUser)
+          } catch (error) {
+            console.warn('⚠️ refreshSession: fetchUserData timeout ou erro:', error)
+            setUser(null)
+          }
         } else {
           setUser(null)
           // #region agent log

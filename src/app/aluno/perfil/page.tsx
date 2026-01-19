@@ -11,6 +11,7 @@ import Modal from '@/components/ui/Modal'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getLevelBorderColor, getLevelRequirements, getXPForNextLevel, getLevelCategory, calculateLevel } from '@/lib/gamification'
 import type { DatabaseUserXpHistory } from '@/types/database'
+import { safeFetch } from '@/lib/utils/safeSupabaseQuery'
 
 export default function PerfilPage() {
   const { user: authUser, refreshSession } = useAuth()
@@ -96,11 +97,14 @@ export default function PerfilPage() {
           return
         }
 
-        const res = await fetch('/api/users/me/xp-history', {
+        const res = await safeFetch('/api/users/me/xp-history', {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
-          }
+          },
+          timeout: 10000,
+          retry: true,
+          retryAttempts: 2
         })
 
         if (!res.ok) {

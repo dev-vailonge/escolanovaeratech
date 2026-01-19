@@ -15,6 +15,8 @@ import BadgeDisplay from '@/components/comunidade/BadgeDisplay'
 import { getUserBadges } from '@/lib/badges'
 import { CURSOS } from '@/lib/constants/cursos'
 import { formatDateTime, wasEdited } from '@/lib/utils/dateFormat'
+import SafeLoading from '@/components/ui/SafeLoading'
+import { safeFetch } from '@/lib/utils/safeSupabaseQuery'
 
 type FilterOwner = 'all' | 'mine'
 type FilterStatus = 'all' | 'answered' | 'unanswered'
@@ -62,6 +64,7 @@ export default function ComunidadePage() {
   const [perguntas, setPerguntas] = useState<Pergunta[]>([])
   const [respostas, setRespostas] = useState<Map<string, Resposta[]>>(new Map())
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [avatarErrors, setAvatarErrors] = useState<Set<string>>(new Set())
   const { theme } = useTheme()
@@ -115,7 +118,6 @@ export default function ComunidadePage() {
   const router = useRouter()
   
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string>('')
   const [success, setSuccess] = useState<string>('')
   const [respostaMensagem, setRespostaMensagem] = useState<Map<string, string>>(new Map())
 
@@ -123,6 +125,7 @@ export default function ComunidadePage() {
   const fetchPerguntas = async () => {
     try {
       setLoading(true)
+      setError(null)
       const token = await getAuthToken()
 
       const params = new URLSearchParams()
@@ -142,9 +145,17 @@ export default function ComunidadePage() {
       }
       params.append('order', filterOrder)
 
-      const res = await fetch(`/api/comunidade/perguntas?${params.toString()}`, {
+      const res = await safeFetch(`/api/comunidade/perguntas?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
+        timeout: 10000,
+        retry: true,
+        retryAttempts: 2
       })
+
+      if (!res.ok) {
+        throw new Error('Erro ao buscar perguntas')
+      }
+
       const json = await res.json()
 
       if (json.success && json.perguntas) {
@@ -168,6 +179,7 @@ export default function ComunidadePage() {
       }
     } catch (e: any) {
       console.error('Erro ao buscar perguntas:', e)
+      setError(e.message || 'Erro ao carregar perguntas. Tente novamente.')
     } finally {
       setLoading(false)
     }
@@ -178,9 +190,17 @@ export default function ComunidadePage() {
     try {
       const token = await getAuthToken()
 
-      const res = await fetch(`/api/comunidade/perguntas/${perguntaId}/respostas`, {
+      const res = await safeFetch(`/api/comunidade/perguntas/${perguntaId}/respostas`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
+        timeout: 10000,
+        retry: true,
+        retryAttempts: 2
       })
+
+      if (!res.ok) {
+        throw new Error('Erro ao buscar respostas')
+      }
+
       const json = await res.json()
 
       if (json.success && json.respostas) {
@@ -906,22 +926,15 @@ export default function ComunidadePage() {
     return !temMelhorResposta && !estaResolvida
   }).length
 
-  if (loading) {
+  if (loading || error) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className={cn(
-            "animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4",
-            theme === 'dark' ? "border-yellow-400" : "border-yellow-600"
-          )} />
-          <p className={cn(
-            "text-sm",
-            theme === 'dark' ? "text-gray-400" : "text-gray-600"
-          )}>
-            Carregando perguntas...
-          </p>
-        </div>
-      </div>
+      <SafeLoading
+        loading={loading}
+        error={error}
+        onRetry={fetchPerguntas}
+        loadingMessage="Carregando perguntas..."
+        errorMessage="Não foi possível carregar as perguntas. Tente novamente."
+      />
     )
   }
 

@@ -188,12 +188,33 @@ export default function DesafiosPage() {
       }
       console.log('🔍 [loadMeusDesafios] Carregando desafios para usuário:', authUser.id)
 
-      // Buscar atribuições do usuário
-      const { data: atribuicoes, error: atribError } = await supabase
-        .from('user_desafio_atribuido')
-        .select('desafio_id, created_at')
-        .eq('user_id', authUser.id)
-        .order('created_at', { ascending: false })
+      // Timeout de segurança: 10 segundos para cada operação
+      const createTimeoutPromise = (timeoutMs: number) => 
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), timeoutMs)
+        )
+
+      // Buscar atribuições do usuário (com timeout)
+      let atribuicoes, atribError
+      try {
+        const atribPromise = supabase
+          .from('user_desafio_atribuido')
+          .select('desafio_id, created_at')
+          .eq('user_id', authUser.id)
+          .order('created_at', { ascending: false })
+        
+        const result = await Promise.race([
+          atribPromise,
+          createTimeoutPromise(10000)
+        ]) as any
+        
+        atribuicoes = result?.data
+        atribError = result?.error
+      } catch (error: any) {
+        console.error('❌ [loadMeusDesafios] Timeout ou erro ao buscar atribuições:', error)
+        atribError = error
+        atribuicoes = null
+      }
 
       if (atribError) {
         console.error('❌ [loadMeusDesafios] Erro ao buscar atribuições:', atribError)
@@ -209,14 +230,29 @@ export default function DesafiosPage() {
         return
       }
 
-      const desafioIds = atribuicoes.map(a => a.desafio_id)
+      const desafioIds = atribuicoes.map((a: any) => a.desafio_id)
       console.log('🎯 [loadMeusDesafios] IDs de desafios para buscar:', desafioIds)
 
-      // Buscar detalhes dos desafios
-      const { data: desafios, error: desafiosError } = await supabase
-        .from('desafios')
-        .select('*')
-        .in('id', desafioIds)
+      // Buscar detalhes dos desafios (com timeout)
+      let desafios, desafiosError
+      try {
+        const desafiosPromise = supabase
+          .from('desafios')
+          .select('*')
+          .in('id', desafioIds)
+        
+        const result = await Promise.race([
+          desafiosPromise,
+          createTimeoutPromise(10000)
+        ]) as any
+        
+        desafios = result?.data
+        desafiosError = result?.error
+      } catch (error: any) {
+        console.error('❌ [loadMeusDesafios] Timeout ou erro ao buscar desafios:', error)
+        desafiosError = error
+        desafios = null
+      }
 
       if (desafiosError) {
         console.error('❌ [loadMeusDesafios] Erro ao buscar desafios:', desafiosError)
@@ -224,13 +260,28 @@ export default function DesafiosPage() {
         console.log('📚 [loadMeusDesafios] Desafios encontrados:', desafios?.length || 0)
       }
 
-      // Buscar submissions do usuário (todas, não só a última, para contar tentativas)
-      const { data: submissions, error: submissionsError } = await supabase
-        .from('desafio_submissions')
-        .select('*')
-        .eq('user_id', authUser.id)
-        .in('desafio_id', desafioIds)
-        .order('created_at', { ascending: true }) // Ordenar por data para contar tentativas
+      // Buscar submissions do usuário (com timeout)
+      let submissions, submissionsError
+      try {
+        const submissionsPromise = supabase
+          .from('desafio_submissions')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .in('desafio_id', desafioIds)
+          .order('created_at', { ascending: true })
+        
+        const result = await Promise.race([
+          submissionsPromise,
+          createTimeoutPromise(10000)
+        ]) as any
+        
+        submissions = result?.data
+        submissionsError = result?.error
+      } catch (error: any) {
+        console.error('❌ [loadMeusDesafios] Timeout ou erro ao buscar submissions:', error)
+        submissionsError = error
+        submissions = null
+      }
 
       if (submissionsError) {
         console.error('❌ [loadMeusDesafios] Erro ao buscar submissions:', submissionsError)
@@ -239,11 +290,11 @@ export default function DesafiosPage() {
       }
 
       // Montar lista de "Meus Desafios"
-      const meusDesafiosList: MeuDesafio[] = atribuicoes.map(atrib => {
-        const desafio = desafios?.find(d => d.id === atrib.desafio_id)
+      const meusDesafiosList: MeuDesafio[] = atribuicoes.map((atrib: any) => {
+        const desafio = desafios?.find((d: any) => d.id === atrib.desafio_id)
         
         // Buscar todas as submissões para este desafio (para contar tentativas)
-        const todasSubmissions = submissions?.filter(s => s.desafio_id === atrib.desafio_id) || []
+        const todasSubmissions = submissions?.filter((s: any) => s.desafio_id === atrib.desafio_id) || []
         
         // A submissão atual é a última (mais recente)
         const submission = todasSubmissions.length > 0 
@@ -252,7 +303,7 @@ export default function DesafiosPage() {
 
         // Contar tentativas: número total de submissões (pendente, aprovado, rejeitado)
         // Desistir não conta como tentativa, apenas submissões reais
-        const tentativas = todasSubmissions.filter(s => 
+        const tentativas = todasSubmissions.filter((s: any) =>
           s.status === 'pendente' || s.status === 'aprovado' || s.status === 'rejeitado'
         ).length
 
@@ -283,7 +334,7 @@ export default function DesafiosPage() {
           dataConclusao,
           tentativas: tentativas || 0
         }
-      }).filter(d => {
+      }).filter((d: any) => {
         // Filtrar desafios que existem
         if (!d.desafio) return false
         // Filtrar desafios com status "desistiu" (casos antigos onde a atribuição não foi removida)
@@ -295,7 +346,9 @@ export default function DesafiosPage() {
       console.log('✅ [loadMeusDesafios] Lista final montada:', meusDesafiosList.length, 'desafios')
       setMeusDesafios(meusDesafiosList)
     } catch (err) {
-      console.error('Erro ao carregar meus desafios:', err)
+      console.error('❌ [loadMeusDesafios] Erro ao carregar meus desafios:', err)
+      setError('Erro ao carregar desafios. Tente recarregar a página.')
+      setMeusDesafios([]) // Garantir que a lista está vazia em caso de erro
     } finally {
       setLoading(false)
       setRefreshing(false)

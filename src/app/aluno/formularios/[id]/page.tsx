@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils'
 import { FileText, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import type { FormularioPergunta } from '@/types/database'
+import SafeLoading from '@/components/ui/SafeLoading'
+import { safeSupabaseQuery } from '@/lib/utils/safeSupabaseQuery'
 
 interface Formulario {
   id: string
@@ -36,7 +38,7 @@ export default function FormularioPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [jaRespondido, setJaRespondido] = useState(false)
   const [pontosGanhos, setPontosGanhos] = useState(0)
   
@@ -57,6 +59,7 @@ export default function FormularioPage() {
   const carregarFormulario = async (id: string) => {
     try {
       setLoading(true)
+      setError(null)
       
       if (!user) {
         setError('Usuário não autenticado')
@@ -75,11 +78,17 @@ export default function FormularioPage() {
       }
 
       // Buscar formulário diretamente do Supabase
-      const { data: formulario, error: formularioError } = await supabase
-        .from('formularios')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle()
+      const { data: formulario, error: formularioError } = await safeSupabaseQuery(
+        async () => {
+          const result = await supabase
+            .from('formularios')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle()
+          return result
+        },
+        { timeout: 10000, retryAttempts: 0 }
+      )
 
       if (formularioError || !formulario) {
         setError('Formulário não encontrado')
@@ -97,14 +106,20 @@ export default function FormularioPage() {
       setFormulario(formulario)
 
       // Buscar resposta anterior se existir
-      const { data: minhaResposta } = await supabase
-        .from('formulario_respostas')
-        .select('*')
-        .eq('formulario_id', id)
-        .eq('user_id', user.id)
-        .maybeSingle()
+      const { data: minhaResposta, error: respostaError } = await safeSupabaseQuery(
+        async () => {
+          const result = await supabase
+            .from('formulario_respostas')
+            .select('*')
+            .eq('formulario_id', id)
+            .eq('user_id', user.id)
+            .maybeSingle()
+          return result
+        },
+        { timeout: 10000, retryAttempts: 0 }
+      )
 
-      if (minhaResposta) {
+      if (!respostaError && minhaResposta) {
         setJaRespondido(true)
         const respostas = minhaResposta.respostas
         setFormData({
@@ -115,9 +130,9 @@ export default function FormularioPage() {
           respostasPerguntas: respostas.respostasPerguntas || {}
         })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao carregar formulário:', error)
-      setError('Erro ao carregar formulário. Tente novamente.')
+      setError(error.message || 'Erro ao carregar formulário. Tente novamente.')
     } finally {
       setLoading(false)
     }
@@ -445,26 +460,16 @@ export default function FormularioPage() {
     })
   }
 
-  if (loading) {
+  if (loading || error) {
     return (
       <div className="space-y-4 md:space-y-6">
-        <div className={cn(
-          "backdrop-blur-md border rounded-xl p-8 md:p-12 text-center",
-          theme === 'dark'
-            ? "bg-black/20 border-white/10"
-            : "bg-white border-[#FFF420]/90 shadow-md"
-        )}>
-          <Loader2 className={cn(
-            "w-8 h-8 mx-auto mb-4 animate-spin",
-            theme === 'dark' ? "text-[#FFF420]" : "text-[#FFF420]"
-          )} />
-          <p className={cn(
-            "text-sm md:text-base",
-            theme === 'dark' ? "text-gray-400" : "text-gray-600"
-          )}>
-            Carregando formulário...
-          </p>
-        </div>
+        <SafeLoading
+          loading={loading}
+          error={error}
+          onRetry={() => params.id && carregarFormulario(params.id as string)}
+          loadingMessage="Carregando formulário..."
+          errorMessage="Não foi possível carregar o formulário. Tente novamente."
+        />
       </div>
     )
   }

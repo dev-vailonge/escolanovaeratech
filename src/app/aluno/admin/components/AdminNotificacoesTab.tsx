@@ -11,6 +11,8 @@ import { getAllNotificacoes, createNotificacao, updateNotificacao, deleteNotific
 import type { DatabaseNotificacao, NotificacaoWithUser } from '@/types/database'
 import { supabase } from '@/lib/supabase'
 import Pagination from '@/components/ui/Pagination'
+import SafeLoading from '@/components/ui/SafeLoading'
+import { safeFetch, safeSupabaseQuery } from '@/lib/utils/safeSupabaseQuery'
 
 type TabType = 'enviadas' | 'recebidas'
 
@@ -34,7 +36,7 @@ export default function AdminNotificacoesTab() {
   const [loadingRecebidas, setLoadingRecebidas] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [editingNotificacao, setEditingNotificacao] = useState<DatabaseNotificacao | null>(null)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const [currentPageEnviadas, setCurrentPageEnviadas] = useState(1)
   const [currentPageRecebidas, setCurrentPageRecebidas] = useState(1)
   const [imagemModalOpen, setImagemModalOpen] = useState(false)
@@ -86,12 +88,19 @@ export default function AdminNotificacoesTab() {
     return sugestoesRecebidas.slice(startIndex, endIndex)
   }, [sugestoesRecebidas, currentPageRecebidas, itemsPerPage])
 
-  const carregarNotificacoes = async (retryCount = 0) => {
-    const maxRetries = 2
+  const carregarNotificacoes = async () => {
     try {
       setLoading(true)
-      setError('')
-      const dados = await getAllNotificacoes()
+      setError(null)
+      
+      // Usar Promise.race com timeout para getAllNotificacoes
+      const timeoutPromise = new Promise<DatabaseNotificacao[]>((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout ao carregar notificações')), 10000)
+      })
+      
+      const dataPromise = getAllNotificacoes()
+      const dados = await Promise.race([dataPromise, timeoutPromise])
+      
       // Filtrar apenas notificações enviadas pelo admin:
       // - created_by é null (notificações antigas, assumimos que são do admin)
       // - created_by é o admin atual
@@ -102,25 +111,18 @@ export default function AdminNotificacoesTab() {
         return !n.created_by || n.created_by === user?.id
       })
       setNotificacoes(notificacoesEnviadas)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao carregar notificações:', err)
-      // Retry logic
-      if (retryCount < maxRetries) {
-        console.log(`🔄 Tentando novamente (tentativa ${retryCount + 1}/${maxRetries})...`)
-        setTimeout(() => carregarNotificacoes(retryCount + 1), 1000 * (retryCount + 1))
-        return
-      }
-      setError('Erro ao carregar notificações. Tente novamente.')
+      setError(err.message || 'Erro ao carregar notificações. Tente novamente.')
     } finally {
       setLoading(false)
     }
   }
 
-  const carregarSugestoesRecebidas = async (retryCount = 0) => {
-    const maxRetries = 2
+  const carregarSugestoesRecebidas = async () => {
     try {
       setLoadingRecebidas(true)
-      setError('')
+      setError(null)
 
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
@@ -131,29 +133,43 @@ export default function AdminNotificacoesTab() {
       // - is_sugestao_bug é true (marcadas como sugestão/bug)
       // - created_by não é null (foi criada por alguém)
       // - created_by não é o admin atual (foi criada por um aluno)
-      const { data: todasNotificacoes, error: notifError } = await supabase
-        .from('notificacoes')
-        .select('*')
-        .eq('is_sugestao_bug', true)
-        .not('created_by', 'is', null)
-        .neq('created_by', user?.id || '')
-        .order('created_at', { ascending: false })
+      const { data: todasNotificacoes, error: notifError } = await safeSupabaseQuery(
+        async () => {
+          const result = await supabase
+            .from('notificacoes')
+            .select('*')
+            .eq('is_sugestao_bug', true)
+            .not('created_by', 'is', null)
+            .neq('created_by', user?.id || '')
+            .order('created_at', { ascending: false })
+          return result
+        },
+        { timeout: 10000, retryAttempts: 0 }
+      )
 
-      if (notifError) throw notifError
+      if (notifError || !todasNotificacoes) {
+        throw new Error(notifError?.message || 'Erro ao buscar notificações')
+      }
 
       // Buscar dados dos usuários que criaram as notificações
-      const userIds = [...new Set((todasNotificacoes || []).map(n => n.created_by).filter(Boolean) as string[])]
+      const userIds = [...new Set((todasNotificacoes || []).map((n: any) => n.created_by).filter(Boolean) as string[])]
       
       let usersMap: Record<string, { id: string; name: string; email: string; avatar_url?: string | null; level?: number }> = {}
       
       if (userIds.length > 0) {
-        const { data: users, error: usersError } = await supabase
-          .from('users')
-          .select('id, name, email, avatar_url, level')
-          .in('id', userIds)
+        const { data: users, error: usersError } = await safeSupabaseQuery(
+          async () => {
+            const result = await supabase
+              .from('users')
+              .select('id, name, email, avatar_url, level')
+              .in('id', userIds)
+            return result
+          },
+          { timeout: 10000, retryAttempts: 0 }
+        )
 
         if (!usersError && users) {
-          usersMap = users.reduce((acc, user) => {
+          usersMap = users.reduce((acc: any, user: any) => {
             acc[user.id] = {
               id: user.id,
               name: user.name,
@@ -167,21 +183,15 @@ export default function AdminNotificacoesTab() {
       }
 
       // Mapear os dados para o formato NotificacaoWithUser
-      const sugestoes: NotificacaoWithUser[] = (todasNotificacoes || []).map((notif) => ({
+      const sugestoes: NotificacaoWithUser[] = (todasNotificacoes || []).map((notif: any) => ({
         ...notif,
         user: notif.created_by ? usersMap[notif.created_by] : undefined
       }))
 
       setSugestoesRecebidas(sugestoes)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao carregar sugestões recebidas:', err)
-      // Retry logic
-      if (retryCount < maxRetries) {
-        console.log(`🔄 Tentando novamente (tentativa ${retryCount + 1}/${maxRetries})...`)
-        setTimeout(() => carregarSugestoesRecebidas(retryCount + 1), 1000 * (retryCount + 1))
-        return
-      }
-      setError('Erro ao carregar sugestões recebidas. Tente novamente.')
+      setError(err.message || 'Erro ao carregar sugestões recebidas. Tente novamente.')
     } finally {
       setLoadingRecebidas(false)
     }
@@ -257,15 +267,15 @@ export default function AdminNotificacoesTab() {
     }
   }
 
-  if (loading) {
+  if (loading || error) {
     return (
-      <div className={cn(
-        "flex items-center justify-center p-8",
-        theme === 'dark' ? "text-gray-400" : "text-gray-600"
-      )}>
-        <Loader2 className="w-6 h-6 animate-spin mr-2" />
-        <span>Carregando notificações...</span>
-      </div>
+      <SafeLoading
+        loading={loading}
+        error={error}
+        onRetry={carregarNotificacoes}
+        loadingMessage="Carregando notificações..."
+        errorMessage="Não foi possível carregar as notificações. Tente novamente."
+      />
     )
   }
 
@@ -519,14 +529,14 @@ export default function AdminNotificacoesTab() {
             </div>
           </div>
 
-          {loadingRecebidas ? (
-            <div className={cn(
-              "flex items-center justify-center p-8",
-              theme === 'dark' ? "text-gray-400" : "text-gray-600"
-            )}>
-              <Loader2 className="w-6 h-6 animate-spin mr-2" />
-              <span>Carregando sugestões...</span>
-            </div>
+          {loadingRecebidas || error ? (
+            <SafeLoading
+              loading={loadingRecebidas}
+              error={error}
+              onRetry={carregarSugestoesRecebidas}
+              loadingMessage="Carregando sugestões..."
+              errorMessage="Não foi possível carregar as sugestões. Tente novamente."
+            />
           ) : sugestoesRecebidas.length === 0 ? (
             <div className={cn(
               "p-8 text-center rounded-lg border",

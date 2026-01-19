@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import AlunoSidebar from '@/components/aluno/AlunoSidebar'
 import AlunoHeader from '@/components/aluno/AlunoHeader'
@@ -31,6 +31,22 @@ function AlunoLayoutContent({
   const pathname = usePathname()
 
   const isPublicRoute = publicRoutes.includes(pathname)
+
+  // Timeout de segurança: se estiver carregando por mais de 15 segundos, mostrar erro
+  // IMPORTANTE: Hooks devem ser chamados ANTES de qualquer return condicional
+  const [showTimeoutError, setShowTimeoutError] = useState(false)
+  
+  useEffect(() => {
+    if (loading || !initialized) {
+      const timeout = setTimeout(() => {
+        setShowTimeoutError(true)
+      }, 15000) // 15 segundos
+      
+      return () => clearTimeout(timeout)
+    } else {
+      setShowTimeoutError(false)
+    }
+  }, [loading, initialized])
 
   useEffect(() => {
     // Se não é rota pública e a autenticação foi inicializada e não está carregando
@@ -72,13 +88,35 @@ function AlunoLayoutContent({
   if (loading || !initialized) {
     return (
       <div className={cn(
-        "min-h-screen overflow-x-hidden relative transition-colors duration-300 flex items-center justify-center",
+        "min-h-screen overflow-x-hidden relative transition-colors duration-300 flex flex-col items-center justify-center gap-4",
         theme === 'dark' ? "bg-black" : "bg-white"
       )}>
         <div className={cn(
           "animate-spin rounded-full h-12 w-12 border-b-2",
           theme === 'dark' ? "border-yellow-400" : "border-yellow-600"
         )}></div>
+        {showTimeoutError && (
+          <div className={cn(
+            "text-center p-4 rounded-lg max-w-md",
+            theme === 'dark' 
+              ? "bg-red-500/10 border border-red-500/30 text-red-300"
+              : "bg-red-50 border border-red-200 text-red-700"
+          )}>
+            <p className="font-semibold mb-2">Carregamento demorado</p>
+            <p className="text-sm mb-4">A página está demorando mais que o esperado.</p>
+            <button
+              onClick={() => window.location.reload()}
+              className={cn(
+                "px-4 py-2 rounded-lg font-medium transition-colors",
+                theme === 'dark'
+                  ? "bg-red-500/20 hover:bg-red-500/30 border border-red-500/50"
+                  : "bg-red-500 hover:bg-red-600 text-white"
+              )}
+            >
+              Recarregar Página
+            </button>
+          </div>
+        )}
       </div>
     )
   }
