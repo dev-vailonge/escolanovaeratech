@@ -1,6 +1,7 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/AuthContext";
+import "@/lib/utils/consoleFilter"; // Filtra erros de extensões do navegador
 
 const inter = Inter({ subsets: ["latin"] });
 
