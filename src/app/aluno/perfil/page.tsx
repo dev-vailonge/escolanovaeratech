@@ -64,6 +64,7 @@ export default function PerfilPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(avatarUrl)
   const [saving, setSaving] = useState(false)
+  const [processingImage, setProcessingImage] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [xpHistory, setXpHistory] = useState<DatabaseUserXpHistory[]>([])
@@ -217,13 +218,157 @@ export default function PerfilPage() {
     } catch {}
   }
 
+  // Função para comprimir imagem se for maior que 5MB
+  const compressImageIfNeeded = async (file: File): Promise<File> => {
+    const maxBytes = 5 * 1024 * 1024 // 5MB
+    
+    // Se o arquivo já é menor que 5MB, retornar como está
+    if (file.size <= maxBytes) {
+      return file
+    }
+
+    try {
+      // Carregar imagem usando createImageBitmap ou Image como fallback
+      let width: number = 0
+      let height: number = 0
+      let imageSource: ImageBitmap | HTMLImageElement | null = null
+      
+      if ('createImageBitmap' in window) {
+        try {
+          const bitmap = await createImageBitmap(file)
+          width = bitmap.width
+          height = bitmap.height
+          imageSource = bitmap
+        } catch {
+          // Fallback para Image se createImageBitmap falhar
+          imageSource = null
+        }
+      }
+      
+      // Se não conseguiu com createImageBitmap, usar Image
+      if (!imageSource) {
+        const url = URL.createObjectURL(file)
+        try {
+          const img = new Image()
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve()
+            img.onerror = () => reject(new Error('Falha ao carregar imagem'))
+            img.src = url
+          })
+          width = img.width
+          height = img.height
+          imageSource = img
+        } finally {
+          // Não revogar URL ainda, vamos usar a imagem
+        }
+      }
+      
+      if (!imageSource || width === 0 || height === 0) {
+        if (imageSource instanceof ImageBitmap) {
+          imageSource.close()
+        } else if (imageSource instanceof HTMLImageElement) {
+          URL.revokeObjectURL(imageSource.src)
+        }
+        return file // Retornar original se não conseguir carregar
+      }
+      
+      // Calcular nova dimensão mantendo aspect ratio
+      // Reduzir para no máximo 2048x2048 (ou menor se necessário para ficar < 5MB)
+      const maxDimension = 2048
+      let targetWidth = width
+      let targetHeight = height
+      
+      if (targetWidth > maxDimension || targetHeight > maxDimension) {
+        const ratio = Math.min(maxDimension / targetWidth, maxDimension / targetHeight)
+        targetWidth = Math.round(targetWidth * ratio)
+        targetHeight = Math.round(targetHeight * ratio)
+      }
+      
+      // Criar canvas e redimensionar
+      const canvas = document.createElement('canvas')
+      canvas.width = targetWidth
+      canvas.height = targetHeight
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        if (imageSource instanceof ImageBitmap) {
+          imageSource.close()
+        } else if (imageSource instanceof HTMLImageElement) {
+          URL.revokeObjectURL(imageSource.src)
+        }
+        return file // Retornar original se não conseguir comprimir
+      }
+      
+      ctx.drawImage(imageSource, 0, 0, targetWidth, targetHeight)
+      
+      // Limpar recursos
+      if (imageSource instanceof ImageBitmap) {
+        imageSource.close()
+      } else if (imageSource instanceof HTMLImageElement) {
+        URL.revokeObjectURL(imageSource.src)
+      }
+      
+      // Tentar diferentes níveis de qualidade até ficar < 5MB
+      let quality = 0.9
+      let blob: Blob | null = null
+      
+      for (let attempt = 0; attempt < 5; attempt++) {
+        blob = await new Promise<Blob | null>((resolve) => {
+          canvas.toBlob((b) => resolve(b), 'image/jpeg', quality)
+        })
+        
+        if (blob && blob.size <= maxBytes) {
+          break
+        }
+        
+        // Reduzir qualidade para próxima tentativa
+        quality -= 0.15
+        if (quality < 0.3) {
+          // Se qualidade muito baixa, reduzir dimensão
+          targetWidth = Math.round(targetWidth * 0.8)
+          targetHeight = Math.round(targetHeight * 0.8)
+          canvas.width = targetWidth
+          canvas.height = targetHeight
+          ctx.clearRect(0, 0, targetWidth, targetHeight)
+          
+          // Recarregar imagem para redimensionar
+          const url2 = URL.createObjectURL(file)
+          try {
+            const img2 = new Image()
+            await new Promise<void>((resolve, reject) => {
+              img2.onload = () => resolve()
+              img2.onerror = () => reject(new Error('Falha ao carregar imagem'))
+              img2.src = url2
+            })
+            ctx.drawImage(img2, 0, 0, targetWidth, targetHeight)
+          } finally {
+            URL.revokeObjectURL(url2)
+          }
+          quality = 0.7
+        }
+      }
+      
+      if (blob && blob.size <= maxBytes) {
+        return new File([blob], file.name, { type: 'image/jpeg' })
+      }
+      
+      // Se ainda não conseguiu, retornar original (vai dar erro na API)
+      return file
+    } catch (error) {
+      console.warn('Erro ao comprimir imagem:', error)
+      return file // Retornar original se falhar
+    }
+  }
+
   const cropAvatarToFile = async (): Promise<File | null> => {
     try {
       if (!avatarFile) return null
       
-      // Se não há dados de crop, retornar o arquivo original
+      // Comprimir imagem se necessário antes de processar
+      const compressedFile = await compressImageIfNeeded(avatarFile)
+      
+      // Se não há dados de crop, retornar o arquivo comprimido
       if (!imgNatural || cropBoxSize <= 0) {
-        return avatarFile
+        return compressedFile
       }
 
       const S = cropBoxSize
@@ -348,18 +493,31 @@ export default function PerfilPage() {
       
       // Processar avatar apenas se houver arquivo
       if (avatarFile) {
+        setProcessingImage(true)
         try {
           const cropped = await cropAvatarToFile()
           if (cropped) {
+            // Verificar tamanho final após compressão/crop
+            const maxBytes = 5 * 1024 * 1024 // 5MB
+            if (cropped.size > maxBytes) {
+              setProcessingImage(false)
+              setSaving(false)
+              setError('A imagem ainda está muito grande após compressão. Tente com uma imagem menor.')
+              return
+            }
             form.set('avatar', cropped)
           }
         } catch (cropError: any) {
           console.error('Erro ao processar avatar:', cropError)
           // Continuar sem avatar se houver erro no processamento
           if (cropError?.message?.includes('Timeout')) {
+            setProcessingImage(false)
+            setSaving(false)
             setError('O processamento da imagem demorou demais. Tente com uma imagem menor.')
             return
           }
+        } finally {
+          setProcessingImage(false)
         }
       }
 
@@ -385,17 +543,25 @@ export default function PerfilPage() {
         throw new Error(json?.error || 'Erro ao atualizar perfil')
       }
 
-      // Atualizar sessão com timeout
-      try {
-        await Promise.race([
-          refreshSession(),
-          new Promise<void>((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout ao atualizar sessão')), 5000)
-          )
-        ])
-      } catch (refreshError: any) {
-        console.warn('Erro ao atualizar sessão (continuando):', refreshError)
-        // Continuar mesmo se o refresh falhar
+      // Atualizar estado do botão IMEDIATAMENTE após sucesso
+      // Isso dá feedback visual rápido ao usuário
+      setSaving(false)
+
+      // Atualizar dados do usuário localmente sem chamar refreshSession
+      // Isso evita problemas de logout se refreshSession falhar
+      if (json?.user && authUser) {
+        // Atualizar apenas os campos que foram modificados
+        const updatedUser = {
+          ...authUser,
+          name: json.user.name || authUser.name,
+          avatarUrl: json.user.avatar_url || authUser.avatarUrl,
+          bio: json.user.bio !== undefined ? json.user.bio : authUser.bio,
+        }
+        // Disparar evento customizado para atualizar o AuthContext sem fazer refresh completo
+        // Fazer de forma não-bloqueante para não afetar feedback visual
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('userUpdated', { detail: updatedUser }))
+        }, 0)
       }
 
       setSuccess('✅ Perfil atualizado com sucesso.')
@@ -403,6 +569,9 @@ export default function PerfilPage() {
       // fechar depois de um pequeno delay para o usuário perceber o feedback
       setTimeout(() => setEditOpen(false), 350)
     } catch (e: any) {
+      // Resetar estado de salvamento imediatamente em caso de erro
+      setSaving(false)
+      
       if (e?.name === 'AbortError' || e?.message?.includes('Timeout')) {
         setError('O salvamento demorou demais. Verifique sua conexão e tente novamente.')
       } else {
@@ -413,6 +582,8 @@ export default function PerfilPage() {
       if (timeoutId) {
         clearTimeout(timeoutId)
       }
+      // Garantir que saving seja false mesmo se houver algum problema
+      // (mas já deve estar false nos casos normais)
       setSaving(false)
     }
   }
@@ -578,12 +749,12 @@ export default function PerfilPage() {
                   : "border-gray-200 text-gray-700 hover:bg-gray-50"
               )}
               onClick={() => setEditOpen(false)}
-              disabled={saving}
+              disabled={saving || processingImage}
             >
               Cancelar
             </button>
-            <button className="btn-primary" onClick={handleSave} disabled={saving}>
-              {saving ? 'Salvando...' : 'Salvar'}
+            <button className="btn-primary" onClick={handleSave} disabled={saving || processingImage}>
+              {processingImage ? 'Processando imagem...' : saving ? 'Salvando...' : 'Salvar'}
             </button>
           </div>
         </div>

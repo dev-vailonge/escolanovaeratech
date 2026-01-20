@@ -410,6 +410,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, refreshSession])
 
+  // Escutar eventos de atualização de usuário (sem refresh completo da sessão)
+  useEffect(() => {
+    const handleUserUpdated = (event: CustomEvent<AuthUser>) => {
+      // Atualizar apenas os dados do usuário sem fazer refresh completo
+      // Isso evita problemas de logout quando refreshSession falha
+      setUser(event.detail)
+    }
+
+    window.addEventListener('userUpdated', handleUserUpdated as EventListener)
+
+    return () => {
+      window.removeEventListener('userUpdated', handleUserUpdated as EventListener)
+    }
+  }, [])
+
   return (
     <AuthContext.Provider value={{ user, loading, initialized, signOut, refreshSession, initializeAuth }}>
       {children}
