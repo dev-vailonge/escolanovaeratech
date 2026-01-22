@@ -43,7 +43,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
         perguntaId: r.pergunta_id,
         conteudo: r.conteudo,
         votos: r.votos || 0,
-        melhorResposta: r.melhor_resposta || false,
+        melhorResposta: Boolean(r.melhor_resposta),
         dataCriacao: r.created_at,
         autor: autor
           ? {

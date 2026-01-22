@@ -75,9 +75,9 @@ const sections = [
     id: 'desafios',
     title: 'Desafios',
     icon: Target,
-    summary: 'Desafios práticos que valem 50 XP cada. Bora encarar?',
+    summary: 'Desafios práticos que valem 150 XP cada. Bora encarar?',
     points: [
-      '🚀 Cada desafio concluído te dá 50 XP — é uma ótima forma de subir no ranking!',
+      '🚀 Cada desafio concluído te dá 150 XP — é uma ótima forma de subir no ranking!',
       '📋 Você pode ver seus desafios em andamento e os que já completou.',
       '✍️ Envie sua solução e aguarde a revisão — os admins vão avaliar seu trabalho.',
       '💪 Dica: faça um desafio por dia e veja sua evolução disparar!',

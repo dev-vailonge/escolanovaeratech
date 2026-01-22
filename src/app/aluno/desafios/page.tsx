@@ -1287,7 +1287,7 @@ export default function DesafiosPage() {
                   theme === 'dark' ? "text-gray-500" : "text-gray-500"
                 )}>
                   <Trophy className="w-3 h-3 inline mr-1" />
-                  Cada desafio vale 50 XP
+                  Cada desafio vale 150 XP
                 </p>
               </>
             )}

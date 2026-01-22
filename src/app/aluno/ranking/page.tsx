@@ -12,9 +12,6 @@ import BadgeDisplay from '@/components/comunidade/BadgeDisplay'
 import CountdownTimer from '@/components/ui/countdown-timer'
 import { toPng } from 'html-to-image'
 import Image from 'next/image'
-import Pagination from '@/components/ui/Pagination'
-import SafeLoading from '@/components/ui/SafeLoading'
-import { safeFetch } from '@/lib/utils/safeSupabaseQuery'
 
 // Função para verificar se o mês atual já fechou
 // O mês anterior é considerado fechado no dia 1 (a partir de 00:01)
@@ -57,8 +54,6 @@ export default function RankingPage() {
   const [gerandoImagemCard, setGerandoImagemCard] = useState(false)
   const [cardModalOpen, setCardModalOpen] = useState(false)
   const [cardSelecionado, setCardSelecionado] = useState<{ mes: { key: string; nome: string; nomeAbreviado: string; date: Date }; campeao: any; posicaoGeral: number | null } | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
   const muralRef = useRef<HTMLDivElement>(null)
   const rankingRef = useRef<HTMLDivElement>(null)
   const cardModalRef = useRef<HTMLDivElement>(null)
@@ -272,13 +267,10 @@ export default function RankingPage() {
           return
         }
 
-        // Busca ranking conforme o tipo selecionado (mensal ou geral) - com timeout
-        const res = await safeFetch(`/api/ranking?type=${tipoRanking}&_t=${Date.now()}`, {
+        // Busca ranking conforme o tipo selecionado (mensal ou geral)
+        const res = await fetch(`/api/ranking?type=${tipoRanking}&_t=${Date.now()}`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store', // Forçar busca de dados frescos
-          timeout: 10000, // 10 segundos
-          retry: true,
-          retryAttempts: 2
         })
         const json = await res.json().catch(() => ({}))
         
@@ -510,23 +502,15 @@ export default function RankingPage() {
   const currentUser = currentUserId ? filteredRanking.find(u => u.id === currentUserId) : null
   const currentUserPosition = currentUser?.position || 0
 
-  // Paginação
-  const totalPages = Math.ceil(filteredRanking.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedRanking = filteredRanking.slice(startIndex, endIndex)
-
-  // Resetar para página 1 quando mudar o tipo de ranking
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [tipoRanking])
-
   // Função para gerar e compartilhar imagem do mural
   const handleCompartilharMural = async () => {
     if (!muralRef.current) return
 
     setGerandoImagem(true)
     try {
+      // Dynamic import - só carrega quando necessário
+      const { toPng } = await import('html-to-image')
+
       // Temporariamente esconder o botão de compartilhar para não aparecer na imagem
       const shareButton = muralRef.current.querySelector('button[title="Compartilhar mural nas redes sociais"]') as HTMLElement
       const originalDisplay = shareButton?.style.display
@@ -686,6 +670,9 @@ export default function RankingPage() {
 
     setGerandoImagemCard(true)
     try {
+      // Dynamic import - só carrega quando necessário
+      const { toPng } = await import('html-to-image')
+
       // Encontrar o elemento da modal completa no DOM (o container que tem o header e o content)
       // A modal é renderizada via portal, então precisamos buscar pelo elemento que contém tudo
       // O elemento da modal tem as classes: rounded-xl shadow-xl backdrop-blur-xl
@@ -852,37 +839,22 @@ export default function RankingPage() {
           </button>
         </div>
 
-        {error && !loading && (
+        {(loading || error) && (
           <div
             className={cn(
               'border rounded-lg p-3 text-sm mb-4',
-              theme === 'dark'
-                ? 'bg-red-500/10 border-red-500/30 text-red-300'
-                : 'bg-red-50 border-red-200 text-red-700'
-            )}
-          >
-            {error}
-          </div>
-        )}
-
-        {loading && (
-          <SafeLoading
-            loading={loading}
-            timeout={15}
-            onRetry={() => setRefreshTrigger((prev) => prev + 1)}
-            errorMessage="O ranking está demorando para carregar. Tente novamente."
-          >
-            <div className="mb-4">
-              <div className={cn(
-                'border rounded-lg p-3 text-sm',
-                theme === 'dark'
+              error
+                ? theme === 'dark'
+                  ? 'bg-red-500/10 border-red-500/30 text-red-300'
+                  : 'bg-red-50 border-red-200 text-red-700'
+                : theme === 'dark'
                   ? 'bg-gray-800/30 border-white/10 text-gray-300'
                   : 'bg-yellow-500/10 border-yellow-400/50 text-gray-700'
-              )}>
-                Carregando ranking...
-              </div>
-            </div>
-          </SafeLoading>
+            )}
+          >
+            {loading && 'Carregando ranking...'}
+            {!loading && error}
+          </div>
         )}
       </div>
 
@@ -1008,7 +980,7 @@ export default function RankingPage() {
               )}
             </div>
           ) : (
-            paginatedRanking.map((user) => (
+            filteredRanking.map((user) => (
             <div
               key={user.id}
               className={cn(
@@ -1087,17 +1059,6 @@ export default function RankingPage() {
             </div>
           )))}
         </div>
-
-        {/* Paginação */}
-        {filteredRanking.length > itemsPerPage && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            itemsPerPage={itemsPerPage}
-            totalItems={filteredRanking.length}
-          />
-        )}
       </div>
 
       {/* Mural dos Campeões - 12 Meses */}
@@ -1419,7 +1380,7 @@ export default function RankingPage() {
                   "font-bold text-sm md:text-base flex-shrink-0",
                   theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                 )}>
-                  10 XP
+                  5 XP
                 </span>
               </div>
               <div className={cn(
@@ -1457,7 +1418,7 @@ export default function RankingPage() {
                   "font-bold text-sm md:text-base flex-shrink-0",
                   theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                 )}>
-                  100 XP
+                  30 XP
                 </span>
               </div>
             </div>
@@ -1493,14 +1454,14 @@ export default function RankingPage() {
                 "font-bold text-sm md:text-base flex-shrink-0",
                 theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
               )}>
-                20 XP
+                10 XP
               </span>
             </div>
             <p className={cn(
               "text-xs mt-2 leading-relaxed",
               theme === 'dark' ? "text-gray-400" : "text-gray-600"
             )}>
-              Se acertou todas as perguntas, leva a pontuação toda. Se não acertou todas, leva o percentual de acerto × o valor total. Ex: 80% de acerto = 16 XP
+              Se acertou todas as perguntas, leva a pontuação toda. Se não acertou todas, leva o percentual de acerto × o valor total. Ex: 80% de acerto = 8 XP
             </p>
           </div>
 
@@ -1534,7 +1495,7 @@ export default function RankingPage() {
                 "font-bold text-sm md:text-base flex-shrink-0",
                 theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
               )}>
-                50 XP
+                150 XP
               </span>
             </div>
           </div>

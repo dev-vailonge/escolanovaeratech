@@ -110,12 +110,17 @@ export async function GET(
     // Formatar respostas
     const respostasFormatadas = respostas?.map((r) => {
       const autor = Array.isArray(r.autor) ? r.autor[0] : r.autor
+      const melhorResposta = Boolean(r.melhor_resposta)
+      // Debug: verificar se o campo está vindo corretamente
+      if (melhorResposta) {
+        console.log(`[API] Resposta ${r.id} marcada como melhor: melhor_resposta=${r.melhor_resposta}, melhorResposta=${melhorResposta}`)
+      }
       return {
         id: r.id,
         perguntaId: r.pergunta_id,
         conteudo: r.conteudo,
         votos: r.votos || 0,
-        melhorResposta: r.melhor_resposta || false,
+        melhorResposta,
         dataCriacao: r.created_at,
         imagemUrl: r.imagem_url || null,
         comentarios: (comentariosMap.get(r.id) || []).map((c) => {

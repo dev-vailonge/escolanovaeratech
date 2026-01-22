@@ -1393,7 +1393,7 @@ export default function ComunidadePage() {
                   "font-bold text-sm md:text-base flex-shrink-0",
                   theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                 )}>
-                  10 XP
+                  5 XP
                 </span>
               </div>
               <div className={cn(
@@ -1431,7 +1431,7 @@ export default function ComunidadePage() {
                   "font-bold text-sm md:text-base flex-shrink-0",
                   theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                 )}>
-                  100 XP
+                  30 XP
                 </span>
               </div>
             </div>
@@ -2003,30 +2003,45 @@ export default function ComunidadePage() {
                         </span>
                       </div>
                     )}
-                    {pergunta.tags.length > 0 && (
-                      <div className="flex items-center gap-2 flex-wrap mb-3">
-                        <span className={cn(
-                          "text-xs font-medium",
-                          theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                        )}>
-                          Tags:
+                    <div className="flex items-center gap-2 flex-wrap mb-3">
+                      {pergunta.resolvida && (
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded border",
+                            theme === 'dark'
+                              ? "bg-green-500/20 text-green-400 border-green-500/50"
+                              : "bg-green-100 text-green-700 border-green-400"
+                          )}
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          Resolvida
                         </span>
-                        {pergunta.tags.map((tag, idx) => (
-                          <span
-                            key={idx}
-                            className={cn(
-                              "inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded border",
-                              theme === 'dark'
-                                ? "bg-transparent text-blue-400 border-blue-500/40"
-                                : "bg-transparent text-blue-600 border-blue-300"
-                            )}
-                          >
-                            <Tag className="w-3 h-3" />
-                            {tag}
+                      )}
+                      {pergunta.tags.length > 0 && (
+                        <>
+                          <span className={cn(
+                            "text-xs font-medium",
+                            theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                          )}>
+                            Tags:
                           </span>
-                        ))}
-                      </div>
-                    )}
+                          {pergunta.tags.map((tag, idx) => (
+                            <span
+                              key={idx}
+                              className={cn(
+                                "inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded border",
+                                theme === 'dark'
+                                  ? "bg-transparent text-blue-400 border-blue-500/40"
+                                  : "bg-transparent text-blue-600 border-blue-300"
+                              )}
+                            >
+                              <Tag className="w-3 h-3" />
+                              {tag}
+                            </span>
+                          ))}
+                        </>
+                      )}
+                    </div>
 
                     <div className="flex items-center gap-2">
                       <button
