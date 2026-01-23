@@ -652,17 +652,8 @@ export async function getRanking(params: { type: RankingType; limit?: number; ac
       },
     })
 
-    // Se tiver token do usuário, definir na sessão
-    if (params.accessToken) {
-      try {
-        await supabase.auth.setSession({
-          access_token: params.accessToken,
-          refresh_token: '', // Não temos refresh token aqui
-        } as any)
-      } catch (sessionError) {
-        console.warn('[getRanking] Erro ao definir sessão com token:', sessionError)
-      }
-    }
+    // NOTA: Não chamar setSession aqui - o header Authorization já é suficiente para RLS
+    // Chamar setSession no servidor pode interferir com a sessão do navegador e causar logout
   }
 
   // Query otimizada: apenas campos necessários, ordenado pelo XP, com limite

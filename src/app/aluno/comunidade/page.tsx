@@ -333,31 +333,14 @@ export default function ComunidadePage() {
 
     setIsSubmitting(true)
     try {
-      console.log('🔐 Obtendo token para responder...')
-      let token = await getAuthToken()
-      
-      // Se não conseguiu token, tentar uma última vez com getSession direto (pode travar, mas é última opção)
-      if (!token) {
-        console.log('🔄 Última tentativa: getSession() direto...')
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-          token = session?.access_token || null
-          if (token) {
-            console.log('✅ Token obtido na última tentativa')
-          }
-        } catch (e) {
-          console.error('❌ Última tentativa falhou:', e)
-        }
-      }
+      const token = await getAuthToken()
       
       if (!token) {
-        console.error('❌ Token não encontrado após todas as tentativas')
-        setError('Não foi possível obter o token de autenticação. Por favor, faça logout e login novamente.')
+        setError('Não foi possível obter o token de autenticação. Por favor, faça login novamente.')
         setIsSubmitting(false)
         return
       }
 
-      console.log('📤 Enviando resposta para pergunta:', selectedPergunta.id)
       const res = await fetch(`/api/comunidade/perguntas/${selectedPergunta.id}/responder`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -432,23 +415,13 @@ export default function ComunidadePage() {
     setSuccess('')
     
     try {
-      console.log('🚀 Iniciando criação de pergunta...')
-      console.log('📝 Dados:', { titulo, descricao, tags, categoria })
-      
-      console.log('🔐 Obtendo token de autenticação...')
       const token = await getAuthToken()
       
       if (!token) {
-        console.error('❌ Token não encontrado')
         setError('Não foi possível obter o token de autenticação. Por favor, recarregue a página e tente novamente.')
         setIsSubmitting(false)
         return
       }
-      
-      console.log('✅ Token obtido:', `${token.substring(0, 20)}...`)
-
-      console.log('✅ Token obtido, preparando requisição...')
-      console.log('📤 Payload:', JSON.stringify({ titulo, descricao, tags, categoria }))
 
       // Adicionar timeout para evitar travamento
       const controller = new AbortController()
@@ -636,29 +609,13 @@ export default function ComunidadePage() {
     setSuccess('')
 
     try {
-      console.log('🔐 Obtendo token para votar...')
-      let token = await getAuthToken()
-      
-      // Se não conseguiu token, tentar uma última vez
-      if (!token) {
-        console.log('🔄 Última tentativa: getSession() direto...')
-        try {
-          const { data: { session } } = await supabase.auth.getSession()
-          token = session?.access_token || null
-          if (token) {
-            console.log('✅ Token obtido na última tentativa')
-          }
-        } catch (e) {
-          console.error('❌ Última tentativa falhou:', e)
-        }
-      }
+      const token = await getAuthToken()
       
       if (!token) {
         setError('Não foi possível obter o token de autenticação. Por favor, recarregue a página e tente novamente.')
         return
       }
 
-      console.log('📤 Enviando voto para resposta:', respostaId)
       const res = await fetch(`/api/comunidade/respostas/${respostaId}/votar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

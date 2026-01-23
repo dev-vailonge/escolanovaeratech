@@ -404,26 +404,10 @@ export default function DesafiosPage() {
     setLoadingMessageIndex(0) // Resetar mensagem ao iniciar
 
     try {
-      console.log('🔐 Obtendo token para gerar desafio...')
-      let token = await getAuthToken()
-      
-      // Se não conseguiu token, tentar uma última vez com getSession direto (pode travar, mas é última opção)
-      if (!token) {
-        console.log('🔄 Última tentativa: getSession() direto...')
-        try {
-          const { data: { session } } = await supabase.auth.getSession()
-          token = session?.access_token || null
-          if (token) {
-            console.log('✅ Token obtido na última tentativa')
-          }
-        } catch (e) {
-          console.error('❌ Última tentativa falhou:', e)
-        }
-      }
+      const token = await getAuthToken()
       
       if (!token) {
-        console.error('❌ Token não encontrado após todas as tentativas')
-        setSelectionError('Não foi possível obter o token de autenticação. Por favor, faça logout e login novamente.')
+        setSelectionError('Não foi possível obter o token de autenticação. Por favor, faça login novamente.')
         setIsGerando(false)
         return
       }
@@ -468,26 +452,10 @@ export default function DesafiosPage() {
     setError('')
 
     try {
-      console.log('🔐 Obtendo token para submeter desafio...')
-      let token = await getAuthToken()
-      
-      // Se não conseguiu token, tentar uma última vez com getSession direto
-      if (!token) {
-        console.log('🔄 Última tentativa: getSession() direto...')
-        try {
-          const { data: { session } } = await supabase.auth.getSession()
-          token = session?.access_token || null
-          if (token) {
-            console.log('✅ Token obtido na última tentativa')
-          }
-        } catch (e) {
-          console.error('❌ Última tentativa falhou:', e)
-        }
-      }
+      const token = await getAuthToken()
       
       if (!token) {
-        console.error('❌ Token não encontrado após todas as tentativas')
-        setError('Não foi possível obter o token de autenticação. Por favor, faça logout e login novamente.')
+        setError('Não foi possível obter o token de autenticação. Por favor, faça login novamente.')
         setIsSubmittingGithub(false)
         return
       }
@@ -548,26 +516,10 @@ export default function DesafiosPage() {
     setError('')
 
     try {
-      console.log('🔐 Obtendo token para desistir do desafio...')
-      let token = await getAuthToken()
-      
-      // Se não conseguiu token, tentar uma última vez com getSession direto
-      if (!token) {
-        console.log('🔄 Última tentativa: getSession() direto...')
-        try {
-          const { data: { session } } = await supabase.auth.getSession()
-          token = session?.access_token || null
-          if (token) {
-            console.log('✅ Token obtido na última tentativa')
-          }
-        } catch (e) {
-          console.error('❌ Última tentativa falhou:', e)
-        }
-      }
+      const token = await getAuthToken()
       
       if (!token) {
-        console.error('❌ Token não encontrado após todas as tentativas')
-        setError('Não foi possível obter o token de autenticação. Por favor, faça logout e login novamente.')
+        setError('Não foi possível obter o token de autenticação. Por favor, faça login novamente.')
         setIsDesistindo(false)
         return
       }
@@ -1364,7 +1316,7 @@ export default function DesafiosPage() {
                         {getStatusBadge(meuDesafio.status)}
                       </div>
                       <p className={cn(
-                        "text-sm md:text-base mb-3 md:mb-4 line-clamp-2",
+                        "text-sm md:text-base mb-3 md:mb-4",
                         theme === 'dark' ? "text-gray-400" : "text-gray-600"
                       )}>
                         {meuDesafio.desafio.descricao}

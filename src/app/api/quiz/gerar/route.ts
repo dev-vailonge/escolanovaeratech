@@ -212,25 +212,58 @@ export async function POST(request: Request) {
     })
 
   } catch (error: any) {
-    console.error('❌ Erro ao gerar quiz:', error)
-    console.error('❌ Stack trace:', error?.stack)
-    
-    if (error.message === 'Não autenticado') {
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    // Log detalhado do erro para debug
+    const errorDetails = {
+      message: error?.message,
+      name: error?.name,
+      code: error?.code,
+      cause: error?.cause,
+      stack: error?.stack?.split('\n').slice(0, 10), // Primeiras 10 linhas do stack
+      // Log completo do erro
+      error: error
     }
+    
+    console.error('❌ Erro ao gerar quiz - Detalhes completos:', JSON.stringify(errorDetails, null, 2))
+    console.error('❌ Erro original:', error)
+    
+    // Garantir que sempre retornamos JSON
+    try {
+      if (error?.message === 'Não autenticado') {
+        return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+      }
 
-    // Erro de timeout específico
-    if (error?.name === 'AbortError' || error?.message?.includes('timeout')) {
-      return NextResponse.json(
-        { error: 'A operação demorou muito. Por favor, tente novamente.' },
-        { status: 504 }
+      // Erro de timeout específico
+      if (error?.name === 'AbortError' || error?.message?.includes('timeout')) {
+        return NextResponse.json(
+          { error: 'A operação demorou muito. Por favor, tente novamente.' },
+          { status: 504 }
+        )
+      }
+
+      // Retornar erro com detalhes em desenvolvimento
+      const errorMessage = error?.message || 'Erro ao gerar quiz. Tente novamente.'
+      const errorResponse: any = { error: errorMessage }
+      
+      // Em desenvolvimento, incluir mais detalhes para debug
+      if (process.env.NODE_ENV !== 'production') {
+        errorResponse.debug = {
+          name: error?.name,
+          code: error?.code,
+          stack: error?.stack?.split('\n').slice(0, 5) // Primeiras 5 linhas do stack
+        }
+      }
+
+      return NextResponse.json(errorResponse, { status: 500 })
+    } catch (jsonError: any) {
+      // Se até mesmo o NextResponse.json falhar, logar e retornar erro mínimo
+      console.error('❌ Erro crítico ao criar resposta JSON:', jsonError)
+      return new Response(
+        JSON.stringify({ error: 'Erro crítico no servidor' }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        }
       )
     }
-
-    return NextResponse.json(
-      { error: error.message || 'Erro ao gerar quiz. Tente novamente.' },
-      { status: 500 }
-    )
   }
 }
-

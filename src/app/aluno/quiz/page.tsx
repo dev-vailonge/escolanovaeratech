@@ -15,6 +15,7 @@ import type { QuizQuestion } from '@/types/quiz'
 import QuizPlayer, { QuizResult } from '@/components/quiz/QuizPlayer'
 import SafeLoading from '@/components/ui/SafeLoading'
 import { safeSupabaseQuery, safeFetch } from '@/lib/utils/safeSupabaseQuery'
+import { XP_CONSTANTS } from '@/lib/gamification/constants'
 
 // Interface para respostas salvas
 interface QuizResposta {
@@ -344,26 +345,10 @@ export default function QuizPage() {
     setLoadingMessageIndex(0) // Resetar mensagem ao iniciar
 
     try {
-      console.log('🔐 Obtendo token para gerar quiz...')
-      let token = await getAuthToken()
-      
-      // Se não conseguiu token, tentar uma última vez com getSession direto
+      // Obter token usando getAuthToken (evita chamar getSession que pode causar logout)
+      const token = await getAuthToken()
       if (!token) {
-        console.log('🔄 Última tentativa: getSession() direto...')
-        try {
-          const { data: { session } } = await supabase.auth.getSession()
-          token = session?.access_token || null
-          if (token) {
-            console.log('✅ Token obtido na última tentativa')
-          }
-        } catch (e) {
-          console.error('❌ Última tentativa falhou:', e)
-        }
-      }
-      
-      if (!token) {
-        console.error('❌ Token não encontrado após todas as tentativas')
-        setSelectionError('Não foi possível obter o token de autenticação. Por favor, faça logout e login novamente.')
+        setSelectionError('Não foi possível obter o token de autenticação. Por favor, faça login novamente.')
         setIsGerando(false)
         return
       }
@@ -374,9 +359,57 @@ export default function QuizPage() {
         body: JSON.stringify({ tecnologia: selectedTecnologia, nivel: selectedNivel })
       })
 
-      const json = await res.json()
+      // Verificar se a resposta é JSON antes de fazer parse
+      const contentType = res.headers.get('content-type')
+      let json: any
+      
+      if (!contentType || !contentType.includes('application/json')) {
+        // Se não for JSON, ler como texto para diagnosticar o problema
+        const text = await res.text()
+        console.error('❌ Resposta não é JSON:', {
+          status: res.status,
+          statusText: res.statusText,
+          contentType,
+          preview: text.substring(0, 200)
+        })
+        
+        // Verificar se é uma página de erro HTML
+        if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+          if (res.status === 401 || res.status === 403) {
+            throw new Error('Sua sessão expirou. Por favor, faça login novamente.')
+          } else if (res.status === 500) {
+            // Log detalhado apenas em desenvolvimento
+            if (process.env.NODE_ENV !== 'production') {
+              console.error('❌ Erro 500 - Resposta completa do servidor:', {
+                status: res.status,
+                statusText: res.statusText,
+                headers: Object.fromEntries(res.headers.entries()),
+                body: text,
+                url: res.url
+              })
+            }
+            throw new Error('Erro interno do servidor. Por favor, tente novamente em alguns instantes.')
+          } else if (res.status === 404) {
+            throw new Error('Endpoint não encontrado. Por favor, verifique sua conexão.')
+          } else {
+            throw new Error(`Erro ao gerar quiz (${res.status}): O servidor retornou uma página de erro.`)
+          }
+        } else {
+          throw new Error('Resposta inválida do servidor. Por favor, tente novamente.')
+        }
+      }
+
+      // Se for JSON, fazer o parse normalmente
+      try {
+        json = await res.json()
+      } catch (parseError: any) {
+        console.error('❌ Erro ao fazer parse JSON:', parseError)
+        throw new Error('Erro ao processar resposta do servidor. Por favor, tente novamente.')
+      }
+
       if (!res.ok) {
-        throw new Error(json?.error || 'Erro ao gerar quiz')
+        // Se a resposta foi JSON mas não está OK, usar a mensagem de erro do servidor
+        throw new Error(json?.error || `Erro ao gerar quiz (${res.status})`)
       }
 
       // Converter DatabaseQuiz para QuizUI
@@ -408,7 +441,13 @@ export default function QuizPage() {
       setSelectedQuiz(quizUI)
       setIsPlaying(true)
     } catch (e: any) {
-      setSelectionError(e?.message || 'Erro ao gerar quiz')
+      // Tratar erros de parse JSON especificamente
+      if (e?.message?.includes('Unexpected token') || e?.message?.includes('is not valid JSON')) {
+        console.error('❌ Erro de parse JSON:', e)
+        setSelectionError('Erro ao processar resposta do servidor. Isso pode indicar um problema de autenticação ou erro no servidor. Por favor, tente fazer logout e login novamente.')
+      } else {
+        setSelectionError(e?.message || 'Erro ao gerar quiz. Por favor, tente novamente.')
+      }
     } finally {
       setIsGerando(false)
     }
@@ -457,30 +496,8 @@ export default function QuizPage() {
     if (!selectedQuiz || !authUser?.id) return
     
     try {
-      // Obter token
-      const getToken = async () => {
-        try {
-          const { data } = await Promise.race([
-            supabase.auth.getSession(),
-            new Promise<{ data: { session: null } }>((resolve) => 
-              setTimeout(() => resolve({ data: { session: null } }), 3000)
-            )
-          ])
-          if (data?.session?.access_token) return data.session.access_token
-        } catch {}
-        
-        // Fallback localStorage
-        const key = 'sb-' + (process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] || '') + '-auth-token'
-        const stored = localStorage.getItem(key)
-        if (stored) {
-          try {
-            return JSON.parse(stored)?.access_token
-          } catch {}
-        }
-        return null
-      }
-      
-      const token = await getToken()
+      // Obter token usando getAuthToken (evita chamar getSession que pode causar logout)
+      const token = await getAuthToken()
       if (!token) throw new Error('Não autenticado')
 
       // Preparar respostas no formato simplificado para salvar
@@ -532,7 +549,7 @@ export default function QuizPage() {
           : `✅ Quiz concluído! Você ganhou ${xp} XP com ${result.acertos}/${result.total} acertos.`
         setSuccess(mensagem)
       } else {
-        setSuccess(`✅ Quiz concluído! Você já atingiu o limite máximo de XP deste quiz (${selectedQuiz.xpGanho} XP).`)
+        setSuccess(`✅ Quiz concluído! Você já atingiu o limite máximo de XP deste quiz (${XP_CONSTANTS.quiz.maximo} XP).`)
       }
 
       // Fechar modal do quiz
@@ -612,7 +629,7 @@ export default function QuizPage() {
             quizId={selectedQuiz.id}
             titulo={selectedQuiz.titulo}
             questoes={selectedQuiz.questoes}
-            xpTotal={selectedQuiz.xpGanho}
+            xpTotal={XP_CONSTANTS.quiz.maximo}
             onComplete={handleCompleteQuiz}
             onCancel={handleCloseQuiz}
             reviewMode={isReviewing}
@@ -1071,7 +1088,7 @@ export default function QuizPage() {
                         "font-semibold",
                         theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                       )}>
-                        +{quiz.xpGanho} XP
+                        +{XP_CONSTANTS.quiz.maximo} XP
                       </span>
                     </div>
 
@@ -1093,7 +1110,7 @@ export default function QuizPage() {
                           "font-semibold",
                           theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                         )}>
-                          {quiz.xpTotalGanho || 0}/{quiz.xpGanho} XP
+                          {quiz.xpTotalGanho || 0}/{XP_CONSTANTS.quiz.maximo} XP
                         </span>
                       </p>
                       {quiz.dataConclusao && (

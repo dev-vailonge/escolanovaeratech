@@ -32,28 +32,8 @@ export async function getSupabaseClient(accessToken?: string): Promise<SupabaseC
       },
     })
 
-    // Se tiver token do usuário, definir na sessão para que RLS funcione corretamente
-    if (accessToken) {
-      try {
-        // Primeiro, obter o usuário do token para verificar se é válido
-        const { data: { user }, error: userError } = await supabase.auth.getUser(accessToken)
-        
-        if (userError || !user) {
-          console.warn('[getSupabaseClient] Erro ao obter usuário do token:', userError)
-        } else {
-          // Definir sessão com o token para que RLS reconheça o usuário
-          await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: '', // Não temos refresh token aqui, mas o access token deve ser suficiente
-          } as any)
-          
-          console.log('[getSupabaseClient] Sessão definida para usuário:', user.id)
-        }
-      } catch (sessionError) {
-        console.warn('[getSupabaseClient] Erro ao definir sessão com token:', sessionError)
-        // Continuar mesmo com erro - o header Authorization pode ser suficiente
-      }
-    }
+    // O header Authorization já é suficiente para o RLS funcionar
+    // Não precisamos chamar setSession, pois isso pode invalidar a sessão do navegador
 
     return supabase
   }

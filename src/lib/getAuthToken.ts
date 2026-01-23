@@ -1,11 +1,12 @@
 /**
  * Helper para obter token de autenticação do Supabase
- * Tenta múltiplas formas para evitar travamentos
+ * Prioriza localStorage/cookies e só usa getSession() como último recurso
+ * IMPORTANTE: Não usar Promise.race com timeout para evitar logout indevido
  */
 import { supabase } from './supabase'
 
 export async function getAuthToken(): Promise<string | null> {
-  // Método 1: Tentar do localStorage primeiro (mais rápido e não trava)
+  // Método 1: Tentar do localStorage primeiro (mais rápido e não causa logout)
   try {
     if (typeof window !== 'undefined') {
       // O Supabase armazena a sessão em diferentes formatos
@@ -21,21 +22,17 @@ export async function getAuthToken(): Promise<string | null> {
               
               // Tentar diferentes estruturas
               if (parsed?.currentSession?.access_token) {
-                console.log('✅ Token obtido do localStorage (currentSession)')
                 return parsed.currentSession.access_token
               }
               if (parsed?.access_token) {
-                console.log('✅ Token obtido do localStorage (access_token)')
                 return parsed.access_token
               }
               // Tentar estrutura do Supabase v2
               if (parsed?.value?.access_token) {
-                console.log('✅ Token obtido do localStorage (value.access_token)')
                 return parsed.value.access_token
               }
               // Tentar estrutura aninhada
               if (parsed?.session?.access_token) {
-                console.log('✅ Token obtido do localStorage (session.access_token)')
                 return parsed.session.access_token
               }
             }
@@ -53,7 +50,6 @@ export async function getAuthToken(): Promise<string | null> {
           if (stored && stored.includes('access_token')) {
             const parsed = JSON.parse(stored)
             if (parsed?.access_token) {
-              console.log('✅ Token obtido do localStorage (busca ampla)')
               return parsed.access_token
             }
           }
@@ -63,28 +59,21 @@ export async function getAuthToken(): Promise<string | null> {
       }
     }
   } catch (e) {
-    console.warn('Método 1 (localStorage) falhou:', e)
+    // Falha ao ler localStorage - continuar para próximo método
   }
 
-  // Método 2: getSession com timeout muito curto (500ms apenas)
+  // Método 2: getSession() como último recurso (SEM timeout para evitar logout)
+  // IMPORTANTE: Só chamar getSession() se localStorage não tiver token
+  // Não usar Promise.race pois pode causar logout indevido
   try {
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Timeout')), 500)
-    )
-    
-    const sessionPromise = supabase.auth.getSession()
-    const result = await Promise.race([sessionPromise, timeoutPromise]) as any
-    
-    if (result?.data?.session?.access_token) {
-      console.log('✅ Token obtido do getSession (com timeout)')
-      return result.data.session.access_token
+    const { data } = await supabase.auth.getSession()
+    if (data?.session?.access_token) {
+      return data.session.access_token
     }
   } catch (e) {
-    console.warn('Método 2 (getSession com timeout) falhou ou timeout:', e)
+    // getSession() falhou - retornar null
   }
 
-  // Não tentar getSession sem timeout pois pode travar
-  console.error('❌ Todos os métodos falharam ao obter token')
+  // Se todos os métodos falharam, retornar null
   return null
 }
-

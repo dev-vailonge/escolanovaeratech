@@ -450,6 +450,62 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
     }
   }
 
+  const deletarResposta = async (respostaId: string) => {
+    if (!user?.id || !pergunta) return
+
+    const confirmar = window.confirm(
+      '⚠️ ATENÇÃO: Esta ação não pode ser desfeita!\n\n' +
+      'Ao deletar esta resposta:\n' +
+      '• O XP ganho com esta resposta será removido\n' +
+      '• Se houver comentários, você precisará deletá-los primeiro\n' +
+      '• Esta ação não poderá ser revertida\n\n' +
+      'Deseja continuar?'
+    )
+
+    if (!confirmar) return
+
+    try {
+      const token = await getAuthToken()
+      if (!token) {
+        setError('Não foi possível obter o token de autenticação.')
+        return
+      }
+
+      const res = await fetch(`/api/comunidade/respostas/${respostaId}/delete`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const json = await res.json()
+
+      if (!res.ok) {
+        setError(json?.error || 'Erro ao deletar resposta')
+        return
+      }
+
+      // Recarregar pergunta para atualizar lista de respostas
+      const resPergunta = await fetch(`/api/comunidade/perguntas/${params.id}`)
+      const jsonPergunta = await resPergunta.json()
+
+      if (jsonPergunta.success && jsonPergunta.pergunta) {
+        setPergunta(jsonPergunta.pergunta)
+        setError('') // Limpar erros anteriores
+        
+        // Disparar evento de XP atualizado se houver reversão
+        if (json.xpRevertido && json.xpRevertido > 0 && typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('xpGained', {
+              detail: { userId: user.id, amount: -json.xpRevertido },
+            })
+          )
+        }
+      }
+    } catch (e: any) {
+      console.error('Erro ao deletar resposta:', e)
+      setError(e?.message || 'Erro ao deletar resposta')
+    }
+  }
+
   const deletarPergunta = async () => {
     if (!user?.id || !pergunta) return
 
@@ -1003,6 +1059,22 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
                         <CheckCircle2 className="w-3 h-3" />
                         Resposta certa
                       </span>
+                    )}
+                    {/* Botão de deletar - apenas para o autor da resposta */}
+                    {resposta.autor?.id === currentUserId && !resposta.melhorResposta && (
+                      <button
+                        className={cn(
+                          'px-2 py-1 text-xs rounded border flex items-center gap-1 transition-colors',
+                          theme === 'dark'
+                            ? 'border-red-500/50 text-red-400 hover:bg-red-500/10'
+                            : 'border-red-300 text-red-600 hover:bg-red-50'
+                        )}
+                        onClick={() => deletarResposta(resposta.id)}
+                        title="Deletar resposta"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        Deletar
+                      </button>
                     )}
                   </div>
 
