@@ -266,25 +266,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(authUser)
           } catch (error) {
             console.warn('⚠️ fetchUserData timeout ou erro:', error)
-            setUser(null)
+            // Não fazer logout automático - manter estado anterior
           }
         } else {
-          setUser(null)
+          // Só fazer setUser(null) se nunca houve usuário (primeira inicialização)
+          // Se já havia usuário, não fazer logout automático
+          if (!user) {
+            setUser(null)
+          }
         }
       } else {
         // Modo mockado - não há usuário autenticado mas não quebra
-        setUser(null)
+        // Só fazer setUser(null) se nunca houve usuário
+        if (!user) {
+          setUser(null)
+        }
       }
       setInitialized(true)
     } catch (error) {
-      // Error getting initial session - modo mockado continua funcionando
+      // Error getting initial session - não fazer logout automático
       console.error('❌ Erro ao inicializar autenticação:', error)
-      setUser(null)
+      // Não fazer setUser(null) - manter estado anterior
       setInitialized(true)
     } finally {
       setLoading(false)
     }
-  }, [initialized])
+  }, [initialized, user])
 
   const refreshSession = async () => {
     // #region agent log
@@ -325,20 +332,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(authUser)
           } catch (error) {
             console.warn('⚠️ refreshSession: fetchUserData timeout ou erro:', error)
-            setUser(null)
+            // Não fazer logout automático - manter estado anterior
           }
         } else {
-          setUser(null)
+          // Não fazer logout automático quando não há sessão - manter estado anterior
           // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:151',message:'No session user, setting user to null',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:151',message:'No session user, keeping previous state',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
           // #endregion
         }
-      } else {
-        setUser(null)
       }
+      // Não fazer setUser(null) quando Supabase não está configurado - manter estado anterior
     } catch (error) {
-      // Error refreshing session
-      setUser(null)
+      // Error refreshing session - não fazer logout automático
+      // Não fazer setUser(null) - manter estado anterior
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:156',message:'refreshSession error',data:{error:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
@@ -376,9 +382,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (session?.user) {
               const authUser = await fetchUserData(session.user)
               setUser(authUser)
-            } else {
+            } else if (event === 'SIGNED_OUT') {
+              // Só fazer logout se for um evento explícito de SIGNED_OUT
               setUser(null)
             }
+            // Se session é null mas não é SIGNED_OUT, manter estado anterior (não fazer logout automático)
           }
         }
       )
