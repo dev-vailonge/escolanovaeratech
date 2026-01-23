@@ -35,6 +35,59 @@ interface Announcement {
   type?: "info" | "warning" | "update" // opcional para cor do badge
 }
 
+function linkifyText(text: string, linkClassName: string): Array<string | JSX.Element> {
+  // Suporta:
+  // - Markdown: [texto](https://exemplo.com)
+  // - URLs diretas: https://exemplo.com ou www.exemplo.com
+  const re = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+|www\.[^\s]+)/g
+  const parts: Array<string | JSX.Element> = []
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+  let idx = 0
+
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index))
+    }
+
+    const markdownLabel = match[1]
+    const markdownUrl = match[2]
+    const rawUrl = match[3]
+
+    const href = (markdownUrl || rawUrl || '').trim()
+    const label = (markdownLabel || rawUrl || href).trim()
+
+    if (href) {
+      // Remover pontuação final comum em URLs coladas em frases
+      const trailing = /[),.;:!?]+$/
+      const cleanedHref = href.replace(trailing, '')
+      const cleanedLabel = label.replace(trailing, '')
+
+      const finalHref = cleanedHref.startsWith('http') ? cleanedHref : `https://${cleanedHref}`
+
+      parts.push(
+        <a
+          key={`link-${idx++}`}
+          href={finalHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={linkClassName}
+        >
+          {cleanedLabel}
+        </a>
+      )
+    }
+
+    lastIndex = re.lastIndex
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex))
+  }
+
+  return parts
+}
+
 // Tipo para usuário do ranking
 interface RankingUser {
   id: string
@@ -70,6 +123,14 @@ const AnnouncementCard = memo(function AnnouncementCard({ title, message, type, 
       year: "numeric"
     })
   }, [date])
+
+  const messageContent = useMemo(() => {
+    const linkClassName = cn(
+      'underline underline-offset-2 break-words',
+      theme === 'dark' ? 'text-yellow-400 hover:text-yellow-300' : 'text-yellow-700 hover:text-yellow-800'
+    )
+    return linkifyText(message, linkClassName)
+  }, [message, theme])
 
   return (
     <div className={cn(
@@ -113,7 +174,7 @@ const AnnouncementCard = memo(function AnnouncementCard({ title, message, type, 
         "text-sm md:text-base leading-relaxed",
         theme === 'dark' ? "text-white/80" : "text-gray-700"
       )}>
-        {message}
+        {messageContent}
       </p>
 
       {formattedDate && (
@@ -254,14 +315,15 @@ export default function AlunoDashboard() {
         const notificacoes = notificacoesResult.value || []
         console.log('[Dashboard] Notificações recebidas:', notificacoes.length)
         
-        // Filtrar apenas avisos gerais (gerados pelo admin):
+        // Filtrar apenas avisos gerais (avisos exibidos na home do aluno):
         // - target_user_id é null (avisos gerais)
-        // - is_sugestao_bug não é true (excluir sugestões/bugs enviadas por alunos)
-        // - created_by é null ou é do admin (avisos criados pelo admin, não por alunos)
-        const avisosGerais = notificacoes.filter((notif: DatabaseNotificacao) => 
-          !notif.target_user_id && 
-          !notif.is_sugestao_bug &&
-          !notif.created_by // Apenas notificações sem created_by (criadas pelo admin) ou podemos verificar se é admin
+        // - is_sugestao_bug não é true (excluir sugestões/bugs enviados por alunos)
+        //
+        // Obs: Não filtramos por `created_by`, porque avisos criados pelo admin podem ter `created_by` preenchido
+        // (id do admin) e, nesse caso, eles não apareciam no dashboard.
+        const avisosGerais = notificacoes.filter((notif: DatabaseNotificacao) =>
+          !notif.target_user_id &&
+          !notif.is_sugestao_bug
         )
         
         // Converter para formato de anúncio
