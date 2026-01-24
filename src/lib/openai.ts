@@ -7,10 +7,16 @@ export const openai = new OpenAI({
 })
 
 // Tipo para desafio gerado pela IA
+export interface DesafioPassoGerado {
+  titulo: string
+  detalhes?: string
+}
+
 export interface DesafioGerado {
   titulo: string
   descricao: string
   requisitos: string[]
+  passos: DesafioPassoGerado[]
 }
 
 // Taxas de preço da OpenAI por modelo (USD por 1M tokens)
@@ -129,31 +135,113 @@ async function trackTokenUsage(params: TrackTokenUsageParams): Promise<void> {
   }
 }
 
-// Prompt para gerar desafios (XP é fixo em 50, não precisa da IA sugerir)
-const PROMPT_GERAR_DESAFIO = `Você é um instrutor de programação experiente. Gere um desafio prático de programação.
+function isAndroidTecnologia(tecnologia: string) {
+  return ['Kotlin', 'Jetpack Compose', 'Android'].includes(tecnologia)
+}
 
-Tecnologia: {tecnologia}
-Nível: {nivel}
+function formatBulletRules(rules: string[]) {
+  return rules.map((r) => `- ${r}`).join('\n')
+}
+
+function getScopeRules(tecnologia: string): string[] {
+  return [
+    `Não saia do escopo da tecnologia selecionada (${tecnologia}).`,
+    'Nunca peça para construir um backend/API em outra tecnologia (ex: Node.js, Java, Python).',
+    'Se precisar de consumo remoto, sempre consuma uma API pública pronta (qualquer API pública disponível).',
+    'Não inclua tarefas que exijam infraestrutura/serviços pagos (ex: Firebase pago, AWS, etc.). Prefira soluções locais e gratuitas.',
+  ]
+}
+
+function getAndroidRules(
+  tecnologia: string,
+  nivel: 'iniciante' | 'intermediario' | 'avancado'
+): string[] {
+  const isCompose = tecnologia === 'Jetpack Compose'
+
+  const base = [
+    'Focar no ecossistema Android (UI, navegação, lifecycle, estado).',
+    'Não sair do escopo Android; se precisar de dados remotos, apenas consumir API pública pronta (não criar backend).',
+    ...(isCompose
+      ? ['Usar Jetpack Compose para UI (não usar XML/Views).']
+      : ['UI pode ser feita com Views (XML) ou Jetpack Compose (opcional) — escolha uma abordagem e deixe claro.']),
+  ]
+
+  if (nivel === 'iniciante') {
+    return [
+      ...base,
+      'NÃO usar arquitetura (MVVM/Clean) e NÃO incluir testes.',
+      'NÃO consumir APIs.',
+      'App simples com navegação entre telas.',
+      'Navegação pode ser feita com Compose Navigation/Navigation Component ou com Activities/Intents (opcional — escolha uma abordagem e deixe claro).',
+    ]
+  }
+
+  if (nivel === 'intermediario') {
+    return [
+      ...base,
+      'NÃO usar arquitetura (MVVM/Clean) e NÃO incluir testes.',
+      'NÃO consumir APIs.',
+      'Persistência local com Room Database.',
+      ...(isCompose
+        ? ['Tela de listagem com Jetpack Compose (ex: LazyColumn).']
+        : ['Tela de listagem (RecyclerView se Views, ou LazyColumn se Compose).']),
+      'CRUD com navegação entre telas (criar/editar/remover/visualizar).',
+    ]
+  }
+
+  // avançado
+  const testRules: string[] = [
+    'Incluir testes unitários (mínimo: ViewModel e/ou use-cases).',
+  ]
+  if (tecnologia === 'Jetpack Compose') {
+    testRules.push('Incluir testes de UI com Jetpack Compose Testing (Compose tests).')
+  } else {
+    testRules.push('Se optar por Jetpack Compose, incluir testes de UI com Compose Testing (Compose tests).')
+  }
+
+  return [
+    ...base,
+    'App completo com consumo de API pública.',
+    'Arquitetura MVVM.',
+    ...testRules,
+  ]
+}
+
+function buildPromptGerarDesafio(params: {
+  tecnologia: string
+  nivel: 'iniciante' | 'intermediario' | 'avancado'
+}) {
+  const { tecnologia, nivel } = params
+
+  const scopeRules = getScopeRules(tecnologia)
+  const techRules = isAndroidTecnologia(tecnologia) ? getAndroidRules(tecnologia, nivel) : []
+
+  return `Você é um instrutor de programação experiente. Gere um desafio prático de programação.
+
+Tecnologia: ${tecnologia}
+Nível: ${nivel}
+
+REGRAS OBRIGATÓRIAS (escopo e tecnologia):
+${formatBulletRules([...scopeRules, ...techRules])}
 
 Requisitos do desafio:
 - Deve ser implementável em 1-3 horas
 - Título claro e objetivo (máximo 60 caracteres)
 - Descrição detalhada do que o aluno deve fazer
 - 3-5 requisitos específicos e verificáveis
-- Desafiador mas alcançável para o nível indicado
 - Deve resultar em código que possa ser hospedado no GitHub
-
-Níveis de referência:
-- iniciante: conceitos básicos, sintaxe simples, sem bibliotecas complexas
-- intermediario: conceitos mais avançados, uso de APIs, padrões de projeto simples
-- avancado: arquitetura, otimização, padrões complexos, integração de sistemas
 
 IMPORTANTE: Retorne APENAS um JSON válido, sem texto adicional:
 {
   "titulo": "string",
   "descricao": "string detalhada",
-  "requisitos": ["req1", "req2", "req3"]
+  "requisitos": ["req1", "req2", "req3"],
+  "passos": [
+    { "titulo": "Passo 1", "detalhes": "Detalhe do que fazer" },
+    { "titulo": "Passo 2", "detalhes": "Detalhe do que fazer" }
+  ]
 }`
+}
 
 /**
  * Gera um desafio de programação usando OpenAI
@@ -169,9 +257,7 @@ export async function gerarDesafioComIA(
   userId?: string,
   endpoint?: string
 ): Promise<DesafioGerado> {
-  const prompt = PROMPT_GERAR_DESAFIO
-    .replace('{tecnologia}', tecnologia)
-    .replace('{nivel}', nivel)
+  const prompt = buildPromptGerarDesafio({ tecnologia, nivel })
 
   const model = 'gpt-4o-mini'
   const response = await openai.chat.completions.create({
@@ -213,14 +299,53 @@ export async function gerarDesafioComIA(
   }
 
   try {
-    const desafio = JSON.parse(content) as DesafioGerado
+    const parsed = JSON.parse(content) as any
     
     // Validar campos obrigatórios
-    if (!desafio.titulo || !desafio.descricao || !desafio.requisitos) {
+    if (!parsed?.titulo || !parsed?.descricao) {
       throw new Error('Resposta incompleta da IA')
     }
-    
-    return desafio
+
+    // Normalizar requisitos (sempre array de string)
+    const requisitos: string[] = Array.isArray(parsed.requisitos)
+      ? parsed.requisitos.map((r: any) => String(r)).filter(Boolean)
+      : []
+
+    // Normalizar passos (aceita array de string ou array de objetos)
+    let passos: DesafioPassoGerado[] = []
+    if (Array.isArray(parsed.passos)) {
+      passos = parsed.passos
+        .map((p: any) => {
+          if (typeof p === 'string') {
+            return { titulo: p, detalhes: '' }
+          }
+          if (p && typeof p === 'object') {
+            const titulo = String(p.titulo || '').trim()
+            const detalhes = String(p.detalhes || '').trim()
+            if (!titulo) return null
+            return { titulo, detalhes }
+          }
+          return null
+        })
+        .filter(Boolean) as DesafioPassoGerado[]
+    }
+
+    // Fallback: se IA não retornou passos, gerar a partir dos requisitos
+    if (!passos.length && requisitos.length) {
+      passos = requisitos.map((r) => ({ titulo: r, detalhes: '' }))
+    }
+
+    // Garantir pelo menos alguns requisitos
+    if (!requisitos.length) {
+      throw new Error('Resposta incompleta da IA (requisitos ausentes)')
+    }
+
+    return {
+      titulo: String(parsed.titulo),
+      descricao: String(parsed.descricao),
+      requisitos,
+      passos,
+    }
   } catch (parseError) {
     console.error('Erro ao parsear resposta da OpenAI:', content)
     throw new Error('Erro ao processar resposta da IA')

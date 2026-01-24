@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/requestAuth'
 import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { gerarDesafioComIA } from '@/lib/openai'
+import { XP_CONSTANTS } from '@/lib/gamification/constants'
 
 // Tecnologias organizadas por categoria (mesma lista da página de desafios)
 const TECNOLOGIAS_VALIDAS = [
@@ -21,7 +22,8 @@ const TECNOLOGIAS_VALIDAS = [
   'Web Development'
 ]
 const NIVEIS_VALIDOS = ['iniciante', 'intermediario', 'avancado'] as const
-const XP_DESAFIO = 50 // XP fixo para desafios IA
+// XP de desafios é fixo e vem das constantes oficiais
+const XP_DESAFIO = XP_CONSTANTS.desafio.completo
 
 export async function POST(request: Request) {
   try {
@@ -159,7 +161,9 @@ export async function POST(request: Request) {
 
         if (desafioData) {
           console.log(`♻️ Reutilizando desafio existente (usuário ainda não fez): ${desafioData.id}`)
-          desafioFinal = desafioData
+          // Garantir que o payload retornado respeite o XP oficial
+          // (não depender de `desafios.xp`, que pode estar divergente no banco)
+          desafioFinal = { ...desafioData, xp: XP_DESAFIO }
           desafioReutilizado = desafioData
         }
       }
@@ -185,10 +189,11 @@ export async function POST(request: Request) {
           descricao: desafioGerado.descricao,
           tecnologia,
           dificuldade: nivel,
-          xp: XP_DESAFIO, // XP fixo, ignora sugestão da IA
+          xp: XP_DESAFIO, // XP oficial
           periodicidade: 'especial',
           prazo: null,
           requisitos: desafioGerado.requisitos,
+          passos: desafioGerado.passos || [],
           curso_id: null,
           gerado_por_ia: true,
           solicitado_por: null, // Não vincula a usuário específico (desafio compartilhável)

@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Modal from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
 import { getAuthToken } from '@/lib/getAuthToken'
+import { XP_CONSTANTS } from '@/lib/gamification/constants'
 import type { DatabaseDesafio, DatabaseDesafioSubmission } from '@/types/database'
 
 // Tecnologias organizadas por categoria/curso
@@ -36,6 +37,28 @@ interface MeuDesafio {
   tentativas: number // Número de tentativas (submissões)
 }
 
+type DesafioPassoUI = { titulo: string; detalhes?: string }
+
+function normalizePassos(raw: any): DesafioPassoUI[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((p) => {
+      if (typeof p === 'string') {
+        const titulo = p.trim()
+        if (!titulo) return null
+        return { titulo, detalhes: '' }
+      }
+      if (p && typeof p === 'object') {
+        const titulo = String(p.titulo || '').trim()
+        const detalhes = String(p.detalhes || '').trim()
+        if (!titulo) return null
+        return { titulo, detalhes }
+      }
+      return null
+    })
+    .filter(Boolean) as DesafioPassoUI[]
+}
+
 export default function DesafiosPage() {
   const { theme } = useTheme()
   const { user: authUser } = useAuth()
@@ -48,6 +71,7 @@ export default function DesafiosPage() {
   const [meusDesafios, setMeusDesafios] = useState<MeuDesafio[]>([])
   const [error, setError] = useState<string>('')
   const [success, setSuccess] = useState<string>('')
+  const [expandedPassos, setExpandedPassos] = useState<Record<string, boolean>>({})
 
   // Estados para modal de seleção
   const [showSelectionModal, setShowSelectionModal] = useState(false)
@@ -895,7 +919,7 @@ export default function DesafiosPage() {
                 {desafioParaSubmeter.desafio.titulo}
               </p>
               <p className={cn("text-xs", theme === 'dark' ? "text-gray-400" : "text-gray-600")}>
-                {desafioParaSubmeter.desafio.tecnologia} • {desafioParaSubmeter.desafio.xp} XP
+                {desafioParaSubmeter.desafio.tecnologia} • {XP_CONSTANTS.desafio.completo} XP
               </p>
             </div>
           )}
@@ -1239,7 +1263,7 @@ export default function DesafiosPage() {
                   theme === 'dark' ? "text-gray-500" : "text-gray-500"
                 )}>
                   <Trophy className="w-3 h-3 inline mr-1" />
-                  Cada desafio vale 150 XP
+                  Cada desafio vale {XP_CONSTANTS.desafio.completo} XP
                 </p>
               </>
             )}
@@ -1322,6 +1346,63 @@ export default function DesafiosPage() {
                         {meuDesafio.desafio.descricao}
                       </p>
 
+                      {/* Passo a passo (guia) */}
+                      {(() => {
+                        const passos = normalizePassos((meuDesafio.desafio as any).passos)
+                        if (!passos.length) return null
+
+                        const isExpanded = !!expandedPassos[meuDesafio.id]
+                        const visiblePassos = isExpanded ? passos : passos.slice(0, 4)
+
+                        return (
+                          <div className="mb-3">
+                            <div className="flex items-center justify-between gap-3 mb-2">
+                              <p className={cn(
+                                "text-xs font-semibold flex items-center gap-1",
+                                theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                              )}>
+                                🧭 Passo a passo:
+                              </p>
+                              {passos.length > 4 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedPassos((prev) => ({ ...prev, [meuDesafio.id]: !isExpanded }))}
+                                  className={cn(
+                                    "text-xs font-medium hover:underline",
+                                    theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                                  )}
+                                >
+                                  {isExpanded ? 'Mostrar menos' : 'Ver todos'}
+                                </button>
+                              )}
+                            </div>
+
+                            <ol className={cn(
+                              "space-y-2 text-xs pl-4",
+                              theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                            )}>
+                              {visiblePassos.map((p, idx) => (
+                                <li key={`passo-${idx}`} className="list-decimal">
+                                  <div className="space-y-1">
+                                    <p className={cn(
+                                      "font-medium",
+                                      theme === 'dark' ? "text-gray-200" : "text-gray-800"
+                                    )}>
+                                      {p.titulo}
+                                    </p>
+                                    {p.detalhes && (
+                                      <p className="whitespace-pre-wrap break-words">
+                                        {p.detalhes}
+                                      </p>
+                                    )}
+                                  </div>
+                                </li>
+                              ))}
+                            </ol>
+                          </div>
+                        )
+                      })()}
+
                       {/* Requisitos */}
                       {meuDesafio.desafio.requisitos && meuDesafio.desafio.requisitos.length > 0 && (
                         <div className="mb-3">
@@ -1355,7 +1436,7 @@ export default function DesafiosPage() {
                           "font-semibold",
                           theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                         )}>
-                          Vale {meuDesafio.desafio.xp} XP
+                          Vale {XP_CONSTANTS.desafio.completo} XP
                         </span>
                         {/* Data de conclusão e tentativas para desafios aprovados */}
                         {meuDesafio.status === 'aprovado' && meuDesafio.dataConclusao && (

@@ -16,6 +16,7 @@ import { getLevelCategory, getLevelBorderColor } from '@/lib/gamification'
 import Pagination from '@/components/ui/Pagination'
 import SafeLoading from '@/components/ui/SafeLoading'
 import { safeFetch } from '@/lib/utils/safeSupabaseQuery'
+import { XP_CONSTANTS } from '@/lib/gamification/constants'
 
 type TabType = 'desafios' | 'submissions'
 type StatusFilter = 'pendente' | 'aprovado' | 'rejeitado' | 'todos'
@@ -224,7 +225,8 @@ export default function AdminDesafiosTab() {
         descricao: desafioData.descricao,
         tecnologia: desafioData.tecnologia,
         dificuldade: desafioData.dificuldade as 'iniciante' | 'intermediario' | 'avancado',
-        xp: desafioData.xp,
+        // XP de desafio é fixo e vem das constantes oficiais
+        xp: XP_CONSTANTS.desafio.completo,
         periodicidade: desafioData.periodicidade as 'semanal' | 'mensal' | 'especial',
         prazo: null, // Pode ser adicionado depois se necessário
         requisitos: Array.isArray(desafioData.requisitos) ? desafioData.requisitos : [],
@@ -505,7 +507,7 @@ export default function AdminDesafiosTab() {
                           "font-semibold",
                           theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                         )}>
-                          +{desafio.xp} XP
+                          +{XP_CONSTANTS.desafio.completo} XP
                         </span>
                         {desafio.curso_id && (
                           <span className={cn(theme === 'dark' ? "text-gray-400" : "text-gray-600")}>
@@ -712,7 +714,7 @@ export default function AdminDesafiosTab() {
                     {reviewingSubmission.desafio?.titulo}
                   </p>
                   <p className={cn("text-xs", theme === 'dark' ? "text-gray-400" : "text-gray-600")}>
-                    {reviewingSubmission.desafio?.tecnologia} • {reviewingSubmission.desafio?.xp} XP
+                    {reviewingSubmission.desafio?.tecnologia} • {XP_CONSTANTS.desafio.completo} XP
                   </p>
                 </div>
 

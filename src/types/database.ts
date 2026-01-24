@@ -46,6 +46,7 @@ export interface DatabaseDesafio {
   periodicidade: 'semanal' | 'mensal' | 'especial'
   prazo: string | null
   requisitos: any[] // JSONB - array de requisitos
+  passos: any[] // JSONB - guia passo-a-passo (array de { titulo, detalhes })
   curso_id?: string | null // ID do curso/formação vinculado: 'android', 'frontend', 'backend', 'ios', 'analise-dados', 'norte-tech', 'logica-programacao', ou null para desafios gerais
   gerado_por_ia?: boolean // Se foi gerado pela IA
   solicitado_por?: string | null // ID do usuário que solicitou o desafio (se gerado por IA)

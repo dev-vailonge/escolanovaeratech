@@ -5,6 +5,7 @@ import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
 import { CURSOS_COM_GERAL, getCursoById, type CursoId } from '@/lib/constants/cursos'
+import { XP_CONSTANTS } from '@/lib/gamification/constants'
 
 interface CreateDesafioModalProps {
   isOpen: boolean
@@ -22,7 +23,8 @@ export default function CreateDesafioModal({ isOpen, onClose, onSave, desafio }:
     descricao: desafio?.descricao || '',
     tecnologia: desafio?.tecnologia || 'Web Development',
     dificuldade: desafio?.dificuldade || 'intermediario',
-    xp: desafio?.xp || 200,
+    // XP de desafio é fixo e vem das constantes oficiais
+    xp: XP_CONSTANTS.desafio.completo,
     periodicidade: desafio?.periodicidade || 'semanal',
     curso_id: (desafio?.curso_id ?? null) as CursoId,
   })
@@ -35,7 +37,7 @@ export default function CreateDesafioModal({ isOpen, onClose, onSave, desafio }:
         descricao: desafio.descricao || '',
         tecnologia: desafio.tecnologia || 'Web Development',
         dificuldade: desafio.dificuldade || 'intermediario',
-        xp: desafio.xp || 200,
+        xp: XP_CONSTANTS.desafio.completo,
         periodicidade: desafio.periodicidade || 'semanal',
         curso_id: (desafio.curso_id ?? null) as CursoId,
       })
@@ -46,7 +48,7 @@ export default function CreateDesafioModal({ isOpen, onClose, onSave, desafio }:
         descricao: '',
         tecnologia: 'Web Development',
         dificuldade: 'intermediario',
-        xp: 200,
+        xp: XP_CONSTANTS.desafio.completo,
         periodicidade: 'semanal',
         curso_id: null,
       })
@@ -215,20 +217,20 @@ export default function CreateDesafioModal({ isOpen, onClose, onSave, desafio }:
               "block text-sm font-medium mb-2",
               theme === 'dark' ? "text-gray-300" : "text-gray-700"
             )}>
-              XP Ganho *
+              XP Ganho (fixo)
             </label>
             <input
               type="number"
               min="1"
-              value={formData.xp}
-              onChange={(e) => setFormData({ ...formData, xp: parseInt(e.target.value) || 0 })}
+              value={XP_CONSTANTS.desafio.completo}
+              disabled
               className={cn(
                 "w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-colors",
+                "opacity-70 cursor-not-allowed",
                 theme === 'dark'
                   ? "bg-black/50 border-white/10 text-white focus:border-yellow-400 focus:ring-yellow-400/20"
                   : "bg-white border-gray-300 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500/20"
               )}
-              required
             />
           </div>
 
