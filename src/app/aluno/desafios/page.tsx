@@ -1413,7 +1413,7 @@ export default function DesafiosPage() {
                       {/* Feedback do admin para aprovado */}
                       {meuDesafio.status === 'aprovado' && meuDesafio.submission?.admin_notes && (
                         <div className={cn(
-                          "mt-3 p-3 rounded text-sm",
+                          "mt-3 p-3 rounded text-sm whitespace-pre-wrap break-words",
                           theme === 'dark' ? "bg-green-500/10 text-green-300" : "bg-green-50 text-green-700"
                         )}>
                           <strong>Feedback do Admin:</strong> {meuDesafio.submission.admin_notes}
@@ -1423,7 +1423,7 @@ export default function DesafiosPage() {
                       {/* Feedback do admin para rejeitado */}
                       {meuDesafio.status === 'rejeitado' && meuDesafio.submission?.admin_notes && (
                         <div className={cn(
-                          "mt-3 p-3 rounded text-sm",
+                          "mt-3 p-3 rounded text-sm whitespace-pre-wrap break-words",
                           theme === 'dark' ? "bg-red-500/10 text-red-300" : "bg-red-50 text-red-700"
                         )}>
                           <strong>Motivo da rejeição:</strong> {meuDesafio.submission.admin_notes}

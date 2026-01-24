@@ -46,7 +46,8 @@ export default function RankingPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [historicoCampeoes, setHistoricoCampeoes] = useState<any[]>([])
   const [loadingHistorico, setLoadingHistorico] = useState(false)
-  const [tipoRanking, setTipoRanking] = useState<'mensal' | 'geral'>('geral')
+  // Por padrão, mostrar o ranking do mês
+  const [tipoRanking, setTipoRanking] = useState<'mensal' | 'geral'>('mensal')
   const [tipoMural, setTipoMural] = useState<'mensal' | 'geral'>('mensal')
   const [rankingGeral, setRankingGeral] = useState<any[] | null>(null)
   const [gerandoImagem, setGerandoImagem] = useState(false)
@@ -858,6 +859,203 @@ export default function RankingPage() {
         )}
       </div>
 
+      {/* Mural dos Campeões - 12 Meses */}
+      <div ref={muralRef} className={cn(
+        "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
+        theme === 'dark'
+          ? "bg-gray-800/30 border-white/10"
+          : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
+      )}>
+        <div className="flex items-center justify-between mb-4 md:mb-6">
+          <h2 className={cn(
+            "text-lg md:text-xl font-bold",
+            theme === 'dark' ? "text-white" : "text-gray-900"
+          )}>
+            Mural dos Campeões
+          </h2>
+          <button
+            onClick={handleCompartilharMural}
+            disabled={gerandoImagem}
+            className={cn(
+              "flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-xs md:text-sm",
+              gerandoImagem && "opacity-50 cursor-not-allowed",
+              theme === 'dark'
+                ? "bg-black/30 border-white/10 text-gray-300 hover:bg-black/50 hover:border-yellow-400/50"
+                : "bg-yellow-500/10 border-yellow-400/70 text-gray-700 hover:bg-yellow-500/20 hover:border-yellow-500"
+            )}
+            title="Compartilhar mural nas redes sociais"
+          >
+            {gerandoImagem ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Gerando...
+              </>
+            ) : (
+              <>
+                <Share2 className="w-4 h-4" />
+                Compartilhar
+              </>
+            )}
+          </button>
+        </div>
+        
+        {/* Por enquanto: mostrar apenas Mural mensal */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
+            {mesesAno.map((mes) => {
+              const campeao = campeoesMural.get(mes.key)
+              const category = campeao ? getLevelCategory(campeao.level) : null
+              const posicaoGeral = campeao ? posicoesGeral.get(campeao.id) : null
+              
+              return (
+                <div
+                  key={mes.key}
+                  onClick={() => {
+                    // Tornar todos os cards clicáveis
+                    if (campeao) {
+                      setCardSelecionado({ mes, campeao, posicaoGeral: posicaoGeral || null })
+                    } else {
+                      // Para cards sem campeão, ainda abrir a modal mas sem dados do campeão
+                      setCardSelecionado({ mes, campeao: null, posicaoGeral: null })
+                    }
+                    setCardModalOpen(true)
+                  }}
+                  className={cn(
+                    "flex flex-col items-center p-3 md:p-4 rounded-lg transition-all duration-300 relative cursor-pointer",
+                    theme === 'dark'
+                      ? "bg-black/30 border border-white/10 hover:border-white/20"
+                      : "bg-yellow-500/10 border border-yellow-400/50 hover:border-yellow-300"
+                  )}
+                >
+                  {/* Ícone de compartilhar - aparece apenas quando há campeão */}
+                  {campeao && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        // O clique no ícone também abre a modal e dispara confetes
+                        setCardSelecionado({ mes, campeao, posicaoGeral: posicaoGeral || null })
+                        setCardModalOpen(true)
+                      }}
+                      className={cn(
+                        "absolute top-2 right-2 p-1.5 rounded-full transition-colors z-10",
+                        theme === 'dark'
+                          ? "bg-black/40 border border-white/10 hover:bg-black/60 hover:border-yellow-400/50"
+                          : "bg-yellow-500/20 border border-yellow-400/50 hover:bg-yellow-500/30 hover:border-yellow-500"
+                      )}
+                      title="Abrir card para compartilhar"
+                    >
+                      <Share2 className={cn(
+                        "w-3.5 h-3.5 md:w-4 md:h-4",
+                        theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                      )} />
+                    </button>
+                  )}
+                  
+                  {/* Troféu no topo */}
+                  <Trophy className={cn(
+                    "w-5 h-5 md:w-6 md:h-6 mb-2",
+                    campeao
+                      ? theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                      : theme === 'dark' ? "text-gray-600" : "text-gray-400"
+                  )} />
+                  
+                  {/* Avatar com borda colorida baseada no nível */}
+                  {campeao ? (
+                    <>
+                      <div className="relative mb-2">
+                        {campeao.avatarUrl ? (
+                          <img
+                            src={campeao.avatarUrl}
+                            alt={campeao.name}
+                            className={cn(
+                              "w-12 h-12 md:w-16 md:h-16 rounded-full object-cover border-[3px]",
+                              getLevelBorderColor(campeao.level, theme === 'dark')
+                            )}
+                          />
+                        ) : (
+                          <div className={cn(
+                            "w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center font-bold text-lg md:text-xl border-[3px]",
+                            theme === 'dark'
+                              ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
+                              : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white",
+                            getLevelBorderColor(campeao.level, theme === 'dark')
+                          )}>
+                            {campeao.name.charAt(0)}
+                          </div>
+                        )}
+                        
+                        {/* Nível na borda do avatar (badge) */}
+                        <div className={cn(
+                          "absolute -bottom-1 -right-1 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center text-[10px] md:text-xs font-bold border-2",
+                          category === 'iniciante'
+                            ? theme === 'dark'
+                              ? "bg-yellow-500 border-yellow-500 text-black"
+                              : "bg-yellow-500 border-yellow-500 text-black"
+                            : category === 'intermediario'
+                            ? theme === 'dark'
+                              ? "bg-blue-500 border-blue-500 text-white"
+                              : "bg-blue-500 border-blue-500 text-white"
+                            : theme === 'dark'
+                            ? "bg-purple-600 border-purple-600 text-white"
+                            : "bg-purple-600 border-purple-600 text-white"
+                        )}>
+                          {campeao.level}
+                        </div>
+                      </div>
+                      
+                      {/* Nome completo */}
+                      <p className={cn(
+                        "font-semibold text-xs md:text-sm text-center mb-1 truncate w-full",
+                        theme === 'dark' ? "text-white" : "text-gray-900"
+                      )}>
+                        {campeao.name}
+                      </p>
+                      
+                      {/* XP do mês */}
+                      <p className={cn(
+                        "font-bold text-xs text-center mb-1",
+                        theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+                      )}>
+                        {campeao.xpMensal.toLocaleString('pt-BR')} XP
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      {/* Placeholder quando não há campeão */}
+                      <div className={cn(
+                        "w-12 h-12 md:w-16 md:h-16 rounded-full mb-2 flex items-center justify-center border-[3px] border-dashed",
+                        theme === 'dark'
+                          ? "border-gray-600 bg-gray-800/30"
+                          : "border-gray-300 bg-gray-100"
+                      )}>
+                        <span className={cn(
+                          "text-lg md:text-xl font-bold leading-none",
+                          theme === 'dark' ? "text-gray-600" : "text-gray-400"
+                        )}>
+                          ?
+                        </span>
+                      </div>
+                      <p className={cn(
+                        "text-xs text-center",
+                        theme === 'dark' ? "text-gray-500" : "text-gray-500"
+                      )}>
+                        Sem campeão
+                      </p>
+                    </>
+                  )}
+                  
+                  {/* Nome do mês */}
+                  <p className={cn(
+                    "text-xs text-center mt-1 font-medium",
+                    theme === 'dark' ? "text-gray-400" : "text-gray-600"
+                  )}>
+                    {mes.nomeAbreviado.split(' ')[0]}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+      </div>
+
       {/* Ranking Completo */}
       <div ref={rankingRef} className={cn(
         "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
@@ -932,14 +1130,14 @@ export default function RankingPage() {
             <button
               onClick={() => setTipoRanking('mensal')}
               className={cn(
-                "px-4 py-2 rounded-md font-medium transition-all text-sm flex-1",
+                "px-4 py-2 font-medium transition-colors text-sm flex-1 border-b-2 bg-transparent",
                 tipoRanking === 'mensal'
                   ? theme === 'dark'
-                    ? "bg-yellow-400 text-black shadow-md"
-                    : "bg-yellow-500 text-white shadow-md"
+                    ? "text-yellow-300 border-yellow-400"
+                    : "text-yellow-700 border-yellow-600"
                   : theme === 'dark'
-                    ? "text-gray-400 hover:text-white hover:bg-white/5"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-yellow-500/20"
+                    ? "text-gray-400 border-white/10 hover:text-white hover:border-white/20"
+                    : "text-gray-600 border-gray-200 hover:text-gray-900 hover:border-gray-300"
               )}
             >
               Mês
@@ -947,14 +1145,14 @@ export default function RankingPage() {
             <button
               onClick={() => setTipoRanking('geral')}
               className={cn(
-                "px-4 py-2 rounded-md font-medium transition-all text-sm flex-1",
+                "px-4 py-2 font-medium transition-colors text-sm flex-1 border-b-2 bg-transparent",
                 tipoRanking === 'geral'
                   ? theme === 'dark'
-                    ? "bg-yellow-400 text-black shadow-md"
-                    : "bg-yellow-500 text-white shadow-md"
+                    ? "text-yellow-300 border-yellow-400"
+                    : "text-yellow-700 border-yellow-600"
                   : theme === 'dark'
-                    ? "text-gray-400 hover:text-white hover:bg-white/5"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-yellow-500/20"
+                    ? "text-gray-400 border-white/10 hover:text-white hover:border-white/20"
+                    : "text-gray-600 border-gray-200 hover:text-gray-900 hover:border-gray-300"
               )}
             >
               Geral
@@ -975,7 +1173,7 @@ export default function RankingPage() {
               </p>
               {!error && (
                 <p className="text-xs mt-2">
-                  Complete aulas, quizzes e desafios para aparecer no ranking!
+                  Complete quizzes e desafios e ajude outros alunos na comunidade para aparecer no ranking!
                 </p>
               )}
             </div>
@@ -1058,252 +1256,6 @@ export default function RankingPage() {
               </div>
             </div>
           )))}
-        </div>
-      </div>
-
-      {/* Mural dos Campeões - 12 Meses */}
-      <div ref={muralRef} className={cn(
-        "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-colors duration-300",
-        theme === 'dark'
-          ? "bg-gray-800/30 border-white/10"
-          : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
-      )}>
-        <div className="flex items-center justify-between mb-4 md:mb-6">
-          <h2 className={cn(
-            "text-lg md:text-xl font-bold",
-            theme === 'dark' ? "text-white" : "text-gray-900"
-          )}>
-            Mural dos Campeões
-          </h2>
-          <button
-            onClick={handleCompartilharMural}
-            disabled={gerandoImagem}
-            className={cn(
-              "flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-xs md:text-sm",
-              gerandoImagem && "opacity-50 cursor-not-allowed",
-              theme === 'dark'
-                ? "bg-black/30 border-white/10 text-gray-300 hover:bg-black/50 hover:border-yellow-400/50"
-                : "bg-yellow-500/10 border-yellow-400/70 text-gray-700 hover:bg-yellow-500/20 hover:border-yellow-500"
-            )}
-            title="Compartilhar mural nas redes sociais"
-          >
-            {gerandoImagem ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                Gerando...
-              </>
-            ) : (
-              <>
-                <Share2 className="w-4 h-4" />
-                Compartilhar
-              </>
-            )}
-          </button>
-        </div>
-        
-        {/* Seletor de Tipo de Mural */}
-        <div className={cn(
-          "backdrop-blur-sm border rounded-lg p-1.5 mb-4 transition-colors duration-300",
-          theme === 'dark'
-            ? "bg-black/30 border-white/10"
-            : "bg-yellow-500/10 border-yellow-400/50"
-        )}>
-          <div className="flex gap-1.5 justify-center">
-            <button
-              onClick={() => setTipoMural('mensal')}
-              className={cn(
-                "px-4 py-2 rounded-md font-medium transition-all text-sm flex-1 flex items-center justify-center",
-                tipoMural === 'mensal'
-                  ? theme === 'dark'
-                    ? "bg-yellow-400 text-black shadow-md"
-                    : "bg-yellow-500 text-white shadow-md"
-                  : theme === 'dark'
-                    ? "text-gray-400 hover:text-white hover:bg-white/5"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-yellow-500/20"
-              )}
-            >
-              Mês
-            </button>
-            <button
-              onClick={() => setTipoMural('geral')}
-              className={cn(
-                "px-4 py-2 rounded-md font-medium transition-all text-sm flex-1 flex items-center justify-center",
-                tipoMural === 'geral'
-                  ? theme === 'dark'
-                    ? "bg-yellow-400 text-black shadow-md"
-                    : "bg-yellow-500 text-white shadow-md"
-                  : theme === 'dark'
-                    ? "text-gray-400 hover:text-white hover:bg-white/5"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-yellow-500/20"
-              )}
-            >
-              Geral
-            </button>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
-          {mesesAno.map((mes) => {
-            const campeao = campeoesMural.get(mes.key)
-            const category = campeao ? getLevelCategory(campeao.level) : null
-            const posicaoGeral = campeao ? posicoesGeral.get(campeao.id) : null
-            
-            return (
-              <div
-                key={mes.key}
-                onClick={() => {
-                  // Tornar todos os cards clicáveis
-                  if (campeao) {
-                    setCardSelecionado({ mes, campeao, posicaoGeral: posicaoGeral || null })
-                  } else {
-                    // Para cards sem campeão, ainda abrir a modal mas sem dados do campeão
-                    setCardSelecionado({ mes, campeao: null, posicaoGeral: null })
-                  }
-                  setCardModalOpen(true)
-                }}
-                className={cn(
-                  "flex flex-col items-center p-3 md:p-4 rounded-lg transition-all duration-300 relative cursor-pointer",
-                  theme === 'dark'
-                    ? "bg-black/30 border border-white/10 hover:border-white/20"
-                    : "bg-yellow-500/10 border border-yellow-400/50 hover:border-yellow-300"
-                )}
-              >
-                {/* Ícone de compartilhar - aparece apenas quando há campeão */}
-                {campeao && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      // O clique no ícone também abre a modal e dispara confetes
-                      setCardSelecionado({ mes, campeao, posicaoGeral: posicaoGeral || null })
-                      setCardModalOpen(true)
-                    }}
-                    className={cn(
-                      "absolute top-2 right-2 p-1.5 rounded-full transition-colors z-10",
-                      theme === 'dark'
-                        ? "bg-black/40 border border-white/10 hover:bg-black/60 hover:border-yellow-400/50"
-                        : "bg-yellow-500/20 border border-yellow-400/50 hover:bg-yellow-500/30 hover:border-yellow-500"
-                    )}
-                    title="Abrir card para compartilhar"
-                  >
-                    <Share2 className={cn(
-                      "w-3.5 h-3.5 md:w-4 md:h-4",
-                      theme === 'dark' ? "text-gray-300" : "text-gray-700"
-                    )} />
-                  </button>
-                )}
-                
-                {/* Troféu no topo */}
-                <Trophy className={cn(
-                  "w-5 h-5 md:w-6 md:h-6 mb-2",
-                  campeao
-                    ? theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                    : theme === 'dark' ? "text-gray-600" : "text-gray-400"
-                )} />
-                
-                {/* Avatar com borda colorida baseada no nível */}
-                {campeao ? (
-                  <>
-                    <div className="relative mb-2">
-                      {campeao.avatarUrl ? (
-                        <img
-                          src={campeao.avatarUrl}
-                          alt={campeao.name}
-                          className={cn(
-                            "w-12 h-12 md:w-16 md:h-16 rounded-full object-cover border-[3px]",
-                            getLevelBorderColor(campeao.level, theme === 'dark')
-                          )}
-                        />
-                      ) : (
-                        <div className={cn(
-                          "w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center font-bold text-lg md:text-xl border-[3px]",
-                          theme === 'dark'
-                            ? "bg-gradient-to-br from-yellow-400 to-yellow-600 text-black"
-                            : "bg-gradient-to-br from-yellow-600 to-yellow-700 text-white",
-                          getLevelBorderColor(campeao.level, theme === 'dark')
-                        )}>
-                          {campeao.name.charAt(0)}
-                        </div>
-                      )}
-                      
-                      {/* Nível na borda do avatar (badge) */}
-                      <div className={cn(
-                        "absolute -bottom-1 -right-1 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center text-[10px] md:text-xs font-bold border-2",
-                        category === 'iniciante'
-                          ? theme === 'dark'
-                            ? "bg-yellow-500 border-yellow-500 text-black"
-                            : "bg-yellow-500 border-yellow-500 text-black"
-                          : category === 'intermediario'
-                          ? theme === 'dark'
-                            ? "bg-blue-500 border-blue-500 text-white"
-                            : "bg-blue-500 border-blue-500 text-white"
-                          : theme === 'dark'
-                          ? "bg-purple-600 border-purple-600 text-white"
-                          : "bg-purple-600 border-purple-600 text-white"
-                      )}>
-                        {campeao.level}
-                      </div>
-                    </div>
-                    
-                    {/* Nome completo */}
-                    <p className={cn(
-                      "font-semibold text-xs md:text-sm text-center mb-1 truncate w-full",
-                      theme === 'dark' ? "text-white" : "text-gray-900"
-                    )}>
-                      {campeao.name}
-                    </p>
-                    
-                    {/* XP do mês ou Posição Geral */}
-                    {tipoMural === 'mensal' ? (
-                      <p className={cn(
-                        "font-bold text-xs text-center mb-1",
-                        theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                      )}>
-                        {campeao.xpMensal.toLocaleString('pt-BR')} XP
-                      </p>
-                    ) : (
-                      <p className={cn(
-                        "font-bold text-xs text-center mb-1",
-                        theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                      )}>
-                        #{posicaoGeral || '?'} Geral
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {/* Placeholder quando não há campeão */}
-                    <div className={cn(
-                      "w-12 h-12 md:w-16 md:h-16 rounded-full mb-2 flex items-center justify-center border-[3px] border-dashed",
-                      theme === 'dark'
-                        ? "border-gray-600 bg-gray-800/30"
-                        : "border-gray-300 bg-gray-100"
-                    )}>
-                      <span className={cn(
-                        "text-lg md:text-xl font-bold leading-none",
-                        theme === 'dark' ? "text-gray-600" : "text-gray-400"
-                      )}>
-                        ?
-                      </span>
-                    </div>
-                    <p className={cn(
-                      "text-xs text-center",
-                      theme === 'dark' ? "text-gray-500" : "text-gray-500"
-                    )}>
-                      Sem campeão
-                    </p>
-                  </>
-                )}
-                
-                {/* Nome do mês */}
-                <p className={cn(
-                  "text-xs text-center mt-1 font-medium",
-                  theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                )}>
-                  {mes.nomeAbreviado.split(' ')[0]}
-                </p>
-              </div>
-            )
-          })}
         </div>
       </div>
 

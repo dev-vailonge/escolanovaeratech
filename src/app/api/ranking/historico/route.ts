@@ -27,7 +27,8 @@ export async function GET(request: NextRequest) {
     const { data: users, error: usersError } = await supabase
       .from('users')
       .select('id, name, avatar_url, xp')
-      .in('role', ['aluno', 'admin'])
+      // Não incluir admins no ranking/histórico
+      .eq('role', 'aluno')
       .eq('access_level', 'full')
 
     if (usersError) {

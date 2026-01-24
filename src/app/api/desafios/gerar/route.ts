@@ -108,30 +108,33 @@ export async function POST(request: Request) {
     // Lógica: Buscar desafios existentes e verificar se o usuário já completou
     // Se já completou → gerar novo | Se não completou → usar existente
 
-    // Buscar TODOS os desafios existentes com tecnologia + nível
+    // Buscar desafios existentes com tecnologia + nível (da nossa base)
     const { data: desafiosExistentes } = await supabase
       .from('desafios')
-      .select('id')
-      .eq('gerado_por_ia', true)
+      .select('id, gerado_por_ia, created_at')
       .eq('tecnologia', tecnologia)
       .eq('dificuldade', nivel)
+      // Preferir desafios da base (não IA) primeiro, depois os mais recentes
+      .order('gerado_por_ia', { ascending: true })
+      .order('created_at', { ascending: false })
 
     let desafioFinal
     let desafioReutilizado = null
 
     if (desafiosExistentes && desafiosExistentes.length > 0) {
-      // Verificar quais desafios o usuário já completou
+      // Verificar quais desafios o usuário já fez (completou ou finalizou tentativa)
       const desafioIds = desafiosExistentes.map(d => d.id)
       
-      // Buscar submissões aprovadas do usuário para esses desafios
-      const { data: submissoesAprovadas } = await supabase
+      // Buscar submissões finalizadas do usuário para esses desafios
+      // (se já foi aprovado/rejeitado/desistiu, consideramos "já fez" e não reatribuímos)
+      const { data: submissoesFinalizadas } = await supabase
         .from('desafio_submissions')
         .select('desafio_id')
         .eq('user_id', userId)
         .in('desafio_id', desafioIds)
-        .eq('status', 'aprovado')
+        .in('status', ['aprovado', 'rejeitado', 'desistiu'])
 
-      const desafiosCompletadosIds = new Set(submissoesAprovadas?.map(s => s.desafio_id) || [])
+      const desafiosJaFezIds = new Set(submissoesFinalizadas?.map(s => s.desafio_id) || [])
       
       // Buscar também em user_desafio_progress (backup)
       const { data: progressCompletos } = await supabase
@@ -141,21 +144,21 @@ export async function POST(request: Request) {
         .eq('completo', true)
         .in('desafio_id', desafioIds)
 
-      progressCompletos?.forEach(p => desafiosCompletadosIds.add(p.desafio_id))
+      progressCompletos?.forEach(p => desafiosJaFezIds.add(p.desafio_id))
 
-      // Encontrar um desafio que o usuário NÃO completou
-      const desafioNaoCompletado = desafiosExistentes.find(d => !desafiosCompletadosIds.has(d.id))
+      // Encontrar um desafio que o usuário ainda NÃO fez
+      const desafioNaoFez = desafiosExistentes.find(d => !desafiosJaFezIds.has(d.id))
 
-      if (desafioNaoCompletado) {
-        // ✅ Usuário ainda não completou este desafio → reutilizar
+      if (desafioNaoFez) {
+        // ✅ Usuário ainda não fez este desafio → reutilizar
         const { data: desafioData } = await supabase
           .from('desafios')
           .select('*')
-          .eq('id', desafioNaoCompletado.id)
+          .eq('id', desafioNaoFez.id)
           .single()
 
         if (desafioData) {
-          console.log(`♻️ Reutilizando desafio existente (usuário ainda não completou): ${desafioData.id}`)
+          console.log(`♻️ Reutilizando desafio existente (usuário ainda não fez): ${desafioData.id}`)
           desafioFinal = desafioData
           desafioReutilizado = desafioData
         }
@@ -221,10 +224,10 @@ export async function POST(request: Request) {
 
     const { error: erroAtribuicao, data: atribuicaoData } = await supabase
       .from('user_desafio_atribuido')
-      .insert({
+      .upsert({
         user_id: userId,
         desafio_id: desafioFinal.id
-      })
+      }, { onConflict: 'user_id,desafio_id' })
       .select()
 
     if (erroAtribuicao) {

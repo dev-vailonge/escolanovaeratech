@@ -82,6 +82,9 @@ export async function GET(request: Request) {
     const { data: rankingData } = await supabase
       .from('users')
       .select('id, xp')
+      // Posição de ranking baseada apenas em alunos
+      .eq('role', 'aluno')
+      .eq('access_level', 'full')
       .order('xp', { ascending: false })
 
     // Criar mapa de posições no ranking
