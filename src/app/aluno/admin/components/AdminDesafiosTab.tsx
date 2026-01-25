@@ -218,6 +218,10 @@ export default function AdminDesafiosTab() {
   const handleSave = async (desafioData: any) => {
     try {
       setError('')
+      const passos =
+        Array.isArray(desafioData?.passos)
+          ? desafioData.passos
+          : (Array.isArray((editingDesafio as any)?.passos) ? (editingDesafio as any).passos : [])
       
       // Preparar dados no formato do banco
       const dadosDesafio: Omit<DatabaseDesafio, 'id' | 'created_at' | 'updated_at'> = {
@@ -230,6 +234,7 @@ export default function AdminDesafiosTab() {
         periodicidade: desafioData.periodicidade as 'semanal' | 'mensal' | 'especial',
         prazo: null, // Pode ser adicionado depois se necessário
         requisitos: Array.isArray(desafioData.requisitos) ? desafioData.requisitos : [],
+        passos,
         curso_id: desafioData.curso_id || null,
         created_by: user?.id || null
       }
