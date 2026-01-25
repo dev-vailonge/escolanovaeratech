@@ -58,7 +58,8 @@ export async function GET(request: Request) {
           id,
           titulo,
           tecnologia,
-          xp
+          xp,
+          requisitos
         )
       `)
       .order('created_at', { ascending: false })

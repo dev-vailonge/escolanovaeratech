@@ -83,6 +83,7 @@ export interface DesafioSubmissionWithUser extends DatabaseDesafioSubmission {
     titulo: string
     tecnologia: string
     xp: number
+    requisitos?: any[]
   }
 }
 

@@ -716,6 +716,27 @@ export default function AdminDesafiosTab() {
                   <p className={cn("text-xs", theme === 'dark' ? "text-gray-400" : "text-gray-600")}>
                     {reviewingSubmission.desafio?.tecnologia} • {XP_CONSTANTS.desafio.completo} XP
                   </p>
+
+                  {Array.isArray(reviewingSubmission.desafio?.requisitos) && reviewingSubmission.desafio!.requisitos.length > 0 && (
+                    <div className="mt-3">
+                      <p className={cn(
+                        "text-xs font-semibold mb-2",
+                        theme === 'dark' ? "text-gray-200" : "text-gray-900"
+                      )}>
+                        📋 Requisitos do desafio
+                      </p>
+                      <ul className={cn(
+                        "space-y-1 text-xs pl-4",
+                        theme === 'dark' ? "text-gray-300" : "text-gray-700"
+                      )}>
+                        {reviewingSubmission.desafio!.requisitos.map((req: any, idx: number) => (
+                          <li key={`req-${idx}`} className="list-disc whitespace-pre-wrap break-words">
+                            {typeof req === 'string' ? req : JSON.stringify(req)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
 
                 {/* Link do GitHub */}
