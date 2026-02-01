@@ -173,64 +173,38 @@ export default function RankingPage() {
         // No dia 1, buscar campeão do mês anterior
         // Nos dias 2-31, mostrar cronômetro (não buscar campeão ainda)
         if (day >= 2) {
-          console.log('[Ranking] Estamos no meio do mês, mostrando contagem regressiva')
           if (mounted) setRankingMensal([])
           return
         }
 
-        console.log('[Ranking] Dia 1 - buscando campeão do mês anterior...')
-        
         // Calcular qual deve ser o mês anterior
         const mesAnterior = new Date(now.getFullYear(), now.getMonth() - 1, 1)
         const mesAnteriorKey = `${mesAnterior.getFullYear()}-${String(mesAnterior.getMonth() + 1).padStart(2, '0')}`
-        const mesAnteriorNome = mesAnterior.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-        
-        console.log('[Ranking] Mês anterior esperado:', mesAnteriorKey, mesAnteriorNome)
-        
-        // Se o mês fechou, buscar o campeão do mês anterior (último mês fechado)
+
         const resHistorico = await fetch(`/api/ranking/historico?limit=1&_t=${Date.now()}`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store',
         })
         const jsonHistorico = await resHistorico.json().catch(() => ({}))
-        
-        console.log('[Ranking] Resposta do histórico:', {
-          ok: resHistorico.ok,
-          historicoLength: jsonHistorico.historico?.length || 0,
-          historico: jsonHistorico.historico
-        })
-        
+
         if (resHistorico.ok && jsonHistorico.historico && jsonHistorico.historico.length > 0) {
           const campeaoDoMes = jsonHistorico.historico[0]
-          console.log('[Ranking] Campeão encontrado:', campeaoDoMes.name, 'do mês', campeaoDoMes.mes, 'mesKey:', campeaoDoMes.mesKey)
-          
-          // Validar que o mês retornado é realmente o mês anterior
-          if (campeaoDoMes.mesKey === mesAnteriorKey) {
-            console.log('[Ranking] ✅ Mês validado corretamente, exibindo campeão')
-            // Converter o formato do histórico para o formato esperado pelo ranking
-            if (mounted) {
-              setRankingMensal([{
-                id: campeaoDoMes.id,
-                name: campeaoDoMes.name,
-                xp: 0, // Não usado para o card
-                xp_mensal: campeaoDoMes.xpMensal,
-                avatar_url: campeaoDoMes.avatarUrl,
-                level: campeaoDoMes.level,
-              }])
-            }
-          } else {
-            console.log('[Ranking] ❌ Mês não corresponde ao esperado. Esperado:', mesAnteriorKey, 'Recebido:', campeaoDoMes.mesKey)
-            // Se o mês não corresponde, não mostrar campeão
-            if (mounted) setRankingMensal([])
+          if (campeaoDoMes.mesKey === mesAnteriorKey && mounted) {
+            setRankingMensal([{
+              id: campeaoDoMes.id,
+              name: campeaoDoMes.name,
+              xp: 0,
+              xp_mensal: campeaoDoMes.xpMensal,
+              avatar_url: campeaoDoMes.avatarUrl,
+              level: campeaoDoMes.level,
+            }])
+          } else if (campeaoDoMes.mesKey !== mesAnteriorKey && mounted) {
+            setRankingMensal([])
           }
-        } else {
-          console.log('[Ranking] Nenhum campeão encontrado no histórico')
-          // Se não encontrar histórico, limpar para não mostrar campeão errado
-          if (mounted) setRankingMensal([])
+        } else if (mounted) {
+          setRankingMensal([])
         }
-      } catch (e: any) {
-        console.error('Erro ao buscar campeão do mês:', e)
-        // Em caso de erro, limpar para não mostrar dados incorretos
+      } catch {
         if (mounted) setRankingMensal([])
       }
     }

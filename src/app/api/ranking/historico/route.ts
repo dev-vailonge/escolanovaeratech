@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
-import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
+import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { calculateLevel } from '@/lib/gamification'
 
 export async function GET(request: NextRequest) {
   try {
     await requireUserIdFromBearer(request)
 
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : undefined
+    const supabase = await getSupabaseClient(token)
+
     const limitParam = request.nextUrl.searchParams.get('limit')
     const limit = limitParam ? parseInt(limitParam, 10) : 6
-
-    const supabase = getSupabaseAdmin()
 
     // Buscar histórico de XP de todos os usuários
     const { data: xpHistory, error: xpError } = await supabase
@@ -58,16 +60,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(`[API /ranking/historico] Total de entradas de XP: ${xpHistory?.length || 0}`)
-    console.log(`[API /ranking/historico] Meses encontrados: ${Array.from(xpPorMesUsuario.keys()).join(', ')}`)
-
-    // Determinar qual mês considerar como fechado
     const now = new Date()
-    const day = now.getDate()
-    const isMonthClosed = day >= 2 // Mês considerado fechado a partir do dia 2
-    
     const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-    
+
     // Encontrar campeão de cada mês
     const historico: any[] = []
     const mesesProcessados = new Set<string>()
@@ -81,10 +76,6 @@ export async function GET(request: NextRequest) {
     // Quando o mês fecha (dia >= 2), o mês anterior já está na lista (pois foi calculado antes do reset)
     // Quando o mês não fecha (dia 1), excluímos o mês atual que ainda está em andamento
     mesesOrdenados = mesesOrdenados.filter(key => key !== currentMonthKey)
-    
-    console.log(`[API /ranking/historico] Mês atual: ${currentMonthKey}, Mês fechou: ${isMonthClosed}`)
-    console.log(`[API /ranking/historico] Meses ordenados após filtro: ${mesesOrdenados.join(', ')}`)
-    
     mesesOrdenados = mesesOrdenados.slice(0, limit)
 
     for (const monthKey of mesesOrdenados) {
@@ -128,23 +119,18 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(`[API /ranking/historico] Retornando ${historico.length} campeões históricos`)
-    
-    // Validar que nenhum mês retornado é o mês atual
     const historicoValidado = historico.filter(h => h.mesKey !== currentMonthKey)
-    if (historicoValidado.length !== historico.length) {
-      console.warn(`[API /ranking/historico] ⚠️ Removidos ${historico.length - historicoValidado.length} itens que eram do mês atual`)
-    }
-    
+
     return NextResponse.json({
       success: true,
       historico: historicoValidado,
     })
-  } catch (error: any) {
-    console.error('Erro ao buscar histórico de campeões:', error)
-    if (String(error?.message || '').includes('Não autenticado')) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error)
+    if (String(msg).includes('Não autenticado')) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
+    console.error('Erro ao buscar histórico de campeões:', error)
     return NextResponse.json({ success: true, historico: [] }, { status: 200 })
   }
 }

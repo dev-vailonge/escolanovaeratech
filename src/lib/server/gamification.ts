@@ -625,20 +625,16 @@ export async function getRanking(params: { type: RankingType; limit?: number; ac
   let supabase
   try {
     supabase = getSupabaseAdmin()
-    console.log('[getRanking] Usando Supabase Admin (service role key)')
   } catch (adminError) {
     // Se não tiver service role key, usar anon key
-    // IMPORTANTE: Isso pode falhar se RLS estiver habilitado na tabela users
     const { createClient } = await import('@supabase/supabase-js')
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    
+
     if (!url || !anonKey) {
       throw new Error('Supabase não configurado')
     }
-    
-    console.log('[getRanking] Usando Supabase com anon key (pode ter limitações RLS)')
-    
+
     supabase = createClient(url, anonKey, {
       auth: {
         persistSession: false,
@@ -651,21 +647,73 @@ export async function getRanking(params: { type: RankingType; limit?: number; ac
         } : {},
       },
     })
-
-    // NOTA: Não chamar setSession aqui - o header Authorization já é suficiente para RLS
-    // Chamar setSession no servidor pode interferir com a sessão do navegador e causar logout
   }
 
-  // Query otimizada: apenas campos necessários, ordenado pelo XP, com limite
-  const orderColumn = params.type === 'mensal' ? 'xp_mensal' : 'xp'
-  
+  if (params.type === 'mensal') {
+    // Ranking mensal: calcular XP do mês atual a partir de user_xp_history (não usar users.xp_mensal)
+    const now = new Date()
+    const year = now.getUTCFullYear()
+    const month = now.getUTCMonth() + 1
+    const startOfMonth = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0))
+    const endOfMonth = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999))
+    const startIso = startOfMonth.toISOString()
+    const endIso = endOfMonth.toISOString()
+
+    const { data: xpHistory, error: xpError } = await supabase
+      .from('user_xp_history')
+      .select('user_id, amount')
+      .gte('created_at', startIso)
+      .lte('created_at', endIso)
+
+    if (xpError) {
+      console.error('[getRanking] Erro ao buscar user_xp_history para ranking mensal:', xpError)
+      throw xpError
+    }
+
+    const xpMensalPorUsuario = new Map<string, number>()
+    if (xpHistory && xpHistory.length > 0) {
+      for (const entry of xpHistory) {
+        const current = xpMensalPorUsuario.get(entry.user_id) || 0
+        xpMensalPorUsuario.set(entry.user_id, current + (entry.amount || 0))
+      }
+    }
+
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id,name,level,xp,avatar_url')
+      .eq('role', 'aluno')
+      .eq('access_level', 'full')
+
+    if (usersError) {
+      console.error('Erro ao buscar usuários (ranking mensal):', usersError)
+      throw usersError
+    }
+
+    const comXpMensal = (users || []).map((u) => ({
+      ...u,
+      xp_mensal: xpMensalPorUsuario.get(u.id) || 0,
+    }))
+    comXpMensal.sort((a, b) => (b.xp_mensal || 0) - (a.xp_mensal || 0))
+    const limited = comXpMensal.slice(0, limit)
+
+    return limited.map((u, idx) => ({
+      id: u.id,
+      name: u.name,
+      level: u.level,
+      xp: u.xp,
+      xp_mensal: u.xp_mensal ?? 0,
+      avatar_url: u.avatar_url,
+      position: idx + 1,
+    }))
+  }
+
+  // Ranking geral: ordenar por users.xp
   const { data: users, error: usersError } = await supabase
     .from('users')
     .select('id,name,level,xp,xp_mensal,avatar_url')
-    // Não incluir admins no ranking
     .eq('role', 'aluno')
     .eq('access_level', 'full')
-    .order(orderColumn, { ascending: false })
+    .order('xp', { ascending: false })
     .limit(limit)
 
   if (usersError) {
@@ -676,29 +724,24 @@ export async function getRanking(params: { type: RankingType; limit?: number; ac
       code: usersError.code,
     }
     console.error('Erro ao buscar ranking do Supabase:', errorDetails)
-    
-    // Se for erro de permissão (RLS), dar mensagem mais clara
+
     if (usersError.code === 'PGRST301' || usersError.message?.includes('permission') || usersError.message?.includes('RLS')) {
       throw new Error(
         'Erro de permissão ao buscar ranking. ' +
-        'Configure SUPABASE_SERVICE_ROLE_KEY nas variáveis de ambiente da Vercel ' +
-        'ou ajuste as políticas RLS no Supabase para permitir leitura pública da tabela users. ' +
+        'Configure SUPABASE_SERVICE_ROLE_KEY ou ajuste as políticas RLS. ' +
         `Detalhes: ${usersError.message}`
       )
     }
-    
+
     throw usersError
   }
-  
-  console.log(`[getRanking] Ranking ${params.type} encontrado: ${users?.length || 0} usuários`)
-  
-  // Retorna direto com posição calculada
+
   return (users || []).map((u, idx) => ({
     id: u.id,
     name: u.name,
     level: u.level,
     xp: u.xp,
-    xp_mensal: u.xp_mensal,
+    xp_mensal: u.xp_mensal ?? 0,
     avatar_url: u.avatar_url,
     position: idx + 1,
   }))
