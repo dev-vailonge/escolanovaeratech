@@ -22,13 +22,13 @@ export default function AdminNotificacoesTab() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
-  
+
   // Ler subtab da URL ou usar 'enviadas' como padrão
   const subtabFromUrl = searchParams.get('subtab') as TabType | null
-  const initialTab: TabType = subtabFromUrl && (subtabFromUrl === 'enviadas' || subtabFromUrl === 'recebidas') 
-    ? subtabFromUrl 
+  const initialTab: TabType = subtabFromUrl && (subtabFromUrl === 'enviadas' || subtabFromUrl === 'recebidas')
+    ? subtabFromUrl
     : 'enviadas'
-  
+
   const [activeTab, setActiveTab] = useState<TabType>(initialTab)
   const [notificacoes, setNotificacoes] = useState<DatabaseNotificacao[]>([])
   const [sugestoesRecebidas, setSugestoesRecebidas] = useState<NotificacaoWithUser[]>([])
@@ -67,7 +67,7 @@ export default function AdminNotificacoesTab() {
   // Handler para mudar de sub-aba e atualizar a URL
   const handleTabChange = (tabId: TabType) => {
     setActiveTab(tabId)
-    
+
     // Atualiza a URL sem recarregar a página
     const params = new URLSearchParams(searchParams.toString())
     params.set('subtab', tabId)
@@ -92,15 +92,15 @@ export default function AdminNotificacoesTab() {
     try {
       setLoading(true)
       setError(null)
-      
+
       // Usar Promise.race com timeout para getAllNotificacoes
       const timeoutPromise = new Promise<DatabaseNotificacao[]>((_, reject) => {
         setTimeout(() => reject(new Error('Timeout ao carregar notificações')), 10000)
       })
-      
+
       const dataPromise = getAllNotificacoes()
       const dados = await Promise.race([dataPromise, timeoutPromise])
-      
+
       // Filtrar apenas notificações enviadas pelo admin:
       // - created_by é null (notificações antigas, assumimos que são do admin)
       // - created_by é o admin atual
@@ -153,9 +153,9 @@ export default function AdminNotificacoesTab() {
 
       // Buscar dados dos usuários que criaram as notificações
       const userIds = [...new Set((todasNotificacoes || []).map((n: any) => n.created_by).filter(Boolean) as string[])]
-      
+
       let usersMap: Record<string, { id: string; name: string; email: string; avatar_url?: string | null; level?: number }> = {}
-      
+
       if (userIds.length > 0) {
         const { data: users, error: usersError } = await safeSupabaseQuery(
           async () => {
@@ -200,14 +200,14 @@ export default function AdminNotificacoesTab() {
   const handleSave = async (notificacaoData: any) => {
     try {
       setError('')
-      
+
       // Preparar dados no formato do banco
       // Converter datas para ISO string se necessário
-      const dataInicioISO = notificacaoData.dataInicio 
-        ? new Date(notificacaoData.dataInicio).toISOString() 
+      const dataInicioISO = notificacaoData.dataInicio
+        ? new Date(notificacaoData.dataInicio).toISOString()
         : new Date().toISOString()
-      const dataFimISO = notificacaoData.dataFim 
-        ? new Date(notificacaoData.dataFim + 'T23:59:59').toISOString() 
+      const dataFimISO = notificacaoData.dataFim
+        ? new Date(notificacaoData.dataFim + 'T23:59:59').toISOString()
         : new Date().toISOString()
 
       const dadosNotificacao: Omit<DatabaseNotificacao, 'id' | 'created_at' | 'updated_at'> = {
@@ -217,7 +217,9 @@ export default function AdminNotificacoesTab() {
         data_inicio: dataInicioISO,
         data_fim: dataFimISO,
         publico_alvo: notificacaoData.publicoAlvo as 'todos' | 'alunos-full' | 'alunos-limited',
-        created_by: user?.id || null
+        created_by: user?.id || null,
+        imagem_url: notificacaoData.imagem_url?.trim() || null,
+        action_url: notificacaoData.action_url?.trim() || null
       }
 
       console.log('Dados da notificação a serem salvos:', dadosNotificacao)
@@ -392,7 +394,9 @@ export default function AdminNotificacoesTab() {
           ...editingNotificacao,
           dataInicio: editingNotificacao.data_inicio,
           dataFim: editingNotificacao.data_fim,
-          publicoAlvo: editingNotificacao.publico_alvo
+          publicoAlvo: editingNotificacao.publico_alvo,
+          imagem_url: editingNotificacao.imagem_url ?? '',
+          action_url: editingNotificacao.action_url ?? ''
         } : undefined}
       />
 
@@ -496,7 +500,7 @@ export default function AdminNotificacoesTab() {
                 </div>
               ))}
             </div>
-            
+
             <Pagination
               currentPage={currentPageEnviadas}
               totalPages={Math.ceil(notificacoes.length / itemsPerPage)}
@@ -613,7 +617,7 @@ export default function AdminNotificacoesTab() {
                             )}
                           </div>
                         )}
-                        
+
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
                           {isBug ? (
                             <Bug className={cn("w-4 h-4", theme === 'dark' ? "text-red-400" : "text-red-600")} />
@@ -645,7 +649,7 @@ export default function AdminNotificacoesTab() {
                         )}>
                           {mensagemLimpa}
                         </p>
-                        
+
                         {/* Exibir imagem se houver */}
                         {sugestao.imagem_url && (
                           <div className="mb-3 relative group">
@@ -678,7 +682,7 @@ export default function AdminNotificacoesTab() {
                             </p>
                           </div>
                         )}
-                        
+
                         <div className="flex items-center gap-4 text-xs">
                           <span className={cn(theme === 'dark' ? "text-gray-400" : "text-gray-600")}>
                             Recebido em {new Date(sugestao.created_at).toLocaleDateString('pt-BR', {
@@ -710,7 +714,7 @@ export default function AdminNotificacoesTab() {
                 )
               })}
             </div>
-            
+
             <Pagination
               currentPage={currentPageRecebidas}
               totalPages={Math.ceil(sugestoesRecebidas.length / itemsPerPage)}
