@@ -3,8 +3,9 @@
 import { useEffect, useState, useCallback, memo, useMemo } from 'react'
 import Image from 'next/image'
 import ProgressCard from '@/components/aluno/ProgressCard'
-import { BookOpen, Trophy, HelpCircle, Target, Clock, MessageCircle, ChevronDown, ChevronUp, Bell } from 'lucide-react'
+import { BookOpen, Trophy, HelpCircle, Target, Clock, MessageCircle, Bell, ChevronLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/AuthContext'
@@ -33,59 +34,8 @@ interface Announcement {
   message: string
   date?: string // opcional (ISO)
   type?: "info" | "warning" | "update" // opcional para cor do badge
-}
-
-function linkifyText(text: string, linkClassName: string): Array<string | JSX.Element> {
-  // Suporta:
-  // - Markdown: [texto](https://exemplo.com)
-  // - URLs diretas: https://exemplo.com ou www.exemplo.com
-  const re = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+|www\.[^\s]+)/g
-  const parts: Array<string | JSX.Element> = []
-  let lastIndex = 0
-  let match: RegExpExecArray | null
-  let idx = 0
-
-  while ((match = re.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index))
-    }
-
-    const markdownLabel = match[1]
-    const markdownUrl = match[2]
-    const rawUrl = match[3]
-
-    const href = (markdownUrl || rawUrl || '').trim()
-    const label = (markdownLabel || rawUrl || href).trim()
-
-    if (href) {
-      // Remover pontuação final comum em URLs coladas em frases
-      const trailing = /[),.;:!?]+$/
-      const cleanedHref = href.replace(trailing, '')
-      const cleanedLabel = label.replace(trailing, '')
-
-      const finalHref = cleanedHref.startsWith('http') ? cleanedHref : `https://${cleanedHref}`
-
-      parts.push(
-        <a
-          key={`link-${idx++}`}
-          href={finalHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={linkClassName}
-        >
-          {cleanedLabel}
-        </a>
-      )
-    }
-
-    lastIndex = re.lastIndex
-  }
-
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex))
-  }
-
-  return parts
+  imagem_url?: string | null
+  action_url?: string | null
 }
 
 // Tipo para usuário do ranking
@@ -107,92 +57,139 @@ function convertNotificacaoToAnnouncement(notificacao: DatabaseNotificacao): Ann
     message: notificacao.mensagem,
     date: notificacao.created_at,
     type: notificacao.tipo,
+    imagem_url: notificacao.imagem_url ?? null,
+    action_url: notificacao.action_url ?? null,
   }
 }
 
-// Componente para exibir um card de aviso - memoizado para performance
-const AnnouncementCard = memo(function AnnouncementCard({ title, message, type, date }: Announcement) {
+// Carrossel de avisos com imagem (só exibe itens que têm imagem_url)
+const AnnouncementsCarousel = memo(function AnnouncementsCarousel({ items }: { items: Announcement[] }) {
   const { theme } = useTheme()
+  const router = useRouter()
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const length = items.length
 
-  // Memoizar formatação de data
-  const formattedDate = useMemo(() => {
-    if (!date) return null
-    return new Date(date).toLocaleDateString("pt-PT", {
-      day: "numeric",
-      month: "long",
-      year: "numeric"
-    })
-  }, [date])
+  useEffect(() => {
+    if (length <= 0) return
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % length)
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [length])
 
-  const messageContent = useMemo(() => {
-    const linkClassName = cn(
-      'underline underline-offset-2 break-words',
-      theme === 'dark' ? 'text-yellow-400 hover:text-yellow-300' : 'text-yellow-700 hover:text-yellow-800'
-    )
-    return linkifyText(message, linkClassName)
-  }, [message, theme])
+  const goTo = (index: number) => setCurrentIndex(((index % length) + length) % length)
+  const handleClick = (item: Announcement) => {
+    const url = item.action_url?.trim()
+    if (!url) return
+    const isExternal = /^https?:\/\//i.test(url)
+    if (isExternal) {
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } else {
+      router.push(url)
+    }
+  }
+
+  if (length === 0) return null
+
+  const current = items[currentIndex]
+  const hasAction = Boolean(current.action_url?.trim())
 
   return (
-    <div className={cn(
-      "w-full p-4 md:p-5 rounded-xl backdrop-blur-md border shadow-lg flex flex-col gap-2 transition-colors duration-300",
-      theme === 'dark'
-        ? "bg-gray-800/30 border-white/10"
-        : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
-    )}>
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h3 className={cn(
-          "text-base md:text-lg font-semibold flex-1 min-w-0",
-          theme === 'dark' ? "text-white" : "text-gray-900"
-        )}>
-          {title}
-        </h3>
-        {type && (
-          <span className={cn(
-            "text-xs px-2 py-1 rounded-md uppercase tracking-wide font-medium flex-shrink-0",
-            type === "info" && (
-              theme === 'dark'
-                ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
-                : "bg-blue-100 text-blue-700 border border-blue-300"
-            ),
-            type === "update" && (
-              theme === 'dark'
-                ? "bg-green-500/20 text-green-300 border border-green-500/30"
-                : "bg-green-100 text-green-700 border border-green-300"
-            ),
-            type === "warning" && (
-              theme === 'dark'
-                ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30"
-                : "bg-yellow-100 text-yellow-700 border border-yellow-300"
-            )
-          )}>
-            {type === "info" ? "Informação" : type === "update" ? "Atualização" : "Aviso"}
-          </span>
+    <section className={cn(
+      "w-full rounded-xl overflow-hidden shadow-lg transition-colors duration-300",
+      theme === 'dark' ? "border border-white/10" : "border border-yellow-400/90"
+    )} aria-label="Avisos em destaque">
+      <div className="relative aspect-[4/1] min-h-[130px] md:min-h-[180px] bg-gray-900/50 overflow-hidden rounded-xl">
+        {items.map((item, index) => (
+          <div
+            key={item.id}
+            className={cn(
+              'absolute inset-0 transition-opacity duration-300 overflow-hidden rounded-xl',
+              index === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
+            )}
+          >
+            {item.imagem_url ? (
+              hasAction && item.id === current.id ? (
+                <button
+                  type="button"
+                  onClick={() => handleClick(item)}
+                  className="w-full h-full block text-left focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-inset rounded-xl overflow-hidden"
+                  aria-label={item.title}
+                >
+                  <img
+                    src={item.imagem_url}
+                    alt={item.title}
+                    className="w-full h-full object-cover object-center rounded-xl"
+                  />
+                </button>
+              ) : (
+                <img
+                  src={item.imagem_url}
+                  alt={item.title}
+                  className="w-full h-full object-cover object-center rounded-xl"
+                />
+              )
+            ) : null}
+          </div>
+        ))}
+
+        {length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={() => goTo(currentIndex - 1)}
+              className={cn(
+                'absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full flex items-center justify-center transition-colors',
+                theme === 'dark'
+                  ? 'bg-black/50 text-white hover:bg-black/70'
+                  : 'bg-white/80 text-gray-900 hover:bg-white'
+              )}
+              aria-label="Anterior"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => goTo(currentIndex + 1)}
+              className={cn(
+                'absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full flex items-center justify-center transition-colors',
+                theme === 'dark'
+                  ? 'bg-black/50 text-white hover:bg-black/70'
+                  : 'bg-white/80 text-gray-900 hover:bg-white'
+              )}
+              aria-label="Próximo"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
+              {items.map((_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => goTo(index)}
+                  className={cn(
+                    'w-2 h-2 rounded-full transition-colors',
+                    index === currentIndex
+                      ? theme === 'dark'
+                        ? 'bg-yellow-400'
+                        : 'bg-yellow-600'
+                      : 'bg-white/60 hover:bg-white/80'
+                  )}
+                  aria-label={`Ir para slide ${index + 1}`}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
-
-      <p className={cn(
-        "text-sm md:text-base leading-relaxed",
-        theme === 'dark' ? "text-white/80" : "text-gray-700"
-      )}>
-        {messageContent}
-      </p>
-
-      {formattedDate && (
-        <p className={cn(
-          "text-xs md:text-sm mt-1",
-          theme === 'dark' ? "text-white/40" : "text-gray-500"
-        )}>
-          {formattedDate}
-        </p>
-      )}
-    </div>
+    </section>
   )
 })
 
 export default function AlunoDashboard() {
   const { user: authUser } = useAuth()
   const { theme } = useTheme()
-  
+
   // Estado para estatísticas reais
   const [stats, setStats] = useState<UserStats>({
     aulasCompletas: 0,
@@ -203,11 +200,10 @@ export default function AlunoDashboard() {
     perguntasRespondidas: 0,
     perguntasFeitas: 0,
   })
-  
-  // Estado para avisos/notificações reais
+
+  // Estado para avisos/notificações reais (usados no carrossel)
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
-  const [showAllAnnouncements, setShowAllAnnouncements] = useState(false)
-  
+
   // Estado para ranking real
   const [topRanking, setTopRanking] = useState<RankingUser[]>([])
   const [loadingData, setLoadingData] = useState(true)
@@ -217,11 +213,11 @@ export default function AlunoDashboard() {
     try {
       const sessionResult = await Promise.race([
         supabase.auth.getSession(),
-        new Promise<{ data: { session: null } }>((resolve) => 
+        new Promise<{ data: { session: null } }>((resolve) =>
           setTimeout(() => resolve({ data: { session: null } }), 500) // Reduzido para 500ms
         )
       ])
-      
+
       if (sessionResult?.data?.session?.access_token) {
         return sessionResult.data.session.access_token
       }
@@ -231,7 +227,7 @@ export default function AlunoDashboard() {
         console.error('❌ Erro ao obter sessão:', err)
       }
     }
-    
+
     return null
   }, [])
 
@@ -239,13 +235,13 @@ export default function AlunoDashboard() {
   const fetchAllData = useCallback(async () => {
     try {
       setLoadingData(true)
-      
+
       // Obter token e authUser primeiro
       const [token, currentAuthUser] = await Promise.all([
         getTokenWithTimeout(),
         Promise.resolve(authUser) // Já está disponível no contexto
       ])
-      
+
       // Carregar notificações filtradas por userId (se disponível)
       // Incluir notificações individuais do usuário e notificações broadcast (avisos da escola)
       const notificacoesPromise = getNotificacoesAtivas(
@@ -257,11 +253,11 @@ export default function AlunoDashboard() {
       const [statsResult, notificacoesResult] = await Promise.allSettled([
         // Stats do usuário
         token && currentAuthUser?.id
-          ? fetch('/api/users/me/stats', { 
-              headers: { 
+          ? fetch('/api/users/me/stats', {
+              headers: {
                 Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json'
-              } 
+              }
             })
               .then(async (r) => {
                 if (!r.ok) {
@@ -302,7 +298,7 @@ export default function AlunoDashboard() {
         // Notificações (já iniciado acima)
         notificacoesPromise,
       ])
-      
+
       // Processar stats e notificações imediatamente
       if (statsResult.status === 'fulfilled' && statsResult.value) {
         console.log('[Dashboard] Stats recebidos:', statsResult.value)
@@ -314,7 +310,7 @@ export default function AlunoDashboard() {
       if (notificacoesResult.status === 'fulfilled') {
         const notificacoes = notificacoesResult.value || []
         console.log('[Dashboard] Notificações recebidas:', notificacoes.length)
-        
+
         // Filtrar apenas avisos gerais (avisos exibidos na home do aluno):
         // - target_user_id é null (avisos gerais)
         // - is_sugestao_bug não é true (excluir sugestões/bugs enviados por alunos)
@@ -325,21 +321,21 @@ export default function AlunoDashboard() {
           !notif.target_user_id &&
           !notif.is_sugestao_bug
         )
-        
+
         // Converter para formato de anúncio
         const avisosConvertidos = avisosGerais.map(convertNotificacaoToAnnouncement)
         setAnnouncements(avisosConvertidos)
       } else if (notificacoesResult.status === 'rejected') {
         console.error('[Dashboard] Erro ao buscar notificações:', notificacoesResult.reason)
       }
-      
+
       // Carregar ranking em background (não bloqueia a renderização)
       if (token) {
-        fetch('/api/ranking?type=geral', { 
-          headers: { 
+        fetch('/api/ranking?type=geral', {
+          headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
-          } 
+          }
         })
           .then(async (r) => {
             if (!r.ok) {
@@ -371,12 +367,18 @@ export default function AlunoDashboard() {
     const timer = setTimeout(() => {
       fetchAllData()
     }, 100) // Pequeno delay para garantir que authUser está disponível
-    
+
     return () => clearTimeout(timer)
   }, [fetchAllData])
 
   // Nome do usuário (real ou fallback) - memoizado
   const userName = useMemo(() => authUser?.name || 'Aluno', [authUser?.name])
+
+  // Avisos com imagem para o carrossel (exibido abaixo do header, antes do Olá)
+  const carouselItems = useMemo(
+    () => announcements.filter((a) => a.imagem_url),
+    [announcements]
+  )
 
   // Memoizar top ranking para evitar re-renders
   const topRankingMemo = useMemo(() => topRanking, [topRanking])
@@ -390,6 +392,44 @@ export default function AlunoDashboard() {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      {/* Carrossel de avisos (abaixo do header, antes do Olá) */}
+      <section className="w-full">
+        {carouselItems.length > 0 ? (
+          <AnnouncementsCarousel items={carouselItems} />
+        ) : (
+          <div className={cn(
+            "backdrop-blur-md border rounded-xl p-8 md:p-12 text-center",
+            theme === 'dark'
+              ? "bg-gray-800/30 border-white/10"
+              : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
+          )}>
+            <div className={cn(
+              "w-16 h-16 md:w-20 md:h-20 rounded-full border-4 flex items-center justify-center mb-6 mx-auto",
+              theme === 'dark'
+                ? "border-yellow-400/30 bg-yellow-400/10"
+                : "border-yellow-500/30 bg-yellow-500/10"
+            )}>
+              <Bell className={cn(
+                "w-10 h-10 md:w-12 md:h-12",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )} />
+            </div>
+            <h3 className={cn(
+              "text-lg md:text-xl font-semibold mb-2",
+              theme === 'dark' ? "text-white" : "text-gray-900"
+            )}>
+              Nenhum aviso no momento
+            </h3>
+            <p className={cn(
+              "text-sm md:text-base",
+              theme === 'dark' ? "text-gray-400" : "text-gray-600"
+            )}>
+              Quando houver avisos importantes da escola, eles aparecerão aqui.
+            </p>
+          </div>
+        )}
+      </section>
+
       {/* Welcome Section - Sempre visível, não depende de loading */}
       <div className={cn(
         "backdrop-blur-md bg-gradient-to-r rounded-xl p-4 md:p-6 border transition-colors duration-300",
@@ -432,83 +472,6 @@ export default function AlunoDashboard() {
           color="purple"
         />
       </div>
-
-      {/* Avisos da Escola */}
-        <section className="w-full flex flex-col gap-3 md:gap-4">
-          <h2 className={cn(
-            "text-lg md:text-xl font-bold",
-            theme === 'dark' ? "text-white" : "text-gray-900"
-          )}>
-            Avisos da Escola
-          </h2>
-
-        {announcements.length === 0 ? (
-          <div className={cn(
-            "backdrop-blur-md border rounded-xl p-8 md:p-12 text-center",
-            theme === 'dark'
-              ? "bg-gray-800/30 border-white/10"
-              : "bg-yellow-500/10 border-yellow-400/90 shadow-md"
-          )}>
-            <div className={cn(
-              "w-16 h-16 md:w-20 md:h-20 rounded-full border-4 flex items-center justify-center mb-6 mx-auto",
-              theme === 'dark' 
-                ? "border-yellow-400/30 bg-yellow-400/10" 
-                : "border-yellow-500/30 bg-yellow-500/10"
-            )}>
-              <Bell className={cn(
-                "w-10 h-10 md:w-12 md:h-12",
-                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-              )} />
-            </div>
-            <h3 className={cn(
-              "text-lg md:text-xl font-semibold mb-2",
-              theme === 'dark' ? "text-white" : "text-gray-900"
-            )}>
-              Nenhum aviso no momento
-            </h3>
-            <p className={cn(
-              "text-sm md:text-base",
-              theme === 'dark' ? "text-gray-400" : "text-gray-600"
-            )}>
-              Quando houver avisos importantes da escola, eles aparecerão aqui.
-            </p>
-          </div>
-        ) : (
-          <>
-          <div className="flex flex-col gap-3 md:gap-4">
-              {/* Mostrar apenas os 3 últimos ou todos se expandido */}
-              {(showAllAnnouncements ? announcements : announcements.slice(0, 3)).map(announcement => (
-              <AnnouncementCard key={announcement.id} {...announcement} />
-            ))}
-          </div>
-
-            {/* Botão para expandir/colapsar se houver mais de 3 avisos */}
-            {announcements.length > 3 && (
-              <button
-                onClick={() => setShowAllAnnouncements(!showAllAnnouncements)}
-                className={cn(
-                  "flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors",
-                  theme === 'dark'
-                    ? "bg-gray-800/30 border border-white/10 text-white hover:bg-gray-800/50"
-                    : "bg-yellow-500/10 border border-yellow-400/70 text-gray-900 hover:bg-yellow-500/20"
-                )}
-              >
-                {showAllAnnouncements ? (
-                  <>
-                    <ChevronUp className="w-4 h-4" />
-                    Ver menos
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="w-4 h-4" />
-                    Ver mais ({announcements.length - 3} avisos)
-                  </>
-                )}
-              </button>
-            )}
-          </>
-        )}
-        </section>
 
       {/* Quick Actions & Ranking */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
@@ -788,4 +751,3 @@ export default function AlunoDashboard() {
     </div>
   )
 }
-

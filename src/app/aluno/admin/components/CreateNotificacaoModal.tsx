@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
 import DatePicker from '@/components/ui/DatePicker'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ImagePlus, X } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 interface CreateNotificacaoModalProps {
   isOpen: boolean
@@ -21,12 +22,20 @@ const getDefaultFormData = () => ({
   dataInicio: new Date().toISOString().split('T')[0],
   dataFim: '',
   publicoAlvo: 'todos',
+  imagem_url: '',
+  action_url: '',
 })
 
 export default function CreateNotificacaoModal({ isOpen, onClose, onSave, notificacao }: CreateNotificacaoModalProps) {
   const { theme } = useTheme()
   const isEditing = !!notificacao
   const [isLoading, setIsLoading] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadImageError, setUploadImageError] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const previewUrlRef = useRef<string | null>(null)
 
   const [formData, setFormData] = useState(getDefaultFormData())
 
@@ -35,15 +44,15 @@ export default function CreateNotificacaoModal({ isOpen, onClose, onSave, notifi
     if (isOpen) {
       if (notificacao) {
         // Converter datas ISO para formato de input date
-        const dataInicio = notificacao.dataInicio 
-          ? (notificacao.dataInicio.includes('T') 
-              ? notificacao.dataInicio.split('T')[0] 
+        const dataInicio = notificacao.dataInicio
+          ? (notificacao.dataInicio.includes('T')
+              ? notificacao.dataInicio.split('T')[0]
               : notificacao.dataInicio)
           : new Date().toISOString().split('T')[0]
-        
-        const dataFim = notificacao.dataFim 
-          ? (notificacao.dataFim.includes('T') 
-              ? notificacao.dataFim.split('T')[0] 
+
+        const dataFim = notificacao.dataFim
+          ? (notificacao.dataFim.includes('T')
+              ? notificacao.dataFim.split('T')[0]
               : notificacao.dataFim)
           : ''
 
@@ -54,10 +63,19 @@ export default function CreateNotificacaoModal({ isOpen, onClose, onSave, notifi
           dataInicio,
           dataFim,
           publicoAlvo: notificacao.publicoAlvo || 'todos',
+          imagem_url: notificacao.imagem_url ?? '',
+          action_url: notificacao.action_url ?? '',
         })
       } else {
         // Reset para valores default ao criar novo
         setFormData(getDefaultFormData())
+      }
+      setImageFile(null)
+      setUploadImageError('')
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current)
+        previewUrlRef.current = null
+        setImagePreviewUrl(null)
       }
     }
   }, [isOpen, notificacao])
@@ -66,7 +84,7 @@ export default function CreateNotificacaoModal({ isOpen, onClose, onSave, notifi
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Validar datas
     if (!formData.dataInicio) {
       setError('Por favor, selecione a data de início.')
@@ -80,12 +98,74 @@ export default function CreateNotificacaoModal({ isOpen, onClose, onSave, notifi
       setError('A data de fim deve ser posterior à data de início.')
       return
     }
-    
+
+    // Para tipo "warning" (Aviso), imagem e link são obrigatórios (carrossel na home do aluno)
+    if (formData.tipo === 'warning') {
+      if (!formData.imagem_url?.trim() && !imageFile) {
+        setError('Para avisos, selecione uma imagem para o carrossel.')
+        return
+      }
+      if (!formData.action_url?.trim()) {
+        setError('Para avisos, informe o link de ação.')
+        return
+      }
+    }
+
     setError('')
+    setUploadImageError('')
     setIsLoading(true)
+
     try {
-      await onSave(formData)
-      // Não fecha aqui - deixa a aba controlar após sucesso
+      let imagemUrlFinal = formData.imagem_url?.trim() || ''
+
+      // Upload da imagem só ao salvar (se houver arquivo novo selecionado)
+      if (formData.tipo === 'warning' && imageFile) {
+        setUploadingImage(true)
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          const token = session?.access_token
+          if (!token) {
+            setError('Sessão expirada. Faça login novamente.')
+            setIsLoading(false)
+            setUploadingImage(false)
+            return
+          }
+          const form = new FormData()
+          form.set('imagem', imageFile)
+          const res = await fetch('/api/admin/notificacoes/upload-imagem', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: form,
+          })
+          const json = await res.json().catch(() => ({}))
+          if (!res.ok) {
+            setError(json?.error || 'Falha ao enviar imagem. Tente novamente.')
+            setIsLoading(false)
+            setUploadingImage(false)
+            return
+          }
+          if (json.imagem_url) imagemUrlFinal = json.imagem_url
+        } catch (err: any) {
+          setError(err?.message || 'Erro ao enviar imagem.')
+          setIsLoading(false)
+          setUploadingImage(false)
+          return
+        } finally {
+          setUploadingImage(false)
+        }
+      }
+
+      const dataToSave = imagemUrlFinal ? { ...formData, imagem_url: imagemUrlFinal } : formData
+      await onSave(dataToSave)
+
+      // Limpar arquivo e preview após sucesso (modal pode permanecer aberto)
+      setImageFile(null)
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current)
+        previewUrlRef.current = null
+      }
+      setImagePreviewUrl(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     } finally {
       setIsLoading(false)
     }
@@ -93,10 +173,54 @@ export default function CreateNotificacaoModal({ isOpen, onClose, onSave, notifi
 
   const handleClose = () => {
     if (!isLoading) {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current)
+        previewUrlRef.current = null
+      }
+      setImageFile(null)
+      setImagePreviewUrl(null)
       setFormData(getDefaultFormData())
       setError('')
+      setUploadImageError('')
+      if (fileInputRef.current) fileInputRef.current.value = ''
       onClose()
     }
+  }
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setUploadImageError('Selecione um arquivo de imagem (PNG, JPG ou WEBP).')
+      return
+    }
+    const maxBytes = 2 * 1024 * 1024 // 2MB
+    if (file.size > maxBytes) {
+      setUploadImageError('Imagem muito grande (máx 2MB).')
+      return
+    }
+    setUploadImageError('')
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current)
+      previewUrlRef.current = null
+    }
+    const url = URL.createObjectURL(file)
+    previewUrlRef.current = url
+    setImagePreviewUrl(url)
+    setImageFile(file)
+    setFormData((prev) => ({ ...prev, imagem_url: '' }))
+  }
+
+  const handleRemoveImage = () => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current)
+      previewUrlRef.current = null
+    }
+    setImageFile(null)
+    setImagePreviewUrl(null)
+    setFormData((prev) => ({ ...prev, imagem_url: '' }))
+    setUploadImageError('')
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   return (
@@ -174,7 +298,25 @@ export default function CreateNotificacaoModal({ isOpen, onClose, onSave, notifi
             </label>
             <select
               value={formData.tipo}
-              onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+              onChange={(e) => {
+                const newTipo = e.target.value as 'info' | 'update' | 'warning'
+                setFormData({
+                  ...formData,
+                  tipo: newTipo,
+                  // Limpar imagem/link ao sair de "warning"
+                  ...(newTipo !== 'warning' ? { imagem_url: '', action_url: '' } : {})
+                })
+                if (newTipo !== 'warning') {
+                  setUploadImageError('')
+                  setImageFile(null)
+                  if (previewUrlRef.current) {
+                    URL.revokeObjectURL(previewUrlRef.current)
+                    previewUrlRef.current = null
+                  }
+                  setImagePreviewUrl(null)
+                  if (fileInputRef.current) fileInputRef.current.value = ''
+                }
+              }}
               className={cn(
                 "w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-colors",
                 theme === 'dark'
@@ -213,6 +355,103 @@ export default function CreateNotificacaoModal({ isOpen, onClose, onSave, notifi
             </select>
           </div>
         </div>
+
+        {/* Campos para tipo "warning": upload de imagem e link (obrigatórios no carrossel) */}
+        {formData.tipo === 'warning' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className={cn(
+                "block text-sm font-medium mb-2",
+                theme === 'dark' ? "text-gray-300" : "text-gray-700"
+              )}>
+                Imagem do carrossel *
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleImageChange}
+                disabled={isLoading}
+                className={cn(
+                  "block w-full text-sm file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:cursor-pointer",
+                  theme === 'dark'
+                    ? "text-gray-300 file:bg-yellow-500/20 file:text-yellow-400"
+                    : "text-gray-700 file:bg-yellow-100 file:text-yellow-800"
+                )}
+              />
+              <p className={cn("text-xs mt-1", theme === 'dark' ? "text-gray-400" : "text-gray-500")}>
+                PNG, JPG ou WEBP • até 2MB. Exibida no carrossel da home do aluno.
+              </p>
+              {uploadImageError && (
+                <p className={cn("text-xs mt-1", theme === 'dark' ? "text-red-400" : "text-red-600")}>
+                  {uploadImageError}
+                </p>
+              )}
+              {(formData.imagem_url || imagePreviewUrl || uploadingImage) && (
+                <div className="mt-3 flex items-start gap-3">
+                  <div className={cn(
+                    "relative w-24 h-16 rounded-lg overflow-hidden border flex-shrink-0",
+                    theme === 'dark' ? "border-white/10 bg-black/30" : "border-gray-200 bg-gray-100"
+                  )}>
+                    {uploadingImage ? (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Loader2 className={cn("w-6 h-6 animate-spin", theme === 'dark' ? "text-yellow-400" : "text-yellow-600")} />
+                      </div>
+                    ) : (formData.imagem_url || imagePreviewUrl) ? (
+                      <img
+                        src={formData.imagem_url || imagePreviewUrl || ''}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ImagePlus className={cn("w-6 h-6", theme === 'dark' ? "text-gray-500" : "text-gray-400")} />
+                      </div>
+                    )}
+                  </div>
+                  {(formData.imagem_url || imagePreviewUrl) && !uploadingImage && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className={cn(
+                        "text-xs font-medium px-2 py-1 rounded transition-colors",
+                        theme === 'dark'
+                          ? "text-red-400 hover:bg-red-500/20"
+                          : "text-red-600 hover:bg-red-50"
+                      )}
+                    >
+                      <X className="w-4 h-4 inline mr-0.5" /> Remover
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+            <div>
+              <label className={cn(
+                "block text-sm font-medium mb-2",
+                theme === 'dark' ? "text-gray-300" : "text-gray-700"
+              )}>
+                Link (ação ao clicar) *
+              </label>
+              <input
+                type="text"
+                value={formData.action_url}
+                onChange={(e) => setFormData({ ...formData, action_url: e.target.value })}
+                placeholder="/aluno/desafios ou https://..."
+                className={cn(
+                  "w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-colors",
+                  theme === 'dark'
+                    ? "bg-black/50 border-white/10 text-white focus:border-yellow-400 focus:ring-yellow-400/20"
+                    : "bg-white border-gray-300 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500/20"
+                )}
+                required={formData.tipo === 'warning'}
+              />
+              <p className={cn("text-xs mt-1", theme === 'dark' ? "text-gray-400" : "text-gray-500")}>
+                URL interna (ex: /aluno/desafios) ou externa aberta ao clicar na imagem.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Datas */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -269,4 +508,3 @@ export default function CreateNotificacaoModal({ isOpen, onClose, onSave, notifi
     </Modal>
   )
 }
-
