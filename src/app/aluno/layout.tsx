@@ -13,7 +13,6 @@ import { cn } from '@/lib/utils'
 
 // Rotas públicas que não precisam de autenticação
 const publicRoutes = [
-  '/aluno/login',
   '/aluno/signup',
   '/aluno/forgot-password',
   '/aluno/reset-password'
@@ -64,14 +63,14 @@ function AlunoLayoutContent({
         // Em desenvolvimento: permitir acesso sem Supabase
         if (isProduction && hasValidSupabase) {
           // Produção com Supabase = sempre exigir autenticação
-          const loginUrl = `/aluno/login?redirect=${encodeURIComponent(pathname)}`
+          const loginUrl = `/?redirect=${encodeURIComponent(pathname)}`
           // #region agent log
           fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'layout.tsx:49',message:'Layout redirecting to login',data:{pathname,loginUrl,reason:'no-user-production'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
           // #endregion
           router.push(loginUrl)
         } else if (!isProduction && hasValidSupabase) {
           // Desenvolvimento com Supabase = verificar autenticação
-          const loginUrl = `/aluno/login?redirect=${encodeURIComponent(pathname)}`
+          const loginUrl = `/?redirect=${encodeURIComponent(pathname)}`
           router.push(loginUrl)
         }
         // Se não tem Supabase válido em desenvolvimento, permite acesso (modo desenvolvimento)

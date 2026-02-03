@@ -51,7 +51,7 @@ export default function AdminPage() {
   // Redirecionar para login se não estiver autenticado
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/aluno/login?redirect=' + encodeURIComponent('/aluno/admin'))
+      router.push('/?redirect=' + encodeURIComponent('/aluno/admin'))
     }
   }, [user, loading, router])
 

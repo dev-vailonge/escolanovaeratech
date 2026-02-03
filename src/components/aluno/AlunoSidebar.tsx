@@ -96,11 +96,11 @@ export default function AlunoSidebar() {
         })
       }
       // Forçar reload completo para limpar todos os estados
-      window.location.href = '/aluno/login'
+      window.location.href = '/'
     } catch (error) {
       console.error('Erro ao fazer logout:', error)
       // Mesmo com erro, redirecionar
-      window.location.href = '/aluno/login'
+      window.location.href = '/'
     }
   }
 

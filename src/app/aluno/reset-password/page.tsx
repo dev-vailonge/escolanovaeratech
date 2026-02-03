@@ -208,7 +208,7 @@ function ResetPasswordForm() {
 
       // Preparar mensagem de sucesso
       const successMessage = encodeURIComponent('Senha alterada com sucesso! Faça login com sua nova senha.')
-      const redirectUrl = `/aluno/login?message=${successMessage}`
+      const redirectUrl = `/?message=${successMessage}`
       
       console.log('🔄 Preparando redirect para:', redirectUrl)
       console.log('📍 URL atual:', window.location.href)

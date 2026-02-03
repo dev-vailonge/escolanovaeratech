@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const redirectTo = searchParams.get('redirect') || '/aluno'
 
     if (!accessToken || !refreshToken) {
-      return NextResponse.redirect(new URL('/aluno/login?error=missing_tokens', request.url))
+      return NextResponse.redirect(new URL('/?error=missing_tokens', request.url))
     }
 
     // Criar cliente Supabase que gerencia cookies automaticamente
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
     if (error || !data?.session) {
       console.error('[auth-callback] Erro ao definir sessão:', error)
-      return NextResponse.redirect(new URL('/aluno/login?error=invalid_session', request.url))
+      return NextResponse.redirect(new URL('/?error=invalid_session', request.url))
     }
 
     // Verificar se os cookies foram criados no cookieStore
@@ -45,8 +45,14 @@ export async function GET(request: NextRequest) {
       userId: data?.user?.id
     })
 
+    // Criar URL de redirect com flag indicando que viemos do callback
+    const redirectUrl = new URL(redirectTo, request.url)
+    // Adicionar flag para indicar que estamos vindo do callback
+    // Isso ajuda a evitar loop infinito na página de login
+    redirectUrl.searchParams.set('from_callback', 'true')
+    
     // Criar resposta de redirect
-    const response = NextResponse.redirect(new URL(redirectTo, request.url))
+    const response = NextResponse.redirect(redirectUrl)
     
     // IMPORTANTE: Se createRouteHandlerClient não criou cookies, criar manualmente
     if (supabaseCookies.length === 0 && data.session) {
@@ -112,7 +118,7 @@ export async function GET(request: NextRequest) {
     return response
   } catch (error: any) {
     console.error('Erro no auth-callback:', error)
-    return NextResponse.redirect(new URL('/aluno/login?error=server_error', request.url))
+    return NextResponse.redirect(new URL('/?error=server_error', request.url))
   }
 }
 

@@ -26,7 +26,7 @@ export default function ConfirmEmailPage() {
           setStatus('success')
           setMessage('Email confirmado com sucesso! Redirecionando para login...')
           setTimeout(() => {
-            router.push('/aluno/login?message=Email confirmado com sucesso! Faça login para continuar.')
+            router.push('/?message=Email confirmado com sucesso! Faça login para continuar.')
           }, 2000)
           return
         }
@@ -69,7 +69,7 @@ export default function ConfirmEmailPage() {
             setStatus('success')
             setMessage('Email confirmado com sucesso! Redirecionando para login...')
             setTimeout(() => {
-              router.push('/aluno/login?message=Email confirmado com sucesso! Faça login para continuar.')
+              router.push('/?message=Email confirmado com sucesso! Faça login para continuar.')
             }, 2000)
             return
           }
@@ -115,7 +115,7 @@ export default function ConfirmEmailPage() {
               setStatus('success')
               setMessage('Email confirmado com sucesso! Redirecionando para login...')
               setTimeout(() => {
-                router.push('/aluno/login?message=Email confirmado com sucesso! Faça login para continuar.')
+                router.push('/?message=Email confirmado com sucesso! Faça login para continuar.')
               }, 2000)
               return
             }
@@ -167,7 +167,7 @@ export default function ConfirmEmailPage() {
             <h2 className="text-2xl font-bold text-white mb-2">Erro na Confirmação</h2>
             <p className="text-gray-400 mb-6">{message}</p>
             <a
-              href="/aluno/login"
+              href="/"
               className="inline-block px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-500 transition-colors"
             >
               Ir para Login

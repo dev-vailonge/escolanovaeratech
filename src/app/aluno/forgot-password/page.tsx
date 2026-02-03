@@ -229,7 +229,7 @@ function AlunoForgotPasswordContent() {
           )}>
             Lembrou sua senha?{' '}
             <Link
-              href="/aluno/login"
+              href="/"
               className={cn(
                 "font-medium transition-colors",
                 theme === 'dark'

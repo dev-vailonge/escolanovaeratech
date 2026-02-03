@@ -15,7 +15,6 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/aluno')) {
     // Rotas públicas da área do aluno (não precisam de autenticação)
     const publicRoutes = [
-      '/aluno/login',
       '/aluno/signup',
       '/aluno/forgot-password',
       '/aluno/reset-password',
@@ -100,7 +99,7 @@ export async function middleware(request: NextRequest) {
             errorMessage: error?.message,
             pathname
           })
-          const loginUrl = new URL('/aluno/login', request.url)
+          const loginUrl = new URL('/', request.url)
           loginUrl.searchParams.set('redirect', pathname)
           return NextResponse.redirect(loginUrl)
         } catch (authError) {
@@ -122,7 +121,7 @@ export async function middleware(request: NextRequest) {
           }
           
           // Se não tem cookies, redirecionar para login
-          const loginUrl = new URL('/aluno/login', request.url)
+          const loginUrl = new URL('/', request.url)
           loginUrl.searchParams.set('redirect', pathname)
           return NextResponse.redirect(loginUrl)
         }
@@ -142,7 +141,7 @@ export async function middleware(request: NextRequest) {
           
           // Se não tem sessão válida E não tem cookies do Supabase, redirecionar para login
           if (!session?.isValid && supabaseCookies.length === 0) {
-            const loginUrl = new URL('/aluno/login', request.url)
+            const loginUrl = new URL('/', request.url)
             loginUrl.searchParams.set('redirect', pathname)
             return NextResponse.redirect(loginUrl)
           }

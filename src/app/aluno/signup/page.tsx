@@ -252,7 +252,7 @@ function AlunoSignUpContent() {
 
             <div className="pt-4">
               <Link
-                href="/aluno/login"
+                href="/"
                 className={cn(
                   "inline-block font-semibold py-3 px-6 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400/50 transition-all",
                   theme === 'dark'
@@ -426,7 +426,7 @@ function AlunoSignUpContent() {
               )}>
                 Já tem uma conta?{' '}
                 <Link
-                  href="/aluno/login"
+                  href="/"
                   className={cn(
                     "font-medium transition-colors",
                     theme === 'dark'
