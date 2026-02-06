@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { Trophy, TrendingUp, HelpCircle, MessageSquare, CheckCircle, Target, FileText, Award, Lock, RefreshCw, Crown, Clock, Share2, Download } from 'lucide-react'
+import { Trophy, TrendingUp, HelpCircle, MessageSquare, CheckCircle, Target, FileText, Award, Lock, RefreshCw, Crown, Clock, Share2, Download, Calendar } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/AuthContext'
@@ -96,31 +96,31 @@ export default function RankingPage() {
   // Função para criar confetes no canvas da modal para aparecer na imagem
   const criarConfetesNoCanvas = async () => {
     if (!confettiCanvasRef.current) return
-    
+
     try {
       const confettiModule = await import('canvas-confetti')
       const confetti = confettiModule.default
       const canvas = confettiCanvasRef.current
-      
+
       // Ajustar tamanho do canvas
       const rect = canvas.getBoundingClientRect()
       canvas.width = rect.width
       canvas.height = rect.height
-      
+
       // Criar instância do confetti no canvas específico
-      const confettiInstance = confetti.create(canvas, { 
+      const confettiInstance = confetti.create(canvas, {
         resize: true,
         useWorker: false
       })
-      
+
       const duration = 2000
       const animationEnd = Date.now() + duration
       const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 99999 }
-      
+
       function randomInRange(min: number, max: number) {
         return Math.random() * (max - min) + min
       }
-      
+
       // Disparar confetes no canvas
       const interval: any = setInterval(function() {
         const timeLeft = animationEnd - Date.now()
@@ -128,14 +128,14 @@ export default function RankingPage() {
           return clearInterval(interval)
         }
         const particleCount = 50 * (timeLeft / duration)
-        
+
         // Confetes da esquerda
         confettiInstance({
           ...defaults,
           particleCount,
           origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
         })
-        
+
         // Confetes da direita
         confettiInstance({
           ...defaults,
@@ -153,7 +153,7 @@ export default function RankingPage() {
       dispararConfetes()
     }
   }, [cardModalOpen])
-  
+
   // Buscar ranking mensal para o Card Mural
   // Se o mês fechou (dia >= 2), busca o campeão do mês anterior que acabou de fechar
   useEffect(() => {
@@ -169,7 +169,7 @@ export default function RankingPage() {
 
         const now = new Date()
         const day = now.getDate()
-        
+
         // No dia 1, buscar campeão do mês anterior
         // Nos dias 2-31, mostrar cronômetro (não buscar campeão ainda)
         if (day >= 2) {
@@ -229,7 +229,7 @@ export default function RankingPage() {
 
       setError('')
       if (mounted) setLoading(true)
-      
+
       try {
         // Buscar sessão diretamente (mais rápido que esperar por authUser)
         const { data: { session } } = await supabase.auth.getSession()
@@ -248,13 +248,13 @@ export default function RankingPage() {
           cache: 'no-store', // Forçar busca de dados frescos
         })
         const json = await res.json().catch(() => ({}))
-        
+
         if (!res.ok) {
           throw new Error(json?.error || 'Erro ao carregar ranking')
         }
 
         if (!mounted) return
-        
+
         // ranking contém lista ordenada por xp total (maior pontuação all time)
         setRanking(json?.ranking || [])
       } catch (e: any) {
@@ -268,7 +268,7 @@ export default function RankingPage() {
 
     // Executar imediatamente ao montar e quando refreshTrigger ou tipoRanking mudar
     run()
-    
+
     return () => {
       mounted = false
     }
@@ -339,7 +339,7 @@ export default function RankingPage() {
         if (!res.ok || !mounted) return
 
         const historico = json?.historico || []
-        
+
         setHistoricoCampeoes(historico)
       } catch (e: any) {
         console.error('Erro ao buscar histórico:', e)
@@ -359,7 +359,7 @@ export default function RankingPage() {
   const day = now.getDate()
   const isDia1 = day === 1
   const diasRestantes = getDaysUntilMonthEnd()
-  
+
   // Calcular data do fim do mês (último dia do mês às 23:59:59)
   const fimDoMes = useMemo(() => {
     const currentDate = new Date()
@@ -367,16 +367,16 @@ export default function RankingPage() {
     lastDayOfMonth.setHours(23, 59, 59, 999)
     return lastDayOfMonth
   }, [])
-  
+
   // Calcular mês atual e anterior
   const mesAtualKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   const mesAnteriorDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
   const mesAnteriorKey = `${mesAnteriorDate.getFullYear()}-${String(mesAnteriorDate.getMonth() + 1).padStart(2, '0')}`
-  
+
   // Campeão do mês anterior para o Card Mural (só mostra no dia 1)
   const campeaoMensal = useMemo(() => {
     if (!isDia1 || !rankingMensal || rankingMensal.length === 0) return null
-    
+
     const u = rankingMensal[0]
     // Se já tem level (vindo do histórico), usar ele. Senão, calcular
     const level = u.level || calculateLevel(u.xp || 0)
@@ -389,30 +389,30 @@ export default function RankingPage() {
       avatarUrl: u.avatar_url || null,
     }
   }, [rankingMensal, isDia1])
-  
-  
+
+
   // Criar lista de meses (12 meses do ano atual: Jan a Dez)
   const mesesAno = useMemo(() => {
     const lista: Array<{ key: string; nome: string; nomeAbreviado: string; date: Date }> = []
     const anoAtual = now.getFullYear()
-    
+
     // Sempre mostrar os 12 meses do ano atual (janeiro a dezembro)
     for (let i = 0; i < 12; i++) {
       const date = new Date(anoAtual, i, 1)
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
       const nomeCompleto = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
       const nomeAbreviado = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
-      lista.push({ 
-        key, 
+      lista.push({
+        key,
         nome: nomeCompleto.charAt(0).toUpperCase() + nomeCompleto.slice(1),
         nomeAbreviado: nomeAbreviado.charAt(0).toUpperCase() + nomeAbreviado.slice(1),
-        date 
+        date
       })
     }
-    
+
     return lista
   }, [])
-  
+
   // Criar mapa de posições no ranking geral por user_id
   const posicoesGeral = useMemo(() => {
     const mapa = new Map<string, number>()
@@ -428,7 +428,7 @@ export default function RankingPage() {
   const campeoesMural = useMemo(() => {
     const mapa = new Map<string, any>()
     const anoAtual = new Date().getFullYear()
-    
+
     // Adicionar campeão do mês anterior (se existir e estivermos no dia 1)
     if (isDia1 && campeaoMensal) {
       mapa.set(mesAnteriorKey, {
@@ -436,7 +436,7 @@ export default function RankingPage() {
         mesKey: mesAnteriorKey,
       })
     }
-    
+
     // Adicionar campeões do histórico que pertencem ao ano atual
     historicoCampeoes.forEach(campeao => {
       if (campeao.mesKey) {
@@ -446,7 +446,7 @@ export default function RankingPage() {
         }
       }
     })
-    
+
     return mapa
   }, [historicoCampeoes, campeaoMensal, isDia1, mesAnteriorKey])
 
@@ -555,9 +555,9 @@ export default function RankingPage() {
       // Temporariamente esconder os botões e status para não aparecer na imagem
       // Encontrar o container que contém os três elementos (Compartilhar, Atualizar, Status)
       const buttonsContainer = rankingRef.current.querySelector('div.flex.items-center.gap-3') as HTMLElement
-      
+
       const originalDisplay = buttonsContainer?.style.display || ''
-      
+
       if (buttonsContainer) {
         buttonsContainer.style.display = 'none'
       }
@@ -653,22 +653,22 @@ export default function RankingPage() {
       // O elemento da modal tem as classes: rounded-xl shadow-xl backdrop-blur-xl
       // IMPORTANTE: Queremos apenas o card da modal, não o backdrop blur ao redor
       let modalContainer = cardModalRef.current.closest('.rounded-xl.shadow-xl.backdrop-blur-xl') as HTMLElement
-      
+
       // Fallback: buscar pelo elemento com z-index 10000
       if (!modalContainer) {
         modalContainer = cardModalRef.current.closest('[style*="z-index: 10000"]') as HTMLElement
       }
-      
+
       // Fallback: buscar pelo elemento pai que contém border
       if (!modalContainer) {
         modalContainer = cardModalRef.current.closest('[class*="border"]')?.parentElement as HTMLElement
       }
-      
+
       if (!modalContainer) {
         console.error('Modal container não encontrado, usando cardModalRef')
         modalContainer = cardModalRef.current
       }
-      
+
       // Remover o backdrop blur do fundo - vamos capturar apenas o card da modal
       // O backdrop está no elemento pai que tem a classe "fixed inset-0"
       // Vamos garantir que capturamos apenas o card, não o backdrop
@@ -685,12 +685,12 @@ export default function RankingPage() {
 
       // Encontrar o container pai que inclui o backdrop blur
       // Este container tem "fixed inset-0 flex items-center justify-center"
-      const modalWrapper = modalContainer.closest('[style*="z-index: 9999"]') as HTMLElement || 
+      const modalWrapper = modalContainer.closest('[style*="z-index: 9999"]') as HTMLElement ||
                           modalContainer.parentElement as HTMLElement
 
       // Criar confetes no canvas da modal para aparecer na imagem
       await criarConfetesNoCanvas()
-      
+
       // Aguardar um pouco para os confetes aparecerem no canvas antes de gerar a imagem
       await new Promise(resolve => {
         requestAnimationFrame(() => {
@@ -753,7 +753,7 @@ export default function RankingPage() {
       console.error('Erro ao gerar imagem do card:', error)
       // Restaurar os botões em caso de erro
       const shareButton = cardModalRef.current?.querySelector('button[data-share-button="true"]') as HTMLElement
-      const modalContainer = cardModalRef.current?.closest('.rounded-xl.shadow-xl.backdrop-blur-xl') as HTMLElement || 
+      const modalContainer = cardModalRef.current?.closest('.rounded-xl.shadow-xl.backdrop-blur-xl') as HTMLElement ||
                             cardModalRef.current?.closest('[style*="z-index: 10000"]') as HTMLElement
       const closeButton = modalContainer?.querySelector('button[aria-label="Fechar"]') as HTMLElement
       if (shareButton) shareButton.style.display = ''
@@ -766,7 +766,7 @@ export default function RankingPage() {
   const downloadImageCard = (url: string) => {
     // Restaurar os botões antes do download
     const shareButton = cardModalRef.current?.querySelector('button[data-share-button="true"]') as HTMLElement
-    const modalContainer = cardModalRef.current?.closest('.rounded-xl.shadow-xl.backdrop-blur-xl') as HTMLElement || 
+    const modalContainer = cardModalRef.current?.closest('.rounded-xl.shadow-xl.backdrop-blur-xl') as HTMLElement ||
                           cardModalRef.current?.closest('[style*="z-index: 10000"]') as HTMLElement
     const closeButton = modalContainer?.querySelector('button[aria-label="Fechar"]') as HTMLElement
     if (shareButton) shareButton.style.display = ''
@@ -872,14 +872,14 @@ export default function RankingPage() {
             )}
           </button>
         </div>
-        
+
         {/* Por enquanto: mostrar apenas Mural mensal */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
             {mesesAno.map((mes) => {
               const campeao = campeoesMural.get(mes.key)
               const category = campeao ? getLevelCategory(campeao.level) : null
               const posicaoGeral = campeao ? posicoesGeral.get(campeao.id) : null
-              
+
               return (
                 <div
                   key={mes.key}
@@ -923,7 +923,7 @@ export default function RankingPage() {
                       )} />
                     </button>
                   )}
-                  
+
                   {/* Troféu no topo */}
                   <Trophy className={cn(
                     "w-5 h-5 md:w-6 md:h-6 mb-2",
@@ -931,7 +931,7 @@ export default function RankingPage() {
                       ? theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                       : theme === 'dark' ? "text-gray-600" : "text-gray-400"
                   )} />
-                  
+
                   {/* Avatar com borda colorida baseada no nível */}
                   {campeao ? (
                     <>
@@ -956,7 +956,7 @@ export default function RankingPage() {
                             {campeao.name.charAt(0)}
                           </div>
                         )}
-                        
+
                         {/* Nível na borda do avatar (badge) */}
                         <div className={cn(
                           "absolute -bottom-1 -right-1 rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center text-[10px] md:text-xs font-bold border-2",
@@ -975,7 +975,7 @@ export default function RankingPage() {
                           {campeao.level}
                         </div>
                       </div>
-                      
+
                       {/* Nome completo */}
                       <p className={cn(
                         "font-semibold text-xs md:text-sm text-center mb-1 truncate w-full",
@@ -983,7 +983,7 @@ export default function RankingPage() {
                       )}>
                         {campeao.name}
                       </p>
-                      
+
                       {/* XP do mês */}
                       <p className={cn(
                         "font-bold text-xs text-center mb-1",
@@ -1016,7 +1016,7 @@ export default function RankingPage() {
                       </p>
                     </>
                   )}
-                  
+
                   {/* Nome do mês */}
                   <p className={cn(
                     "text-xs text-center mt-1 font-medium",
@@ -1174,7 +1174,7 @@ export default function RankingPage() {
               )}>
                 #{user.position}
               </div>
-              
+
               {user.avatarUrl ? (
                 <img
                   src={user.avatarUrl}
@@ -1195,7 +1195,7 @@ export default function RankingPage() {
                   {user.name.charAt(0)}
                 </div>
               )}
-              
+
               <div className="flex-1 min-w-0">
                 <p className={cn(
                   "font-semibold text-sm md:text-base truncate",
@@ -1213,7 +1213,7 @@ export default function RankingPage() {
                   Nível {user.level}
                 </p>
               </div>
-              
+
               <div className="text-right flex-shrink-0">
                 <p className={cn(
                   "font-bold text-xs md:text-sm",
@@ -1246,7 +1246,7 @@ export default function RankingPage() {
         )}>
           Próximo Campeão
         </h2>
-        
+
         <div className={cn(
           "backdrop-blur-sm border rounded-xl p-4 md:p-6 w-full transition-colors duration-300",
           theme === 'dark'
@@ -1292,8 +1292,8 @@ export default function RankingPage() {
             <div className="space-y-2">
               <div className={cn(
                 "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
-                theme === 'dark' 
-                  ? "bg-black/30 border-white/10" 
+                theme === 'dark'
+                  ? "bg-black/30 border-white/10"
                   : "bg-yellow-500/10 border-yellow-400/50"
               )}>
                 <span className={cn(
@@ -1311,8 +1311,8 @@ export default function RankingPage() {
               </div>
               <div className={cn(
                 "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
-                theme === 'dark' 
-                  ? "bg-black/30 border-white/10" 
+                theme === 'dark'
+                  ? "bg-black/30 border-white/10"
                   : "bg-yellow-500/10 border-yellow-400/50"
               )}>
                 <span className={cn(
@@ -1330,8 +1330,8 @@ export default function RankingPage() {
               </div>
               <div className={cn(
                 "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
-                theme === 'dark' 
-                  ? "bg-black/30 border-white/10" 
+                theme === 'dark'
+                  ? "bg-black/30 border-white/10"
                   : "bg-yellow-500/10 border-yellow-400/50"
               )}>
                 <span className={cn(
@@ -1366,8 +1366,8 @@ export default function RankingPage() {
             </div>
             <div className={cn(
               "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
-              theme === 'dark' 
-                ? "bg-black/30 border-white/10" 
+              theme === 'dark'
+                ? "bg-black/30 border-white/10"
                 : "bg-yellow-500/10 border-yellow-400/50"
             )}>
               <span className={cn(
@@ -1407,8 +1407,8 @@ export default function RankingPage() {
             </div>
             <div className={cn(
               "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
-              theme === 'dark' 
-                ? "bg-black/30 border-white/10" 
+              theme === 'dark'
+                ? "bg-black/30 border-white/10"
                 : "bg-yellow-500/10 border-yellow-400/50"
             )}>
               <span className={cn(
@@ -1442,8 +1442,8 @@ export default function RankingPage() {
             </div>
             <div className={cn(
               "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
-              theme === 'dark' 
-                ? "bg-black/30 border-white/10" 
+              theme === 'dark'
+                ? "bg-black/30 border-white/10"
                 : "bg-yellow-500/10 border-yellow-400/50"
             )}>
               <span className={cn(
@@ -1457,6 +1457,41 @@ export default function RankingPage() {
                 theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
               )}>
                 1 XP
+              </span>
+            </div>
+          </div>
+
+          {/* Seção Eventos */}
+          <div>
+            <div className="flex items-center gap-2 mb-2 md:mb-3">
+              <Calendar className={cn(
+                "w-4 h-4 md:w-5 md:h-5 flex-shrink-0",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )} />
+              <h3 className={cn(
+                "text-base md:text-lg font-bold",
+                theme === 'dark' ? "text-white" : "text-gray-900"
+              )}>
+                Eventos
+              </h3>
+            </div>
+            <div className={cn(
+              "flex items-center justify-between p-2 md:p-3 rounded-lg border gap-2",
+              theme === 'dark'
+                ? "bg-black/30 border-white/10"
+                : "bg-yellow-500/10 border-yellow-400/50"
+            )}>
+              <span className={cn(
+                "text-xs md:text-sm flex-1 min-w-0",
+                theme === 'dark' ? "text-gray-300" : "text-gray-700"
+              )}>
+                Participar de evento
+              </span>
+              <span className={cn(
+                "font-bold text-sm md:text-base flex-shrink-0",
+                theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
+              )}>
+                300 XP
               </span>
             </div>
           </div>
@@ -1481,17 +1516,17 @@ export default function RankingPage() {
             )}>
               Os níveis vão de 1 a 9, sendo:
             </p>
-            
+
             {/* Grid de Níveis - Explicativo */}
             <div className="grid grid-cols-3 gap-3">
               {getLevelRequirements().map((xpRequired, index) => {
                 const level = index + 1
                 const category = getLevelCategory(level)
-                
+
                 // Cores oficiais (consistentes em ambos os temas)
                 let circleBg = ''
                 let circleText = ''
-                
+
                 if (category === 'iniciante') {
                   circleBg = 'bg-yellow-500'
                   circleText = 'text-white'
@@ -1549,8 +1584,8 @@ export default function RankingPage() {
             </div>
             <div className={cn(
               "p-3 md:p-4 rounded-lg border",
-              theme === 'dark' 
-                ? "bg-black/30 border-white/10" 
+              theme === 'dark'
+                ? "bg-black/30 border-white/10"
                 : "bg-yellow-500/10 border-yellow-400/50"
             )}>
               <div className="flex items-start gap-3 mb-3">
@@ -1646,7 +1681,7 @@ export default function RankingPage() {
                   "w-8 h-8 md:w-10 md:h-10 mb-4",
                   theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
                 )} />
-                
+
                 {/* Avatar com borda colorida baseada no nível */}
                 <div className="relative mb-4">
                   {cardSelecionado.campeao.avatarUrl ? (
@@ -1669,7 +1704,7 @@ export default function RankingPage() {
                     {cardSelecionado.campeao.name.charAt(0)}
                   </div>
                 )}
-                
+
                 {/* Nível na borda do avatar (badge) */}
                 <div className={cn(
                   "absolute -bottom-1 -right-1 rounded-full w-7 h-7 md:w-8 md:h-8 flex items-center justify-center text-xs md:text-sm font-bold border-2",
@@ -1688,7 +1723,7 @@ export default function RankingPage() {
                   {cardSelecionado.campeao.level}
                 </div>
               </div>
-              
+
               {/* Nome completo */}
               <p className={cn(
                 "font-bold text-lg md:text-xl text-center mb-2",
@@ -1696,7 +1731,7 @@ export default function RankingPage() {
               )}>
                 {cardSelecionado.campeao.name}
               </p>
-              
+
               {/* XP do mês ou Posição Geral */}
               {tipoMural === 'mensal' ? (
                 <p className={cn(
@@ -1713,7 +1748,7 @@ export default function RankingPage() {
                   #{cardSelecionado.posicaoGeral || '?'} Geral
                 </p>
               )}
-              
+
               {/* Nome do mês */}
               <p className={cn(
                 "text-sm md:text-base text-center mt-2 font-medium",
@@ -1761,7 +1796,7 @@ export default function RankingPage() {
                   "w-8 h-8 md:w-10 md:h-10 mb-4",
                   theme === 'dark' ? "text-gray-600" : "text-gray-400"
                 )} />
-                
+
                 {/* Placeholder */}
                 <div className={cn(
                   "w-20 h-20 md:w-24 md:h-24 rounded-full mb-4 flex items-center justify-center border-[3px] border-dashed",
@@ -1776,7 +1811,7 @@ export default function RankingPage() {
                     ?
                   </span>
                 </div>
-                
+
                 {/* Mensagem */}
                 <p className={cn(
                   "font-bold text-lg md:text-xl text-center mb-2",
@@ -1784,7 +1819,7 @@ export default function RankingPage() {
                 )}>
                   Sem campeão
                 </p>
-                
+
                 <p className={cn(
                   "text-sm md:text-base text-center mt-2 font-medium",
                   theme === 'dark' ? "text-gray-400" : "text-gray-600"
@@ -1799,4 +1834,3 @@ export default function RankingPage() {
     </div>
   )
 }
-
