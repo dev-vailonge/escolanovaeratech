@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { Trophy, TrendingUp, HelpCircle, MessageSquare, CheckCircle, Target, FileText, Award, Lock, RefreshCw, Crown, Clock, Share2, Download, Calendar } from 'lucide-react'
+import { Trophy, TrendingUp, MessageSquare, CheckCircle, Target, FileText, Award, Lock, RefreshCw, Crown, Clock, Share2, Download, Calendar } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/AuthContext'
@@ -12,6 +12,7 @@ import BadgeDisplay from '@/components/comunidade/BadgeDisplay'
 import CountdownTimer from '@/components/ui/countdown-timer'
 import { toPng } from 'html-to-image'
 import Image from 'next/image'
+import Link from 'next/link'
 
 // Função para verificar se o mês atual já fechou
 // O mês anterior é considerado fechado no dia 1 (a partir de 00:01)
@@ -791,27 +792,26 @@ export default function RankingPage() {
         )}>
           Ranking
         </h1>
+        {/* CTA: Pontos e bônus (prêmios) */}
         <p className={cn(
-          "text-sm md:text-base mb-4",
+          "text-center text-base md:text-lg mb-2 max-w-md mx-auto",
           theme === 'dark' ? "text-gray-400" : "text-gray-600"
         )}>
-          Ranking baseado em XP. Complete aulas, quizzes e desafios para subir de posição!
+          Veja o que você pode ganhar com os pontos que fizer na nossa plataforma. Clique no botão abaixo 👇
         </p>
-
-        {/* Link para informações sobre pontos */}
         <div className="flex justify-center mb-4">
-          <button
-            onClick={() => setIsPontuacaoModalOpen(true)}
+          <Link
+            href="/aluno/pontos-e-bonus"
             className={cn(
-              "flex items-center gap-2 text-xs md:text-sm transition-colors",
+              "inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg hover:scale-[1.02]",
               theme === 'dark'
-                ? "text-gray-400 hover:text-yellow-400"
-                : "text-gray-600 hover:text-yellow-600"
+                ? "bg-yellow-500 text-black hover:bg-yellow-400"
+                : "bg-yellow-500 text-black hover:bg-yellow-400"
             )}
           >
-            <HelpCircle className="w-4 h-4" />
-            Como funcionam os pontos?
-          </button>
+            <Trophy className="w-5 h-5" />
+            Pontos e bônus (prêmios)
+          </Link>
         </div>
 
         {(loading || error) && (
