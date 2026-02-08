@@ -3,7 +3,7 @@ import { calculateLevel } from '@/lib/gamification'
 import { getSupabaseClient } from './getSupabaseClient'
 import { getSupabaseAdmin } from './supabaseAdmin'
 
-export type XPSource = 'aula' | 'quiz' | 'desafio' | 'comunidade'
+export type XPSource = 'aula' | 'quiz' | 'desafio' | 'comunidade' | 'bonificacao'
 
 export type RankingType = 'mensal' | 'geral'
 
