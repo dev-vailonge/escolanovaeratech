@@ -210,16 +210,28 @@ function getAndroidRules(
 function buildPromptGerarDesafio(params: {
   tecnologia: string
   nivel: 'iniciante' | 'intermediario' | 'avancado'
+  desafiosJaFeitos?: { titulo: string; descricao?: string }[]
 }) {
-  const { tecnologia, nivel } = params
+  const { tecnologia, nivel, desafiosJaFeitos } = params
 
   const scopeRules = getScopeRules(tecnologia)
   const techRules = isAndroidTecnologia(tecnologia) ? getAndroidRules(tecnologia, nivel) : []
+
+  const secaoJaFeitos =
+    desafiosJaFeitos && desafiosJaFeitos.length > 0
+      ? `
+DESAFIOS QUE ESTE ALUNO JÁ REALIZOU (não repita tema, objetivo nem contexto similares):
+${desafiosJaFeitos.map((d) => `- "${d.titulo}"${d.descricao ? `: ${d.descricao}` : ''}`).join('\n')}
+
+Gere um desafio NOVO e claramente diferente em tema, objetivo e contexto (ex.: outro tipo de app, domínio diferente como e-commerce, blog, jogo, dashboard, etc.).
+`
+      : ''
 
   return `Você é um instrutor de programação experiente. Gere um desafio prático de programação.
 
 Tecnologia: ${tecnologia}
 Nível: ${nivel}
+${secaoJaFeitos}
 
 REGRAS OBRIGATÓRIAS (escopo e tecnologia):
 ${formatBulletRules([...scopeRules, ...techRules])}
@@ -230,6 +242,7 @@ Requisitos do desafio:
 - Descrição detalhada do que o aluno deve fazer
 - 3-5 requisitos específicos e verificáveis
 - Deve resultar em código que possa ser hospedado no GitHub
+- Varie o contexto (tipo de aplicação, domínio) para que o desafio seja distinto de outros da mesma tecnologia e nível
 
 IMPORTANTE: Retorne APENAS um JSON válido, sem texto adicional:
 {
@@ -250,14 +263,16 @@ IMPORTANTE: Retorne APENAS um JSON válido, sem texto adicional:
  * @param nivel - Nível de dificuldade
  * @param userId - ID do usuário que solicitou (para rastreamento de tokens)
  * @param endpoint - Endpoint da API que chamou (para rastreamento)
+ * @param desafiosJaFeitos - Desafios que o aluno já realizou (mesma tech+nível) para a IA evitar repetir
  */
 export async function gerarDesafioComIA(
   tecnologia: string,
   nivel: 'iniciante' | 'intermediario' | 'avancado',
   userId?: string,
-  endpoint?: string
+  endpoint?: string,
+  desafiosJaFeitos?: { titulo: string; descricao?: string }[]
 ): Promise<DesafioGerado> {
-  const prompt = buildPromptGerarDesafio({ tecnologia, nivel })
+  const prompt = buildPromptGerarDesafio({ tecnologia, nivel, desafiosJaFeitos })
 
   const model = 'gpt-4o-mini'
   const response = await openai.chat.completions.create({
