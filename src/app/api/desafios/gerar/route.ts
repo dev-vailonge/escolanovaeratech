@@ -172,13 +172,33 @@ export async function POST(request: Request) {
     // Se não encontrou desafio para reutilizar (todos foram completados ou não existe nenhum)
     if (!desafioFinal) {
       // ❌ Não há desafio disponível - gerar novo com OpenAI
+      // Buscar desafios que este aluno já fez/viu para esta tecnologia+nível (para a IA não repetir)
+      const { data: atribuicoesComDesafio } = await supabase
+        .from('user_desafio_atribuido')
+        .select('desafio_id, desafios(titulo, descricao, tecnologia, dificuldade)')
+        .eq('user_id', userId)
+
+      const desafiosJaFeitos: { titulo: string; descricao?: string }[] = []
+      if (atribuicoesComDesafio?.length) {
+        for (const row of atribuicoesComDesafio) {
+          const d = row.desafios as { titulo?: string; descricao?: string; tecnologia?: string; dificuldade?: string } | null
+          if (d?.tecnologia === tecnologia && d?.dificuldade === nivel && d?.titulo) {
+            const descricao = d.descricao ? d.descricao.slice(0, 200).trim() + (d.descricao.length > 200 ? '...' : '') : undefined
+            desafiosJaFeitos.push({ titulo: d.titulo, ...(descricao ? { descricao } : {}) })
+          }
+        }
+      }
+      if (desafiosJaFeitos.length > 0) {
+        console.log(`📋 Aluno já fez ${desafiosJaFeitos.length} desafio(s) para ${tecnologia}/${nivel}. Enviando à IA para evitar repetição.`)
+      }
+
       console.log(`🤖 Gerando novo desafio com OpenAI: ${tecnologia} / ${nivel}`)
-      
       const desafioGerado = await gerarDesafioComIA(
-        tecnologia, 
+        tecnologia,
         nivel as typeof NIVEIS_VALIDOS[number],
-        userId, // Passar userId para rastreamento de tokens
-        '/api/desafios/gerar' // Endpoint para rastreamento
+        userId,
+        '/api/desafios/gerar',
+        desafiosJaFeitos
       )
 
       // Salvar novo desafio no banco
