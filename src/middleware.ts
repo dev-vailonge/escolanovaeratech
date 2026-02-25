@@ -54,69 +54,29 @@ export async function middleware(request: NextRequest) {
             const name = c.name.toLowerCase()
             return name.includes('supabase') || name.startsWith('sb-') || name.includes('auth-token')
           })
-          
-          console.log('[Middleware PROD] Cookie check:', {
-            pathname,
-            totalCookies: allCookies.length,
-            supabaseCookies: supabaseCookies.length,
-            cookieNames: supabaseCookies.map(c => c.name),
-            allCookieNames: allCookies.map(c => c.name)
-          })
-          
+
           const response = NextResponse.next()
           const supabase = createMiddlewareClient({ req: request, res: response })
           const { data: { session }, error } = await supabase.auth.getSession()
-          
-          console.log('[Middleware PROD] Session check:', { 
-            hasSession: !!session, 
-            hasUser: !!session?.user, 
-            userId: session?.user?.id,
-            error: error?.message, 
-            pathname,
-            hasCookies: supabaseCookies.length > 0
-          })
-          
-          // Se tem sessão válida, permitir acesso
+
           if (session?.user) {
-            console.log('[Middleware PROD] Acesso permitido:', { pathname, userId: session.user.id })
             return response
           }
-          
-          // Se não tem sessão válida, verificar se há cookies do Supabase como fallback
-          // Isso ajuda quando cookies foram criados mas createMiddlewareClient não consegue ler
+
           if (supabaseCookies.length > 0) {
-            console.log('[Middleware PROD] Tem cookies mas sem sessão, permitindo acesso (AuthContext vai validar):', {
-              pathname,
-              cookieCount: supabaseCookies.length
-            })
-            // Permitir acesso e deixar AuthContext validar
             return response
           }
-          
-          // Se não tem sessão E não tem cookies, redirecionar para login
-          console.log('[Middleware PROD] Redirecionando para login:', {
-            reason: 'no-session-no-cookies',
-            errorMessage: error?.message,
-            pathname
-          })
           const loginUrl = new URL('/', request.url)
           loginUrl.searchParams.set('redirect', pathname)
           return NextResponse.redirect(loginUrl)
-        } catch (authError) {
-          // Se houver erro ao verificar sessão, verificar cookies como fallback
-          console.error('[Middleware PROD] Erro ao verificar sessão:', authError)
-          
+        } catch {
           const allCookies = request.cookies.getAll()
           const supabaseCookies = allCookies.filter(c => {
             const name = c.name.toLowerCase()
             return name.includes('supabase') || name.startsWith('sb-') || name.includes('auth-token')
           })
-          
+
           if (supabaseCookies.length > 0) {
-            console.log('[Middleware PROD] Erro mas tem cookies, permitindo acesso:', {
-              pathname,
-              cookieCount: supabaseCookies.length
-            })
             return NextResponse.next()
           }
           

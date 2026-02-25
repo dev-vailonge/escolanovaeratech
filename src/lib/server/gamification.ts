@@ -33,10 +33,7 @@ async function syncUserLevel(userId: string, accessToken?: string) {
     .eq('id', userId)
     .single()
 
-  if (userError || !user) {
-    console.warn('⚠️ Não foi possível buscar XP do usuário para sincronizar nível:', userError)
-    return
-  }
+  if (userError || !user) return
 
   // Calcular nível correto
   const correctLevel = calculateLevel(user.xp || 0)
@@ -49,9 +46,7 @@ async function syncUserLevel(userId: string, accessToken?: string) {
       .eq('id', userId)
 
     if (updateError) {
-      console.error('❌ Erro ao atualizar nível do usuário:', updateError)
-    } else {
-      console.log(`✅ Nível do usuário ${userId} atualizado de ${user.level} para ${correctLevel}`)
+      // Falha silenciosa ao atualizar nível
     }
   }
 }
@@ -65,9 +60,7 @@ export async function insertXpEntry(params: {
   accessToken?: string
 }) {
   const supabase = await getSupabaseClient(params.accessToken)
-  
-  console.log(`📤 [insertXpEntry] Inserindo XP: userId=${params.userId}, source=${params.source}, amount=${params.amount}, sourceId=${params.sourceId}`)
-  
+
   // Tentar usar função SQL com SECURITY DEFINER primeiro (permite admins concederem XP a outros usuários)
   try {
     const { data: rpcData, error: rpcError } = await supabase.rpc('award_xp_to_user', {
@@ -79,16 +72,11 @@ export async function insertXpEntry(params: {
     })
 
     if (!rpcError && rpcData) {
-      console.log(`✅ [insertXpEntry] XP inserido com sucesso via RPC:`, rpcData)
-      // Atualizar nível automaticamente após inserir XP
       await syncUserLevel(params.userId, params.accessToken)
       return
     }
-
-    // Se RPC falhar, tentar INSERT direto (fallback para caso a função não exista)
-    console.log(`⚠️ [insertXpEntry] RPC falhou, tentando INSERT direto:`, rpcError?.message)
-  } catch (rpcError: any) {
-    console.log(`⚠️ [insertXpEntry] Erro ao chamar RPC, tentando INSERT direto:`, rpcError?.message)
+  } catch {
+    // RPC falhou, tentar INSERT direto
   }
   
   // Fallback: INSERT direto (funciona quando user_id = auth.uid())
@@ -100,17 +88,7 @@ export async function insertXpEntry(params: {
     description: params.description || null,
   }).select()
 
-  if (error) {
-    console.error(`❌ [insertXpEntry] Erro ao inserir XP:`, {
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-      code: error.code,
-    })
-    throw error
-  }
-
-  console.log(`✅ [insertXpEntry] XP inserido com sucesso:`, data?.[0]?.id)
+  if (error) throw error
 
   // Atualizar nível automaticamente após inserir XP
   await syncUserLevel(params.userId, params.accessToken)
@@ -120,9 +98,6 @@ export async function insertXpEntry(params: {
 export async function completarDesafio(params: { userId: string; desafioId: string; accessToken?: string }) {
   const supabase = await getSupabaseClient(params.accessToken)
 
-  // Tentar usar função SQL com SECURITY DEFINER primeiro (permite admins completarem desafios para alunos)
-  console.log(`🔍 [completarDesafio] Tentando chamar função SQL complete_desafio_for_user para userId=${params.userId}, desafioId=${params.desafioId}`)
-  
   let rpcErrorInfo: any = null
   try {
     const { data: rpcData, error: rpcError } = await supabase.rpc('complete_desafio_for_user', {
@@ -130,11 +105,7 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
       p_desafio_id: params.desafioId,
     })
 
-    console.log(`📊 [completarDesafio] Resposta RPC - data:`, rpcData, `error:`, rpcError, `data type:`, typeof rpcData, `error type:`, typeof rpcError)
-
     if (!rpcError && rpcData) {
-      console.log(`✅ [completarDesafio] Desafio completado com sucesso via RPC para usuário ${params.userId}`)
-      // Atualizar nível automaticamente após inserir XP
       await syncUserLevel(params.userId, params.accessToken)
       const xpDesafio = XP_CONSTANTS.desafio.completo
       return { awarded: true as const, xp: xpDesafio, rpcUsed: true }
@@ -149,32 +120,22 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
         details: rpcError?.details,
         hint: rpcError?.hint,
       } : {
-        message: 'Função RPC retornou null/undefined (função não existe ou não retornou valor)',
+        message: 'Função RPC retornou null/undefined',
         code: 'RPC_NO_DATA',
-        details: `rpcData: ${rpcData}, rpcError: ${rpcError}`,
-        hint: 'Verifique se a função complete_desafio_for_user existe no banco de dados',
+        details: '',
+        hint: '',
       }
-      console.error(`❌ [completarDesafio] RPC falhou - error:`, rpcErrorInfo)
-      console.log(`⚠️ [completarDesafio] RPC falhou, tentando método direto`)
     }
   } catch (rpcError: any) {
-    // Se a função não existe ou retornar erro esperado (já recebeu XP), tratar
     rpcErrorInfo = {
       message: rpcError?.message,
       code: rpcError?.code,
       stack: rpcError?.stack,
     }
-    console.error(`❌ [completarDesafio] Exceção ao chamar RPC:`, rpcErrorInfo)
     if (rpcError?.message?.includes('já recebeu XP')) {
-      console.log(`⚠️ [completarDesafio] Usuário já recebeu XP para este desafio`)
       return { awarded: false as const, reason: 'already_received_xp' as const, xp: 0, rpcError: rpcErrorInfo }
     }
-    console.log(`⚠️ [completarDesafio] Erro ao chamar RPC, tentando método direto:`, rpcError?.message)
   }
-
-  // Fallback: método direto (funciona quando user_id = auth.uid())
-  // Se chegou aqui, a função RPC falhou - tentar método direto
-  console.log(`⚠️ [completarDesafio] Usando fallback (método direto) - RPC não funcionou`)
   const { data: existing, error: existingError } = await supabase
     .from('user_desafio_progress')
     .select('id, completo')
@@ -253,10 +214,8 @@ export async function completarDesafio(params: { userId: string; desafioId: stri
       description: `Desafio concluído: ${tituloLimpo}`,
       accessToken: params.accessToken,
     })
-    console.log(`✅ [completarDesafio] XP concedido com sucesso: ${xpDesafio} XP para usuário ${params.userId}`)
   } catch (xpError: any) {
-    console.error(`❌ [completarDesafio] Erro ao inserir XP:`, xpError)
-    throw xpError // Relança o erro para que a rota de aprovação possa tratá-lo
+    throw xpError
   }
 
   // Atualizar nível automaticamente após inserir XP
@@ -334,76 +293,19 @@ export async function completarQuiz(params: {
     // Adicionar filtro adicional para garantir que não há entradas com source_id NULL ou incorreto
     .not('source_id', 'is', null)
 
-  if (xpHistoryError) {
-    console.error(`❌ [completarQuiz] Erro ao buscar histórico de XP:`, xpHistoryError)
-    throw xpHistoryError
-  }
+  if (xpHistoryError) throw xpHistoryError
 
-  // Log detalhado do histórico encontrado
-  console.log(`🔍 [completarQuiz] Histórico de XP encontrado:`, {
-    quizId: params.quizId,
-    quizIdType: typeof params.quizId,
-    totalEntries: xpHistory?.length || 0,
-    entries: xpHistory?.map(e => ({
-      id: e.id,
-      source_id: e.source_id,
-      source_id_type: typeof e.source_id,
-      amount: e.amount,
-      description: e.description,
-      created_at: e.created_at
-    })) || []
-  })
-
-  // Calcular XP total já ganho
-  // IMPORTANTE: Filtrar apenas entradas onde source_id corresponde EXATAMENTE ao quizId
-  // Isso previne bugs onde XP de outros quizzes seja contado incorretamente
-  let entradasFiltradas = 0
-  const xpTotalGanho = (xpHistory || []).reduce((sum, entry) => {
-    // Verificar se o source_id realmente corresponde ao quizId
-    // Comparar como string para garantir matching correto
+  let xpTotalGanho = 0
+  for (const entry of xpHistory || []) {
     const entrySourceId = entry.source_id?.toString() || ''
     const quizIdStr = params.quizId.toString()
-    const sourceIdMatch = entrySourceId === quizIdStr
-    
-    if (!sourceIdMatch) {
-      entradasFiltradas++
-      console.warn(`⚠️ [completarQuiz] source_id não corresponde ao quizId - IGNORANDO entrada:`, {
-        entry_source_id: entry.source_id,
-        entry_source_id_str: entrySourceId,
-        quizId: params.quizId,
-        quizId_str: quizIdStr,
-        entry: entry
-      })
-      // NÃO somar esta entrada - ela não pertence a este quiz
-      return sum
-    }
-    
-    // Somar apenas se source_id corresponder exatamente
-    return sum + (entry.amount || 0)
-  }, 0)
-  
-  if (entradasFiltradas > 0) {
-    console.warn(`⚠️ [completarQuiz] ${entradasFiltradas} entradas de XP foram filtradas (source_id não corresponde ao quizId)`)
+    if (entrySourceId !== quizIdStr) continue
+    xpTotalGanho += entry.amount || 0
   }
-  
-  // Calcular XP remanescente (limite máximo oficial de 20 XP menos o que já foi ganho)
+
   const xpRemanescente = Math.max(0, xpMaximoQuiz - xpTotalGanho)
-  
-  // Log detalhado para debug
-  console.log(`📊 [completarQuiz] Cálculo de XP:`, {
-    userId: params.userId,
-    quizId: params.quizId,
-    pontuacao: params.pontuacao,
-    xpMaximoQuiz,
-    xpHistoryEntries: xpHistory?.length || 0,
-    xpTotalGanho,
-    xpRemanescente,
-    historicoDetalhado: xpHistory?.map(e => e.amount) || []
-  })
-  
-  // Se não há XP remanescente, não conceder XP
+
   if (xpRemanescente <= 0) {
-    console.log(`⚠️ [completarQuiz] Limite de XP atingido para quiz ${params.quizId}`)
     return { 
       awarded: false as const, 
       reason: 'xp_limit_reached' as const,
@@ -417,13 +319,7 @@ export async function completarQuiz(params: {
   // Se pontuacao = 100%, ganha 100% do XP remanescente
   // Se pontuacao = 50%, ganha 50% do XP remanescente
   const xpGanho = Math.round((params.pontuacao / 100) * xpRemanescente)
-  
-  console.log(`✅ [completarQuiz] XP calculado:`, {
-    xpGanho,
-    calculo: `(${params.pontuacao}% / 100) * ${xpRemanescente} = ${xpGanho}`,
-    novoXpTotal: xpTotalGanho + xpGanho
-  })
-  
+
   // Remover nível de dificuldade do título (iniciante, intermediário, avançado)
   const tituloLimpo = quiz.titulo
     .replace(/\s*-\s*(Iniciante|Intermediário|Intermediario|Avançado|Avancado)$/i, '')
@@ -455,44 +351,31 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
   const { extractMentions } = await import('@/lib/mentionParser')
   const supabase = await getSupabaseClient(params.accessToken)
 
-  // Extrair e validar menções
   const mentions = extractMentions(params.conteudo)
-  console.log('🔍 [responderComunidade] Menções extraídas:', mentions)
   const userMentions: string[] = []
   const mentionedUsers: Array<{ id: string; name: string }> = []
 
   if (mentions.length > 0) {
-    // Buscar usuários mencionados (case-insensitive)
     let query = supabase
       .from('users')
       .select('id, name')
-    
+
     const conditions = mentions.map((m) => `name.ilike.%${m}%`).join(',')
     if (conditions) {
       query = query.or(conditions)
     }
-    
+
     const { data: users, error: usersError } = await query
 
-    if (usersError) {
-      console.error('❌ [responderComunidade] Erro ao buscar usuários:', usersError)
-    }
-
-    console.log('👥 [responderComunidade] Usuários encontrados na busca:', users?.length || 0)
-
-    if (users) {
-      // Filtrar para pegar apenas matches exatos (ignorando case)
+    if (!usersError && users) {
       const mentionSet = new Set(mentions.map(m => m.toLowerCase()))
-      const matchedUsers = users.filter(u => 
+      const matchedUsers = users.filter(u =>
         mentionSet.has(u.name.toLowerCase())
       )
-      console.log('✅ [responderComunidade] Usuários matched:', matchedUsers.map(u => `${u.name} (${u.id})`))
       userMentions.push(...matchedUsers.map((u) => u.id))
       mentionedUsers.push(...matchedUsers)
     }
   }
-
-  console.log('📝 [responderComunidade] Total de usuários mencionados:', mentionedUsers.length)
 
   const { data: resposta, error: respostaError } = await supabase
     .from('respostas')
@@ -505,10 +388,7 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
     .select('id')
     .single()
 
-  if (respostaError) {
-    console.error('Erro ao criar resposta:', respostaError)
-    throw respostaError
-  }
+  if (respostaError) throw respostaError
 
   // Dar 1 XP ao responder (valor oficial)
   const xpResposta = XP_CONSTANTS.comunidade.resposta
@@ -523,20 +403,11 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
       description: 'Resposta criada na comunidade',
       accessToken: params.accessToken,
     })
-  } catch (xpError: any) {
-    console.error('Erro ao inserir XP (resposta já criada):', xpError)
-    // Não falhar - a resposta já foi criada com sucesso
-    // O XP pode ser concedido manualmente ou via outro mecanismo
+  } catch {
+    // Resposta já criada; XP pode ser concedido manualmente se necessário
   }
 
-  // Criar notificações para usuários mencionados
-  console.log('🔔 [responderComunidade] Verificando se deve criar notificações...', {
-    mentionedUsersLength: mentionedUsers.length,
-    respostaId: resposta.id
-  })
-  
   if (mentionedUsers.length > 0 && resposta.id) {
-    console.log('🔔 [responderComunidade] Criando notificações para', mentionedUsers.length, 'usuário(s)')
     try {
       // Usar o mesmo supabase client (já tem accessToken) para criar notificações
       const agora = new Date()
@@ -550,30 +421,12 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
         .eq('id', params.userId)
         .single()
 
-      if (autorError) {
-        console.error('❌ [responderComunidade] Erro ao buscar autor:', autorError)
-      }
-
       const autorNome = autor?.name || 'Alguém'
-      console.log('👤 [responderComunidade] Nome do autor:', autorNome)
       const actionUrl = `/aluno/comunidade/pergunta/${params.perguntaId}`
 
       for (const mentionedUser of mentionedUsers) {
-        // Não notificar o próprio autor
-        if (mentionedUser.id === params.userId) {
-          console.log('⏭️ [responderComunidade] Pulando notificação para próprio autor:', mentionedUser.id)
-          continue
-        }
+        if (mentionedUser.id === params.userId) continue
 
-        console.log(`📤 [responderComunidade] Criando notificação para ${mentionedUser.name} (${mentionedUser.id})`)
-        console.log(`📋 [responderComunidade] Dados da notificação:`, {
-          titulo: '💬 Você foi mencionado',
-          mensagem: `${autorNome} mencionou você em uma resposta.`,
-          target_user_id: mentionedUser.id,
-          autor_id: params.userId,
-          autor_nome: autorNome
-        })
-        
         const { data: notifData, error: notifError } = await supabase
           .from('notificacoes')
           .insert({
@@ -589,30 +442,14 @@ export async function responderComunidade(params: { userId: string; perguntaId: 
           })
           .select('id, target_user_id')
 
+        // Erro ao criar notificação não falha a resposta
         if (notifError) {
-          console.error(`❌ [responderComunidade] Erro ao criar notificação para usuário ${mentionedUser.id}:`, notifError)
-          console.error('❌ [responderComunidade] Detalhes do erro:', JSON.stringify(notifError, null, 2))
-          console.error('❌ [responderComunidade] Código do erro:', notifError.code)
-          console.error('❌ [responderComunidade] Mensagem:', notifError.message)
-        } else {
-          console.log(`✅ [responderComunidade] Notificação criada com sucesso!`, {
-            notificacao_id: notifData?.[0]?.id,
-            target_user_id: notifData?.[0]?.target_user_id,
-            usuario_mentionado: mentionedUser.name
-          })
+          // silenciar
         }
       }
-    } catch (notifErr: any) {
+    } catch {
       // Não falhar a criação da resposta se notificação falhar
-      console.error('❌ [responderComunidade] Erro ao criar notificações de menção:', notifErr)
-      console.error('❌ [responderComunidade] Stack trace:', notifErr?.stack)
     }
-  } else {
-    console.log('⚠️ [responderComunidade] Não criando notificações:', {
-      mentionedUsersLength: mentionedUsers.length,
-      respostaId: resposta.id,
-      reason: mentionedUsers.length === 0 ? 'Nenhum usuário mencionado' : 'Resposta ID não disponível'
-    })
   }
 
   return { awarded: true as const, respostaId: resposta.id, xp: xpResposta }
@@ -665,10 +502,7 @@ export async function getRanking(params: { type: RankingType; limit?: number; ac
       .gte('created_at', startIso)
       .lte('created_at', endIso)
 
-    if (xpError) {
-      console.error('[getRanking] Erro ao buscar user_xp_history para ranking mensal:', xpError)
-      throw xpError
-    }
+    if (xpError) throw xpError
 
     const xpMensalPorUsuario = new Map<string, number>()
     if (xpHistory && xpHistory.length > 0) {
@@ -684,10 +518,7 @@ export async function getRanking(params: { type: RankingType; limit?: number; ac
       .eq('role', 'aluno')
       .eq('access_level', 'full')
 
-    if (usersError) {
-      console.error('Erro ao buscar usuários (ranking mensal):', usersError)
-      throw usersError
-    }
+    if (usersError) throw usersError
 
     const comXpMensal = (users || []).map((u) => ({
       ...u,
@@ -717,14 +548,6 @@ export async function getRanking(params: { type: RankingType; limit?: number; ac
     .limit(limit)
 
   if (usersError) {
-    const errorDetails = {
-      message: usersError.message,
-      details: usersError.details,
-      hint: usersError.hint,
-      code: usersError.code,
-    }
-    console.error('Erro ao buscar ranking do Supabase:', errorDetails)
-
     if (usersError.code === 'PGRST301' || usersError.message?.includes('permission') || usersError.message?.includes('RLS')) {
       throw new Error(
         'Erro de permissão ao buscar ranking. ' +

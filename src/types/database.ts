@@ -220,4 +220,75 @@ export interface OpenAITokenUsage {
   created_at: string
 }
 
+// -----------------------------
+// Mentorias
+// -----------------------------
+
+export type MentoriaStatus = 'ativa' | 'pausada' | 'finalizada'
+
+export type MentoriaStepStatus = 'nao_iniciado' | 'em_progresso' | 'concluido'
+
+export interface DatabaseMentoria {
+  id: string
+  mentor_id: string
+  mentorado_id: string
+  objetivo_principal: string
+  status: MentoriaStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface DatabaseMentoriaStep {
+  id: string
+  mentoria_id: string
+  titulo: string
+  descricao: string
+  ordem: number
+  status: MentoriaStepStatus
+  habilitado: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface DatabaseMentoriaTarefaLink {
+  label: string
+  url: string
+}
+
+export interface DatabaseMentoriaTarefa {
+  id: string
+  step_id: string
+  titulo: string
+  descricao: string
+  links?: DatabaseMentoriaTarefaLink[]
+  concluida: boolean
+  created_at: string
+}
+
+export interface DatabaseMentoriaInteresse {
+  id: string
+  user_id: string
+  mensagem: string | null
+  status: 'pendente' | 'em_analise' | 'aprovado' | 'recusado'
+  created_at: string
+}
+
+// Tipo agregado para uso na UI do aluno
+export interface MentoriaWithSteps extends DatabaseMentoria {
+  mentor?: {
+    id: string
+    name: string
+    email: string
+    avatar_url?: string | null
+  }
+  mentorado?: {
+    id: string
+    name: string
+    email: string
+    avatar_url?: string | null
+  }
+  steps: (DatabaseMentoriaStep & { tarefas: DatabaseMentoriaTarefa[] })[]
+  progressPercent: number
+}
+
 

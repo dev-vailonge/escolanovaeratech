@@ -299,17 +299,12 @@ export default function AlunoDashboard() {
         notificacoesPromise,
       ])
 
-      // Processar stats e notificações imediatamente
       if (statsResult.status === 'fulfilled' && statsResult.value) {
-        console.log('[Dashboard] Stats recebidos:', statsResult.value)
         setStats(statsResult.value)
-      } else if (statsResult.status === 'rejected') {
-        console.error('[Dashboard] Erro ao buscar stats:', statsResult.reason)
       }
 
       if (notificacoesResult.status === 'fulfilled') {
         const notificacoes = notificacoesResult.value || []
-        console.log('[Dashboard] Notificações recebidas:', notificacoes.length)
 
         // Filtrar apenas avisos gerais (avisos exibidos na home do aluno):
         // - target_user_id é null (avisos gerais)
@@ -325,8 +320,6 @@ export default function AlunoDashboard() {
         // Converter para formato de anúncio
         const avisosConvertidos = avisosGerais.map(convertNotificacaoToAnnouncement)
         setAnnouncements(avisosConvertidos)
-      } else if (notificacoesResult.status === 'rejected') {
-        console.error('[Dashboard] Erro ao buscar notificações:', notificacoesResult.reason)
       }
 
       // Carregar ranking em background (não bloqueia a renderização)

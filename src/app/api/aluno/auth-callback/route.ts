@@ -24,26 +24,15 @@ export async function GET(request: NextRequest) {
     })
 
     if (error || !data?.session) {
-      console.error('[auth-callback] Erro ao definir sessão:', error)
       return NextResponse.redirect(new URL('/?error=invalid_session', request.url))
     }
 
-    // Verificar se os cookies foram criados no cookieStore
     const allCookies = cookieStore.getAll()
-    const supabaseCookies = allCookies.filter(c => 
-      c.name.includes('supabase') || 
-      c.name.startsWith('sb-') || 
+    const supabaseCookies = allCookies.filter(c =>
+      c.name.includes('supabase') ||
+      c.name.startsWith('sb-') ||
       c.name.includes('auth-token')
     )
-    
-    console.log('[auth-callback] Cookies no cookieStore após setSession:', {
-      totalCookies: allCookies.length,
-      supabaseCookies: supabaseCookies.length,
-      cookieNames: supabaseCookies.map(c => c.name),
-      allCookieNames: allCookies.map(c => c.name),
-      hasSession: !!data?.session,
-      userId: data?.user?.id
-    })
 
     // Criar URL de redirect com flag indicando que viemos do callback
     const redirectUrl = new URL(redirectTo, request.url)
@@ -54,10 +43,7 @@ export async function GET(request: NextRequest) {
     // Criar resposta de redirect
     const response = NextResponse.redirect(redirectUrl)
     
-    // IMPORTANTE: Se createRouteHandlerClient não criou cookies, criar manualmente
     if (supabaseCookies.length === 0 && data.session) {
-      console.log('[auth-callback] Nenhum cookie criado, criando manualmente...')
-      
       // Obter project ref do Supabase URL
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
       const projectRef = supabaseUrl?.split('//')[1]?.split('.')[0] || 'default'
@@ -89,12 +75,6 @@ export async function GET(request: NextRequest) {
         sameSite: 'lax',
         expires: expires,
       })
-      
-      console.log('[auth-callback] Cookie criado manualmente:', {
-        cookieName,
-        expires: expires.toISOString(),
-        redirectTo
-      })
     } else {
       // Se cookies foram criados, copiar para a resposta
       allCookies.forEach(cookie => {
@@ -108,16 +88,10 @@ export async function GET(request: NextRequest) {
           maxAge: 60 * 60 * 24 * 7, // 7 dias
         })
       })
-      
-      console.log('[auth-callback] Cookies copiados para resposta:', {
-        totalCookies: allCookies.length,
-        cookieNames: allCookies.map(c => c.name)
-      })
     }
-    
+
     return response
-  } catch (error: any) {
-    console.error('Erro no auth-callback:', error)
+  } catch {
     return NextResponse.redirect(new URL('/?error=server_error', request.url))
   }
 }

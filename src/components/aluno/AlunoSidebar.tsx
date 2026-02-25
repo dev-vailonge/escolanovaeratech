@@ -20,6 +20,7 @@ import {
   Settings,
   Menu,
   X,
+  Sparkles,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSidebar } from '@/lib/SidebarContext'
@@ -44,6 +45,7 @@ const baseMenuModalItems = [
   { icon: BookOpen, label: 'Plano de Estudos', href: '/aluno/aulas' },
   { icon: HelpCircle, label: 'Quiz', href: '/aluno/quiz' },
   { icon: Target, label: 'Desafios', href: '/aluno/desafios' },
+  { icon: Sparkles, label: 'Mentorias', href: '/aluno/mentorias' },
   { icon: ClipboardList, label: 'Central de Ajuda', href: '/aluno/central-de-ajuda' },
 ]
 
@@ -55,6 +57,7 @@ const secondaryMenuItems = [
   { icon: BookOpen, label: 'Plano de Estudos', href: '/aluno/aulas' },
   { icon: HelpCircle, label: 'Quiz', href: '/aluno/quiz' },
   { icon: Target, label: 'Desafios', href: '/aluno/desafios' },
+  { icon: Sparkles, label: 'Mentorias', href: '/aluno/mentorias' },
 ]
 const helpCenterItem = { icon: ClipboardList, label: 'Central de Ajuda', href: '/aluno/central-de-ajuda' }
 

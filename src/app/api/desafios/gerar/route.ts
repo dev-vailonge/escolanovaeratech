@@ -160,7 +160,6 @@ export async function POST(request: Request) {
           .single()
 
         if (desafioData) {
-          console.log(`♻️ Reutilizando desafio existente (usuário ainda não fez): ${desafioData.id}`)
           // Garantir que o payload retornado respeite o XP oficial
           // (não depender de `desafios.xp`, que pode estar divergente no banco)
           desafioFinal = { ...desafioData, xp: XP_DESAFIO }
@@ -188,11 +187,6 @@ export async function POST(request: Request) {
           }
         }
       }
-      if (desafiosJaFeitos.length > 0) {
-        console.log(`📋 Aluno já fez ${desafiosJaFeitos.length} desafio(s) para ${tecnologia}/${nivel}. Enviando à IA para evitar repetição.`)
-      }
-
-      console.log(`🤖 Gerando novo desafio com OpenAI: ${tecnologia} / ${nivel}`)
       const desafioGerado = await gerarDesafioComIA(
         tecnologia,
         nivel as typeof NIVEIS_VALIDOS[number],
@@ -223,13 +217,6 @@ export async function POST(request: Request) {
         .single()
 
       if (erroInsert) {
-        console.error('❌ Erro ao salvar desafio:', erroInsert)
-        console.error('❌ Detalhes do erro:', {
-          message: erroInsert.message,
-          details: erroInsert.details,
-          hint: erroInsert.hint,
-          code: erroInsert.code,
-        })
         return NextResponse.json(
           { 
             error: 'Erro ao salvar desafio no banco de dados',
@@ -256,14 +243,6 @@ export async function POST(request: Request) {
       .select()
 
     if (erroAtribuicao) {
-      console.error('❌ Erro ao registrar atribuição:', erroAtribuicao)
-      console.error('❌ Detalhes do erro de atribuição:', {
-        message: erroAtribuicao.message,
-        details: erroAtribuicao.details,
-        hint: erroAtribuicao.hint,
-        code: erroAtribuicao.code,
-      })
-      // Retornar erro ao invés de continuar silenciosamente
       return NextResponse.json(
         { 
           error: 'Erro ao atribuir desafio ao usuário',
@@ -274,8 +253,6 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log('✅ Atribuição registrada com sucesso:', atribuicaoData)
-
     return NextResponse.json({
       success: true,
       desafio: desafioFinal,
@@ -283,8 +260,6 @@ export async function POST(request: Request) {
     })
 
   } catch (error: any) {
-    console.error('Erro ao gerar desafio:', error)
-    
     if (error.message === 'Não autenticado') {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
