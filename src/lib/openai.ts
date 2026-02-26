@@ -425,7 +425,9 @@ Regras: selecione no máximo ${maxSugestoes} aulas, em ordem da mais relevante p
   if (!content) return []
 
   try {
-    const parsed = JSON.parse(content) as { aulas?: AulaSugerida[] }
+    const parsed = JSON.parse(content) as {
+      aulas?: Array<{ aulaId?: string; id?: string; titulo?: string; relevancia?: string }>
+    }
     const lista = Array.isArray(parsed.aulas) ? parsed.aulas : []
     return lista.slice(0, maxSugestoes).map((a) => ({
       aulaId: String(a.aulaId ?? a.id ?? ''),
