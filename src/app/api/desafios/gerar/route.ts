@@ -129,7 +129,7 @@ export async function POST(request: Request) {
     if (desafiosExistentes && desafiosExistentes.length > 0) {
       // Verificar quais desafios o usuário já fez (completou ou finalizou tentativa)
       const desafioIds = desafiosExistentes.map(d => d.id)
-      
+
       // Buscar submissões finalizadas do usuário para esses desafios
       // (se já foi aprovado/rejeitado/desistiu, consideramos "já fez" e não reatribuímos)
       const { data: submissoesFinalizadas } = await supabase
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
         .in('status', ['aprovado', 'rejeitado', 'desistiu'])
 
       const desafiosJaFezIds = new Set(submissoesFinalizadas?.map(s => s.desafio_id) || [])
-      
+
       // Buscar também em user_desafio_progress (backup)
       const { data: progressCompletos } = await supabase
         .from('user_desafio_progress')
@@ -176,9 +176,9 @@ export async function POST(request: Request) {
     if (!desafioFinal) {
       // ❌ Não há desafio disponível - gerar novo com OpenAI
       console.log(`🤖 Gerando novo desafio com OpenAI: ${tecnologia} / ${nivel}`)
-      
+
       const desafioGerado = await gerarDesafioComIA(
-        tecnologia, 
+        tecnologia,
         nivel as typeof NIVEIS_VALIDOS[number],
         userId, // Passar userId para rastreamento de tokens
         '/api/desafios/gerar' // Endpoint para rastreamento
@@ -214,7 +214,7 @@ export async function POST(request: Request) {
           code: erroInsert.code,
         })
         return NextResponse.json(
-          { 
+          {
             error: 'Erro ao salvar desafio no banco de dados',
             details: erroInsert.message,
             code: erroInsert.code
@@ -240,7 +240,6 @@ export async function POST(request: Request) {
               maxSugestoes: 5,
             })
             const mapaAulas = new Map(todasAulas.map((a) => [a.id, a]))
-            const admin = getSupabaseAdmin()
             const rows = sugeridas.map((s, idx) => {
               const aula = mapaAulas.get(s.aulaId)
               return {
@@ -285,7 +284,7 @@ export async function POST(request: Request) {
       })
       // Retornar erro ao invés de continuar silenciosamente
       return NextResponse.json(
-        { 
+        {
           error: 'Erro ao atribuir desafio ao usuário',
           details: erroAtribuicao.message,
           code: erroAtribuicao.code
@@ -304,7 +303,7 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('Erro ao gerar desafio:', error)
-    
+
     if (error.message === 'Não autenticado') {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
