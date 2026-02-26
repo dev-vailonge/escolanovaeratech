@@ -331,6 +331,94 @@ export async function gerarDesafioComIA(
   }
 }
 
+// --- Aulas sugeridas para desafio ---
+
+export interface AulaSugerida {
+  aulaId: string
+  titulo: string
+  relevancia?: string
+}
+
+/**
+ * Usa a IA para sugerir quais aulas do curso são mais relevantes para o aluno fazer o desafio.
+ * Recebe o desafio (título, descrição, requisitos) e a lista de aulas (id + título) e retorna
+ * as aulas recomendadas em ordem de relevância.
+ */
+export async function sugerirAulasParaDesafio(params: {
+  titulo: string
+  descricao: string
+  requisitos?: string[]
+  aulas: { id: string; titulo: string }[]
+  maxSugestoes?: number
+}): Promise<AulaSugerida[]> {
+  const { titulo, descricao, requisitos = [], aulas, maxSugestoes = 5 } = params
+
+  if (aulas.length === 0) return []
+
+  const requisitosTexto = requisitos.length
+    ? `Requisitos do desafio:\n${requisitos.map((r) => `- ${r}`).join('\n')}`
+    : ''
+
+  const listaAulas = aulas
+    .map((a) => `- id: "${a.id}" | título: "${a.titulo}"`)
+    .join('\n')
+
+  const prompt = `Você é um orientador de estudos. Com base no desafio abaixo e na lista de aulas do curso, indique quais aulas são mais úteis para o aluno realizar esse desafio.
+
+DESAFIO:
+Título: ${titulo}
+Descrição: ${descricao}
+${requisitosTexto}
+
+LISTA DE AULAS DO CURSO (id e título):
+${listaAulas}
+
+Retorne APENAS um JSON válido, sem texto adicional, no formato:
+{
+  "aulas": [
+    { "aulaId": "id da aula", "titulo": "título da aula", "relevancia": "breve motivo em uma frase" },
+    ...
+  ]
+}
+Regras: selecione no máximo ${maxSugestoes} aulas, em ordem da mais relevante para a menos. O array "aulas" deve conter apenas as aulas que realmente ajudam no desafio.`
+
+  const model = 'gpt-4o-mini'
+  const response = await openai.chat.completions.create({
+    model,
+    messages: [
+      {
+        role: 'system',
+        content: 'Você é um assistente que sugere aulas para ajudar em desafios de programação. Responda apenas com JSON válido.'
+      },
+      {
+        role: 'user',
+        content: prompt
+      }
+    ],
+    temperature: 0.3,
+    max_tokens: 600,
+    response_format: { type: 'json_object' }
+  })
+
+  const content = response.choices[0]?.message?.content
+  if (!content) return []
+
+  try {
+    const parsed = JSON.parse(content) as {
+      aulas?: Array<{ aulaId?: string; id?: string; titulo?: string; relevancia?: string }>
+    }
+    const lista = Array.isArray(parsed.aulas) ? parsed.aulas : []
+    return lista.slice(0, maxSugestoes).map((a) => ({
+      aulaId: String(a.aulaId ?? a.id ?? ''),
+      titulo: String(a.titulo ?? ''),
+      relevancia: a.relevancia ? String(a.relevancia) : undefined
+    }))
+  } catch {
+    console.error('Erro ao parsear resposta de aulas sugeridas:', content)
+    return []
+  }
+}
+
 // Tipo para quiz gerado pela IA (texto puro)
 export interface QuizGerado {
   texto: string // Texto puro formatado com 15 perguntas
