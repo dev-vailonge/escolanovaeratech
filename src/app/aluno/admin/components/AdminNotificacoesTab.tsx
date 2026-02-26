@@ -222,8 +222,6 @@ export default function AdminNotificacoesTab() {
         action_url: notificacaoData.action_url?.trim() || null
       }
 
-      console.log('Dados da notificação a serem salvos:', dadosNotificacao)
-
       if (editingNotificacao) {
         // Atualizar notificação existente
         const sucesso = await updateNotificacao(editingNotificacao.id, dadosNotificacao)
@@ -244,8 +242,7 @@ export default function AdminNotificacoesTab() {
           setError('Erro ao criar notificação. Tente novamente.')
         }
       }
-    } catch (err) {
-      console.error('Erro ao salvar notificação:', err)
+    } catch {
       setError('Erro ao salvar notificação. Tente novamente.')
     }
   }
@@ -263,8 +260,7 @@ export default function AdminNotificacoesTab() {
       } else {
         setError('Erro ao excluir notificação. Tente novamente.')
       }
-    } catch (err) {
-      console.error('Erro ao excluir notificação:', err)
+    } catch {
       setError('Erro ao excluir notificação. Tente novamente.')
     }
   }

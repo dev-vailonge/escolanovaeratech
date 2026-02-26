@@ -27,13 +27,7 @@ function ResetPasswordForm() {
         // Verificar se já tem sessão (pode ter sido criada automaticamente)
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
-        if (sessionError) {
-          console.error('Error getting session:', sessionError)
-        }
-
-        // If we have a session, we're good to go
         if (session) {
-          console.log('✅ Sessão já existe, pode redefinir senha')
           setIsValid(true)
           return
         }
@@ -67,7 +61,6 @@ function ResetPasswordForm() {
           }
 
           if (data?.session) {
-            console.log('✅ Sessão criada via query params, pode redefinir senha')
             setIsValid(true)
             return
           }
@@ -104,9 +97,8 @@ function ResetPasswordForm() {
               throw sessionError
             }
 
-            if (data?.session) {
-              console.log('✅ Sessão criada via hash, pode redefinir senha')
-              setIsValid(true)
+              if (data?.session) {
+                setIsValid(true)
               return
             }
           } else {
@@ -123,7 +115,6 @@ function ResetPasswordForm() {
               }
 
               if (data?.session) {
-                console.log('✅ Sessão criada via OTP, pode redefinir senha')
                 setIsValid(true)
                 return
               }
@@ -134,7 +125,6 @@ function ResetPasswordForm() {
         // Se chegou aqui sem tokens nem sessão, pode ser que o link já foi usado ou é inválido
         setError('Acesso inválido. Por favor, use o link enviado por email ou solicite um novo link.')
       } catch (error: any) {
-        console.error('Error verifying recovery link:', error)
         if (error?.message?.includes('expired') || error?.message?.includes('invalid')) {
           setError('Link inválido ou expirado. Por favor, solicite um novo link de recuperação.')
         } else {
@@ -168,64 +158,26 @@ function ResetPasswordForm() {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
       if (sessionError) {
-        console.error('Erro ao verificar sessão:', sessionError)
         throw new Error('Sessão inválida. Por favor, use o link de recuperação novamente.')
       }
 
       if (!session) {
-        console.error('Nenhuma sessão encontrada')
         throw new Error('Sessão expirada. Por favor, solicite um novo link de recuperação.')
       }
 
-      console.log('🔄 Atualizando senha para usuário:', session.user.email)
-
-      // Atualizar senha - iniciar a atualização mas não esperar resposta completa
-      console.log('📤 Chamando updateUser...')
-      
-      // Iniciar atualização mas não bloquear no await
-      const updatePromise = supabase.auth.updateUser({
-        password: password
-      }).then((result) => {
-        console.log('📥 Resposta do updateUser recebida:', result)
-        if (result.error) {
-          console.error('❌ Erro ao atualizar senha:', result.error)
-          throw result.error
-        } else {
-          console.log('✅ Senha atualizada com sucesso no backend')
-        }
+      supabase.auth.updateUser({ password }).then((result) => {
+        if (result.error) throw result.error
         return result
-      }).catch((err) => {
-        console.error('❌ Erro na promise do updateUser:', err)
-        // Não re-throw aqui pois estamos usando timeout e não esperando a promise completar
-        // O erro será tratado no catch externo se necessário
-      })
+      }).catch(() => {})
 
-      // Aguardar apenas 2 segundos para dar tempo da requisição iniciar
-      // Se a senha está sendo atualizada no banco, não precisamos esperar a resposta completa
       await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      console.log('⏱️ Aguardou 2s, prosseguindo com redirect...')
 
-      // Preparar mensagem de sucesso
       const successMessage = encodeURIComponent('Senha alterada com sucesso! Faça login com sua nova senha.')
       const redirectUrl = `/?message=${successMessage}`
-      
-      console.log('🔄 Preparando redirect para:', redirectUrl)
-      console.log('📍 URL atual:', window.location.href)
-      
-      // Sign out em background (não bloquear)
-      supabase.auth.signOut().then(() => {
-        console.log('✅ Usuário deslogado após alteração de senha')
-      }).catch((signOutErr) => {
-        console.warn('Aviso ao deslogar (não crítico):', signOutErr)
-      })
-      
-      // Usar window.location.replace para garantir redirect e não permitir voltar
-      // FORÇAR redirect imediatamente - não esperar signOut
-      console.log('🚀 Executando window.location.replace =', redirectUrl)
+
+      supabase.auth.signOut().catch(() => {})
       window.location.replace(redirectUrl)
     } catch (err: any) {
-      console.error('Erro completo ao redefinir senha:', err)
       const errorMessage = err?.message || err?.error_description || 'Erro ao redefinir senha. Tente novamente.'
       setError(errorMessage)
       setIsLoading(false)

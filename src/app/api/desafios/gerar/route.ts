@@ -163,7 +163,6 @@ export async function POST(request: Request) {
           .single()
 
         if (desafioData) {
-          console.log(`♻️ Reutilizando desafio existente (usuário ainda não fez): ${desafioData.id}`)
           // Garantir que o payload retornado respeite o XP oficial
           // (não depender de `desafios.xp`, que pode estar divergente no banco)
           desafioFinal = { ...desafioData, xp: XP_DESAFIO }
@@ -175,13 +174,28 @@ export async function POST(request: Request) {
     // Se não encontrou desafio para reutilizar (todos foram completados ou não existe nenhum)
     if (!desafioFinal) {
       // ❌ Não há desafio disponível - gerar novo com OpenAI
-      console.log(`🤖 Gerando novo desafio com OpenAI: ${tecnologia} / ${nivel}`)
+      // Buscar desafios que este aluno já fez/viu para esta tecnologia+nível (para a IA não repetir)
+      const { data: atribuicoesComDesafio } = await supabase
+        .from('user_desafio_atribuido')
+        .select('desafio_id, desafios(titulo, descricao, tecnologia, dificuldade)')
+        .eq('user_id', userId)
 
+      const desafiosJaFeitos: { titulo: string; descricao?: string }[] = []
+      if (atribuicoesComDesafio?.length) {
+        for (const row of atribuicoesComDesafio) {
+          const d = row.desafios as { titulo?: string; descricao?: string; tecnologia?: string; dificuldade?: string } | null
+          if (d?.tecnologia === tecnologia && d?.dificuldade === nivel && d?.titulo) {
+            const descricao = d.descricao ? d.descricao.slice(0, 200).trim() + (d.descricao.length > 200 ? '...' : '') : undefined
+            desafiosJaFeitos.push({ titulo: d.titulo, ...(descricao ? { descricao } : {}) })
+          }
+        }
+      }
       const desafioGerado = await gerarDesafioComIA(
         tecnologia,
         nivel as typeof NIVEIS_VALIDOS[number],
-        userId, // Passar userId para rastreamento de tokens
-        '/api/desafios/gerar' // Endpoint para rastreamento
+        userId,
+        '/api/desafios/gerar',
+        desafiosJaFeitos
       )
 
       // Salvar novo desafio no banco
@@ -206,13 +220,6 @@ export async function POST(request: Request) {
         .single()
 
       if (erroInsert) {
-        console.error('❌ Erro ao salvar desafio:', erroInsert)
-        console.error('❌ Detalhes do erro:', {
-          message: erroInsert.message,
-          details: erroInsert.details,
-          hint: erroInsert.hint,
-          code: erroInsert.code,
-        })
         return NextResponse.json(
           {
             error: 'Erro ao salvar desafio no banco de dados',
@@ -275,14 +282,6 @@ export async function POST(request: Request) {
       .select()
 
     if (erroAtribuicao) {
-      console.error('❌ Erro ao registrar atribuição:', erroAtribuicao)
-      console.error('❌ Detalhes do erro de atribuição:', {
-        message: erroAtribuicao.message,
-        details: erroAtribuicao.details,
-        hint: erroAtribuicao.hint,
-        code: erroAtribuicao.code,
-      })
-      // Retornar erro ao invés de continuar silenciosamente
       return NextResponse.json(
         {
           error: 'Erro ao atribuir desafio ao usuário',
@@ -293,8 +292,6 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log('✅ Atribuição registrada com sucesso:', atribuicaoData)
-
     return NextResponse.json({
       success: true,
       desafio: desafioFinal,
@@ -302,8 +299,6 @@ export async function POST(request: Request) {
     })
 
   } catch (error: any) {
-    console.error('Erro ao gerar desafio:', error)
-
     if (error.message === 'Não autenticado') {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }

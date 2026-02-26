@@ -58,15 +58,6 @@ async function trackTokenUsage(params: TrackTokenUsageParams): Promise<void> {
       metadata = {},
     } = params
 
-    console.log(`📊 [trackTokenUsage] Iniciando rastreamento:`, {
-      userId,
-      feature,
-      endpoint,
-      model,
-      promptTokens,
-      completionTokens
-    })
-
     // Calcular custo estimado
     const pricing = OPENAI_PRICING[model as keyof typeof OPENAI_PRICING] || {
       input: 0,
@@ -78,11 +69,7 @@ async function trackTokenUsage(params: TrackTokenUsageParams): Promise<void> {
     const totalCost = inputCost + outputCost
     const totalTokens = promptTokens + completionTokens
 
-    // Verificar se SUPABASE_SERVICE_ROLE_KEY está configurado
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('❌ [trackTokenUsage] SUPABASE_SERVICE_ROLE_KEY não configurado! Não é possível salvar tokens.')
-      return
-    }
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return
 
     // Salvar no banco de dados usando Supabase Admin (bypass RLS)
     const supabase = getSupabaseAdmin()
@@ -98,13 +85,6 @@ async function trackTokenUsage(params: TrackTokenUsageParams): Promise<void> {
       estimated_cost_usd: totalCost,
       metadata,
     }
-    
-    console.log(`📤 [trackTokenUsage] Tentando inserir no banco:`, {
-      user_id: userId,
-      feature,
-      total_tokens: totalTokens,
-      cost: totalCost
-    })
 
     const { data, error } = await supabase
       .from('openai_token_usage')
@@ -112,25 +92,9 @@ async function trackTokenUsage(params: TrackTokenUsageParams): Promise<void> {
       .select()
 
     if (error) {
-      console.error('❌ [trackTokenUsage] Erro ao inserir no banco:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-        insertData
-      })
       // Não lançar erro para não quebrar o fluxo principal
-    } else {
-      console.log(
-        `✅ [trackTokenUsage] Token usage tracked com sucesso: ${totalTokens} tokens ($${totalCost.toFixed(6)}) - ${feature} - ID: ${data?.[0]?.id}`
-      )
     }
-  } catch (error: any) {
-    console.error('❌ [trackTokenUsage] Erro ao rastrear uso de tokens:', {
-      message: error?.message,
-      stack: error?.stack,
-      params
-    })
+  } catch {
     // Não lançar erro para não quebrar o fluxo principal
   }
 }
@@ -210,16 +174,28 @@ function getAndroidRules(
 function buildPromptGerarDesafio(params: {
   tecnologia: string
   nivel: 'iniciante' | 'intermediario' | 'avancado'
+  desafiosJaFeitos?: { titulo: string; descricao?: string }[]
 }) {
-  const { tecnologia, nivel } = params
+  const { tecnologia, nivel, desafiosJaFeitos } = params
 
   const scopeRules = getScopeRules(tecnologia)
   const techRules = isAndroidTecnologia(tecnologia) ? getAndroidRules(tecnologia, nivel) : []
+
+  const secaoJaFeitos =
+    desafiosJaFeitos && desafiosJaFeitos.length > 0
+      ? `
+DESAFIOS QUE ESTE ALUNO JÁ REALIZOU (não repita tema, objetivo nem contexto similares):
+${desafiosJaFeitos.map((d) => `- "${d.titulo}"${d.descricao ? `: ${d.descricao}` : ''}`).join('\n')}
+
+Gere um desafio NOVO e claramente diferente em tema, objetivo e contexto (ex.: outro tipo de app, domínio diferente como e-commerce, blog, jogo, dashboard, etc.).
+`
+      : ''
 
   return `Você é um instrutor de programação experiente. Gere um desafio prático de programação.
 
 Tecnologia: ${tecnologia}
 Nível: ${nivel}
+${secaoJaFeitos}
 
 REGRAS OBRIGATÓRIAS (escopo e tecnologia):
 ${formatBulletRules([...scopeRules, ...techRules])}
@@ -230,6 +206,7 @@ Requisitos do desafio:
 - Descrição detalhada do que o aluno deve fazer
 - 3-5 requisitos específicos e verificáveis
 - Deve resultar em código que possa ser hospedado no GitHub
+- Varie o contexto (tipo de aplicação, domínio) para que o desafio seja distinto de outros da mesma tecnologia e nível
 
 IMPORTANTE: Retorne APENAS um JSON válido, sem texto adicional:
 {
@@ -250,14 +227,16 @@ IMPORTANTE: Retorne APENAS um JSON válido, sem texto adicional:
  * @param nivel - Nível de dificuldade
  * @param userId - ID do usuário que solicitou (para rastreamento de tokens)
  * @param endpoint - Endpoint da API que chamou (para rastreamento)
+ * @param desafiosJaFeitos - Desafios que o aluno já realizou (mesma tech+nível) para a IA evitar repetir
  */
 export async function gerarDesafioComIA(
   tecnologia: string,
   nivel: 'iniciante' | 'intermediario' | 'avancado',
   userId?: string,
-  endpoint?: string
+  endpoint?: string,
+  desafiosJaFeitos?: { titulo: string; descricao?: string }[]
 ): Promise<DesafioGerado> {
-  const prompt = buildPromptGerarDesafio({ tecnologia, nivel })
+  const prompt = buildPromptGerarDesafio({ tecnologia, nivel, desafiosJaFeitos })
 
   const model = 'gpt-4o-mini'
   const response = await openai.chat.completions.create({

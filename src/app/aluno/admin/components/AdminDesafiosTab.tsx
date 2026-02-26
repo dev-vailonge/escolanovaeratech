@@ -168,42 +168,6 @@ export default function AdminDesafiosTab() {
         throw new Error(json?.error || 'Erro ao atualizar submission')
       }
 
-      // Log de debug para XP (sempre aparece no console do navegador)
-      if (status === 'aprovado') {
-        console.log('🔍 [DEBUG XP] ===== RESULTADO DA APROVAÇÃO =====')
-        console.log('📊 Dados recebidos:', json.debug || {
-          xpAwarded: json.xpAwarded,
-          xpAwardedSuccessfully: json.xpAwardedSuccessfully,
-          xpError: json.xpError,
-        })
-        console.log('📝 Mensagem:', json.message)
-        
-        if (json.debug?.xpError) {
-          console.error('❌ [DEBUG XP] ERRO ao conceder XP:', {
-            message: json.debug.xpError.message,
-            code: json.debug.xpError.code,
-            details: json.debug.xpError.details,
-            rpcError: json.debug.xpError.rpcError, // Erro da função SQL RPC
-            userId: json.debug.userId,
-            desafioId: json.debug.desafioId,
-          })
-          if (json.debug.xpError.rpcError) {
-            console.error('🔍 [DEBUG XP] Erro da função SQL RPC:', json.debug.xpError.rpcError)
-            console.error('💡 Dica: A função SQL complete_desafio_for_user existe mas está falhando. Verifique os logs do servidor ou execute o SQL novamente.')
-          } else {
-            console.error('💡 Dica: Verifique se a função SQL complete_desafio_for_user foi criada no banco')
-          }
-        } else if (json.xpAwardedSuccessfully) {
-          console.log(`✅ [DEBUG XP] XP concedido com SUCESSO: ${json.xpAwarded} XP`)
-          console.log(`👤 Usuário: ${json.debug?.userId}`)
-          console.log(`🎯 Desafio: ${json.debug?.desafioId}`)
-        } else {
-          console.warn(`⚠️ [DEBUG XP] ATENÇÃO: XP não foi concedido mas mostra na mensagem: ${json.xpAwarded} XP`)
-          console.warn('💡 Verifique os logs do servidor ou se a função SQL foi executada')
-        }
-        console.log('🔍 [DEBUG XP] ====================================')
-      }
-
       setSuccess(json.message || 'Submissão atualizada com sucesso!')
       setReviewingSubmission(null)
       setAdminNotes('')

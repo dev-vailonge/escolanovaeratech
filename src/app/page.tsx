@@ -129,22 +129,15 @@ function AlunoLoginContent() {
       }
 
       if (data?.user && data?.session) {
-        console.log('✅ Login bem-sucedido, redirecionando para criar cookies...')
-        
         const redirectParam = searchParams.get('redirect')
         const finalRedirect = redirectParam ? encodeURIComponent(redirectParam) : encodeURIComponent('/aluno')
-        
         const callbackUrl = `/api/aluno/auth-callback?access_token=${encodeURIComponent(data.session.access_token)}&refresh_token=${encodeURIComponent(data.session.refresh_token)}&redirect=${finalRedirect}`
-        
-        console.log('🔄 Redirecionando para callback:', callbackUrl)
-        
         window.location.href = callbackUrl
         return
       } else {
         setError('Erro ao fazer login. Tente novamente.')
       }
     } catch (err: any) {
-      console.error('Login error:', err)
       setIsLoading(false)
       if (err?.message?.includes('Invalid login credentials') || err?.message?.includes('Invalid login')) {
         setError('Email ou senha inválidos.')
