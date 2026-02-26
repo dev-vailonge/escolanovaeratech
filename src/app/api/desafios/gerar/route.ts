@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/requestAuth'
 import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { gerarDesafioComIA } from '@/lib/openai'
+import { getHotmartConfigByTecnologia } from '@/lib/constants/hotmart'
+import { getAulasDoCurso } from '@/lib/hotmart'
+import { sugerirAulasParaDesafio } from '@/lib/openai'
 import { XP_CONSTANTS } from '@/lib/gamification/constants'
 
 // Tecnologias organizadas por categoria (mesma lista da página de desafios)
@@ -221,6 +224,43 @@ export async function POST(request: Request) {
       }
 
       desafioFinal = novoDesafio
+
+      // Popular cache de aulas sugeridas para o novo desafio (Hotmart + IA)
+      try {
+        const tecnologiaDesafio = tecnologia
+        const config = getHotmartConfigByTecnologia(tecnologiaDesafio)
+        if (config) {
+          const todasAulas = await getAulasDoCurso(config.subdomain, config.productId)
+          if (todasAulas.length > 0) {
+            const sugeridas = await sugerirAulasParaDesafio({
+              titulo: novoDesafio.titulo ?? '',
+              descricao: novoDesafio.descricao ?? '',
+              requisitos: Array.isArray(novoDesafio.requisitos) ? novoDesafio.requisitos : [],
+              aulas: todasAulas.map((a) => ({ id: a.id, titulo: a.titulo })),
+              maxSugestoes: 5,
+            })
+            const mapaAulas = new Map(todasAulas.map((a) => [a.id, a]))
+            const admin = getSupabaseAdmin()
+            const rows = sugeridas.map((s, idx) => {
+              const aula = mapaAulas.get(s.aulaId)
+              return {
+                desafio_id: novoDesafio.id,
+                aula_id: s.aulaId,
+                titulo: s.titulo,
+                modulo_nome: aula?.moduloNome ?? null,
+                relevancia: s.relevancia ?? null,
+                ordem: idx,
+              }
+            })
+            if (rows.length > 0) {
+              await supabase.from('desafio_aulas_sugeridas').insert(rows)
+              console.log(`✅ Aulas sugeridas em cache para desafio ${novoDesafio.id}: ${rows.length} aulas`)
+            }
+          }
+        }
+      } catch (err) {
+        console.error('⚠️ Erro ao popular aulas sugeridas (não bloqueia resposta):', err)
+      }
     }
 
     // ====================================================

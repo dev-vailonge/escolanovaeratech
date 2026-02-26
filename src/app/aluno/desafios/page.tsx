@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase'
 import { getAuthToken } from '@/lib/getAuthToken'
 import { XP_CONSTANTS } from '@/lib/gamification/constants'
 import type { DatabaseDesafio, DatabaseDesafioSubmission } from '@/types/database'
+import DesafioCard from '@/components/aluno/DesafioCard'
 
 // Tecnologias organizadas por categoria/curso
 const TECNOLOGIAS_POR_CATEGORIA = {
@@ -195,6 +196,13 @@ export default function DesafiosPage() {
   const [showDesistirModal, setShowDesistirModal] = useState(false)
   const [desafioParaDesistir, setDesafioParaDesistir] = useState<MeuDesafio | null>(null)
   const [isDesistindo, setIsDesistindo] = useState(false)
+
+  // Aulas sugeridas (Hotmart + IA) — apenas para desafios em aberto
+  type AulaSugeridaUI = { aulaId: string; titulo: string; moduloNome?: string; relevancia?: string; url?: string }
+  const [aulasSugeridas, setAulasSugeridas] = useState<Record<string, { aulas: AulaSugeridaUI[]; loading: boolean }>>({})
+  const [expandedAulasSugeridas, setExpandedAulasSugeridas] = useState<Record<string, boolean>>({})
+
+  const DESAFIO_EM_ABERTO: MeuDesafio['status'][] = ['pendente_envio', 'aguardando_aprovacao', 'rejeitado']
 
   // Carregar desafios do usuário
   const loadMeusDesafios = useCallback(async (showFullLoading = false) => {
@@ -382,6 +390,48 @@ export default function DesafiosPage() {
   useEffect(() => {
     loadMeusDesafios(true) // Primeiro carregamento com loading completo
   }, [loadMeusDesafios])
+
+  // Buscar aulas sugeridas para desafios em aberto (apenas quando na aba Meus Desafios)
+  useEffect(() => {
+    if (activeTab !== 'meus' || !authUser?.id || meusDesafios.length === 0) return
+
+    const desafiosAbertos = meusDesafios.filter((m) => DESAFIO_EM_ABERTO.includes(m.status))
+    if (desafiosAbertos.length === 0) return
+
+    let cancelled = false
+    const tokenPromise = getAuthToken()
+
+    desafiosAbertos.forEach((meuDesafio) => {
+      const desafioId = meuDesafio.desafio.id
+      if (aulasSugeridas[desafioId] !== undefined) return // já carregou ou está carregando
+
+      setAulasSugeridas((prev) => ({ ...prev, [desafioId]: { aulas: [], loading: true } }))
+
+      void tokenPromise.then(async (token) => {
+        if (cancelled) return
+        const res = await fetch(`/api/desafios/${desafioId}/aulas-sugeridas`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (cancelled) return
+        const data = (await res.json()) as { aulas?: AulaSugeridaUI[]; error?: string }
+        const aulas = data.aulas ?? []
+        if (cancelled) return
+        setAulasSugeridas((prev) => ({
+          ...prev,
+          [desafioId]: { aulas, loading: false },
+        }))
+      }).catch((err) => {
+        if (cancelled) return
+        console.error('[aulas-sugeridas]', err)
+        setAulasSugeridas((prev) => ({
+          ...prev,
+          [desafioId]: { aulas: [], loading: false },
+        }))
+      })
+    })
+
+    return () => { cancelled = true }
+  }, [activeTab, authUser?.id, meusDesafios.map((m) => m.desafio.id).join(','), meusDesafios.map((m) => m.status).join(',')])
 
   // Rotacionar mensagens de loading a cada 3 segundos (20 mensagens = 60 segundos)
   useEffect(() => {
@@ -1310,258 +1360,20 @@ export default function DesafiosPage() {
               </div>
             ) : (
               meusDesafios.map((meuDesafio) => (
-                <div
+                <DesafioCard
                   key={meuDesafio.id}
-                  className={cn(
-                    "backdrop-blur-md border rounded-xl p-4 md:p-6 transition-all duration-300",
-                    theme === 'dark'
-                      ? "bg-gray-800/30 border-white/10 hover:border-yellow-400/50"
-                      : "bg-yellow-500/10 border-yellow-400/90 shadow-md hover:border-yellow-500 hover:shadow-lg"
-                  )}
-                >
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-2">
-                        <Target className="w-4 h-4 md:w-5 md:h-5 text-purple-500 flex-shrink-0" />
-                        <h3 className={cn(
-                          "text-base md:text-lg font-semibold flex-1 min-w-0",
-                          theme === 'dark' ? "text-white" : "text-gray-900"
-                        )}>
-                          {meuDesafio.desafio.titulo}
-                        </h3>
-                        <span className={cn(
-                          "px-2 py-1 text-xs rounded-full border",
-                          theme === 'dark'
-                            ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
-                            : "bg-blue-100 text-blue-700 border-blue-300"
-                        )}>
-                          {meuDesafio.desafio.tecnologia}
-                        </span>
-                        {getStatusBadge(meuDesafio.status)}
-                      </div>
-                      <p className={cn(
-                        "text-sm md:text-base mb-3 md:mb-4",
-                        theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                      )}>
-                        {meuDesafio.desafio.descricao}
-                      </p>
-
-                      {/* Passo a passo (guia) */}
-                      {(() => {
-                        const passos = normalizePassos((meuDesafio.desafio as any).passos)
-                        if (!passos.length) return null
-
-                        const isExpanded = !!expandedPassos[meuDesafio.id]
-                        const visiblePassos = isExpanded ? passos : passos.slice(0, 4)
-
-                        return (
-                          <div className="mb-3">
-                            <div className="flex items-center justify-between gap-3 mb-2">
-                              <p className={cn(
-                                "text-xs font-semibold flex items-center gap-1",
-                                theme === 'dark' ? "text-gray-300" : "text-gray-700"
-                              )}>
-                                🧭 Passo a passo:
-                              </p>
-                              {passos.length > 4 && (
-                                <button
-                                  type="button"
-                                  onClick={() => setExpandedPassos((prev) => ({ ...prev, [meuDesafio.id]: !isExpanded }))}
-                                  className={cn(
-                                    "text-xs font-medium hover:underline",
-                                    theme === 'dark' ? "text-gray-300" : "text-gray-700"
-                                  )}
-                                >
-                                  {isExpanded ? 'Mostrar menos' : 'Ver todos'}
-                                </button>
-                              )}
-                            </div>
-
-                            <ol className={cn(
-                              "space-y-2 text-xs pl-4",
-                              theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                            )}>
-                              {visiblePassos.map((p, idx) => (
-                                <li key={`passo-${idx}`} className="list-decimal">
-                                  <div className="space-y-1">
-                                    <p className={cn(
-                                      "font-medium",
-                                      theme === 'dark' ? "text-gray-200" : "text-gray-800"
-                                    )}>
-                                      {p.titulo}
-                                    </p>
-                                    {p.detalhes && (
-                                      <p className="whitespace-pre-wrap break-words">
-                                        {p.detalhes}
-                                      </p>
-                                    )}
-                                  </div>
-                                </li>
-                              ))}
-                            </ol>
-                          </div>
-                        )
-                      })()}
-
-                      {/* Requisitos */}
-                      {meuDesafio.desafio.requisitos && meuDesafio.desafio.requisitos.length > 0 && (
-                        <div className="mb-3">
-                          <p className={cn(
-                            "text-xs font-semibold mb-2 flex items-center gap-1",
-                            theme === 'dark' ? "text-gray-300" : "text-gray-700"
-                          )}>
-                            📋 O que você precisa fazer:
-                          </p>
-                          <ul className={cn(
-                            "space-y-1 text-xs pl-4",
-                            theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                          )}>
-                            {meuDesafio.desafio.requisitos.map((req: string, idx: number) => (
-                              <li
-                                key={idx}
-                                className="list-disc"
-                              >
-                                {req}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      
-                      <div className={cn(
-                        "flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm",
-                        theme === 'dark' ? "text-gray-400" : "text-gray-600"
-                      )}>
-                        <span className={cn(
-                          "font-semibold",
-                          theme === 'dark' ? "text-yellow-400" : "text-yellow-600"
-                        )}>
-                          Vale {XP_CONSTANTS.desafio.completo} XP
-                        </span>
-                        {/* Data de conclusão e tentativas para desafios aprovados */}
-                        {meuDesafio.status === 'aprovado' && meuDesafio.dataConclusao && (
-                          <>
-                            <span className="flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3 md:w-4 md:h-4" />
-                              Concluído em: {new Date(meuDesafio.dataConclusao).toLocaleDateString('pt-BR', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                            {meuDesafio.tentativas > 0 && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-3 h-3 md:w-4 md:h-4" />
-                                Tentativas: {meuDesafio.tentativas}
-                              </span>
-                            )}
-                          </>
-                        )}
-                        {/* Data de submissão para desafios rejeitados */}
-                        {meuDesafio.status === 'rejeitado' && meuDesafio.dataConclusao && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3 md:w-4 md:h-4" />
-                            Submetido em: {new Date(meuDesafio.dataConclusao).toLocaleDateString('pt-BR', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                        )}
-                      </div>
-
-                      {meuDesafio.submission?.github_url && (
-                        <div className="mt-3">
-                          <a
-                            href={meuDesafio.submission.github_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={cn(
-                              "text-sm flex items-center gap-1 hover:underline",
-                              theme === 'dark' ? "text-blue-400" : "text-blue-600"
-                            )}
-                          >
-                            <Github className="w-4 h-4" />
-                            Ver repositório
-                          </a>
-                        </div>
-                      )}
-
-                      {/* Feedback do admin para aprovado */}
-                      {meuDesafio.status === 'aprovado' && meuDesafio.submission?.admin_notes && (
-                        <div className={cn(
-                          "mt-3 p-3 rounded text-sm whitespace-pre-wrap break-words",
-                          theme === 'dark' ? "bg-green-500/10 text-green-300" : "bg-green-50 text-green-700"
-                        )}>
-                          <strong>Feedback do Admin:</strong> {meuDesafio.submission.admin_notes}
-                        </div>
-                      )}
-                      
-                      {/* Feedback do admin para rejeitado */}
-                      {meuDesafio.status === 'rejeitado' && meuDesafio.submission?.admin_notes && (
-                        <div className={cn(
-                          "mt-3 p-3 rounded text-sm whitespace-pre-wrap break-words",
-                          theme === 'dark' ? "bg-red-500/10 text-red-300" : "bg-red-50 text-red-700"
-                        )}>
-                          <strong>Motivo da rejeição:</strong> {meuDesafio.submission.admin_notes}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Botões de ação */}
-                    <div className="flex flex-col gap-2">
-                      {/* Enviar (pendente) ou Reenviar (rejeitado) */}
-                      {(meuDesafio.status === 'pendente_envio' || meuDesafio.status === 'rejeitado') && (
-                        <button
-                          onClick={() => openSubmitModal(meuDesafio)}
-                          className={cn(
-                            "px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 w-full md:w-auto",
-                            theme === 'dark'
-                              ? "bg-yellow-400 hover:bg-yellow-500 text-black"
-                              : "bg-yellow-500 hover:bg-yellow-600 text-white"
-                          )}
-                        >
-                          <Github className="w-4 h-4" />
-                          {meuDesafio.status === 'rejeitado' ? 'Reenviar' : 'Enviar'}
-                        </button>
-                      )}
-                      {/* Editar submissão (aguardando aprovação) */}
-                      {meuDesafio.status === 'aguardando_aprovacao' && (
-                        <button
-                          onClick={() => openSubmitModal(meuDesafio)}
-                          className={cn(
-                            "px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 w-full md:w-auto",
-                            theme === 'dark'
-                              ? "bg-transparent border border-yellow-400/50 text-yellow-400 hover:bg-yellow-400/10"
-                              : "bg-transparent border border-yellow-500 text-yellow-600 hover:bg-yellow-50"
-                          )}
-                        >
-                          <Github className="w-4 h-4" />
-                          Editar Link
-                        </button>
-                      )}
-                      {/* Desistir (só quando ainda não submeteu) */}
-                      {meuDesafio.status === 'pendente_envio' && (
-                        <button
-                          onClick={() => openDesistirModal(meuDesafio)}
-                          className={cn(
-                            "px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 w-full md:w-auto text-sm",
-                            theme === 'dark'
-                              ? "bg-transparent border border-red-500/50 text-red-400 hover:bg-red-500/10"
-                              : "bg-transparent border border-red-300 text-red-600 hover:bg-red-50"
-                          )}
-                        >
-                          <Flag className="w-3 h-3" />
-                          Desistir
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  theme={theme ?? 'light'}
+                  meuDesafio={meuDesafio}
+                  expandedPassos={expandedPassos}
+                  setExpandedPassos={setExpandedPassos}
+                  aulasSugeridas={aulasSugeridas}
+                  expandedAulasSugeridas={expandedAulasSugeridas}
+                  setExpandedAulasSugeridas={setExpandedAulasSugeridas}
+                  desafioEmAberto={DESAFIO_EM_ABERTO}
+                  onOpenSubmit={openSubmitModal}
+                  onOpenDesistir={openDesistirModal}
+                  xpCompleto={XP_CONSTANTS.desafio.completo}
+                />
               ))
             )}
           </div>

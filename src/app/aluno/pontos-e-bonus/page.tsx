@@ -15,17 +15,7 @@ import {
   MessageCircle,
 } from 'lucide-react'
 import Image from 'next/image'
-
-// Links de CTA (podem ser movidos para .env depois)
-const LINK_WHATSAPP_COMERCIAL = 'https://wa.me/5534984136388'
-const LINK_COMPRA_FORMACAO = 'https://escolanovaeratech.com.br' // placeholder
-// Links das formações (Hotmart)
-const LINKS_FORMACOES = {
-  android: 'https://pay.hotmart.com/A102787902R?bid=1769602808367',
-  web: 'https://pay.hotmart.com/U102787997Q?bid=1769602851992',
-  backend: 'https://pay.hotmart.com/K102792839B?bid=1769602889517',
-  ios: 'https://pay.hotmart.com/W102792939J?bid=1769602931930',
-} as const
+import { LINK_WHATSAPP_COMERCIAL, LINKS_FORMACOES, LABELS_FORMACOES, type FormacaoKey } from '@/lib/constants/formacoes'
 
 export default function PontosEBonusPage() {
   const { theme } = useTheme()
@@ -278,7 +268,7 @@ export default function PontosEBonusPage() {
                 Quem já faz o Norte Tech pode dar o próximo passo: entrar em uma formação do zero ao avançado na área em que mais se identificou. Assim você passa a concorrer à viagem e aprofunda no caminho que escolheu. Escolha uma das formações abaixo:
               </p>
               <ul className="flex flex-wrap gap-2 mb-4">
-                {(['android', 'ios', 'web', 'backend'] as const).map((key) => (
+                {(Object.keys(LINKS_FORMACOES) as FormacaoKey[]).map((key) => (
                   <li key={key}>
                     <a
                       href={LINKS_FORMACOES[key]}
@@ -289,7 +279,7 @@ export default function PontosEBonusPage() {
                         isDark ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' : 'bg-yellow-500/30 text-yellow-800 hover:bg-yellow-500/50'
                       )}
                     >
-                      {key === 'android' ? 'Android' : key === 'ios' ? 'iOS' : key === 'web' ? 'Web' : 'Backend'}
+                      {LABELS_FORMACOES[key]}
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
                   </li>
