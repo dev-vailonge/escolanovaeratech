@@ -12,6 +12,7 @@ import {
   Edit2,
   Check,
   X,
+  GripVertical,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getAllUsers } from '@/lib/database'
@@ -66,6 +67,8 @@ export default function AdminMentoriasTab() {
   const [newStepOrdem, setNewStepOrdem] = useState(0)
   const [addingStep, setAddingStep] = useState(false)
   const [newStepTab, setNewStepTab] = useState<'edit' | 'preview'>('edit')
+  const [draggingStepId, setDraggingStepId] = useState<string | null>(null)
+  const [reorderingSteps, setReorderingSteps] = useState(false)
 
   const [showAddTarefa, setShowAddTarefa] = useState<string | null>(null)
   const [newTarefaTitulo, setNewTarefaTitulo] = useState('')
@@ -248,6 +251,50 @@ export default function AdminMentoriasTab() {
       loadMentorias()
     } catch (e) {
       setError('Erro ao remover step')
+    }
+  }
+
+  const handleReorderSteps = async (sourceId: string, targetId: string) => {
+    if (!detail || !selectedId || sourceId === targetId || reorderingSteps) return
+
+    const ordered = [...detail.steps].sort((a, b) => a.ordem - b.ordem)
+    const fromIndex = ordered.findIndex((s) => s.id === sourceId)
+    const toIndex = ordered.findIndex((s) => s.id === targetId)
+    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return
+
+    const updated = [...ordered]
+    const [moved] = updated.splice(fromIndex, 1)
+    updated.splice(toIndex, 0, moved)
+
+    const newOrders = updated.map((s, idx) => ({
+      id: s.id,
+      ordem: idx + 1,
+    }))
+
+    try {
+      setReorderingSteps(true)
+      const token = await getToken()
+      if (!token) return
+
+      await Promise.all(
+        newOrders.map(({ id, ordem }) =>
+          fetch(`/api/admin/mentorias/steps/${id}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ ordem }),
+          })
+        )
+      )
+
+      // Recarrega detalhes para refletir nova ordem
+      await loadDetail(selectedId)
+    } catch (e: any) {
+      setError(e.message || 'Erro ao reordenar steps')
+    } finally {
+      setReorderingSteps(false)
     }
   }
 
@@ -536,10 +583,31 @@ export default function AdminMentoriasTab() {
                     .map((step) => (
                       <li
                         key={step.id}
-                        className={cn('rounded-lg border p-3', isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50')}
+                        draggable={!reorderingSteps}
+                        onDragStart={() => setDraggingStepId(step.id)}
+                        onDragOver={(e) => {
+                          if (!draggingStepId || draggingStepId === step.id) return
+                          e.preventDefault()
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault()
+                          if (draggingStepId && draggingStepId !== step.id) {
+                            handleReorderSteps(draggingStepId, step.id)
+                          }
+                          setDraggingStepId(null)
+                        }}
+                        onDragEnd={() => setDraggingStepId(null)}
+                        className={cn(
+                          'rounded-lg border p-3 cursor-move',
+                          isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50',
+                          draggingStepId === step.id && 'opacity-70 border-yellow-400'
+                        )}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <div>
+                          <div className="flex items-start gap-2 flex-1">
+                            <span className="mt-1 text-gray-500">
+                              <GripVertical className="w-3 h-3" />
+                            </span>
                             <p className="text-sm font-medium text-white">
                               {step.ordem}. {step.titulo}
                             </p>
