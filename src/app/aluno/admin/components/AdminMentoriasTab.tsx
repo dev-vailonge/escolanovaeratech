@@ -15,8 +15,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getAllUsers } from '@/lib/database'
-import { sanitizeHtml } from '@/lib/sanitizeHtml'
-import { RichTextEditor } from '@/components/ui/RichTextEditor'
+import { markdownToSafeHtml } from '@/lib/markdown'
 import type { DatabaseUser } from '@/types/database'
 import type { MentoriaStatus, MentoriaStepStatus } from '@/types/database'
 
@@ -66,6 +65,7 @@ export default function AdminMentoriasTab() {
   const [newStepDescricao, setNewStepDescricao] = useState('')
   const [newStepOrdem, setNewStepOrdem] = useState(0)
   const [addingStep, setAddingStep] = useState(false)
+  const [newStepTab, setNewStepTab] = useState<'edit' | 'preview'>('edit')
 
   const [showAddTarefa, setShowAddTarefa] = useState<string | null>(null)
   const [newTarefaTitulo, setNewTarefaTitulo] = useState('')
@@ -383,35 +383,39 @@ export default function AdminMentoriasTab() {
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
-        <div className="space-y-2">
-          <p className="text-xs text-gray-400">Mentorados</p>
+      <div className="space-y-3">
+        <div>
+          <p className="text-xs text-gray-400 mb-1">Mentorados</p>
           {mentorias.length === 0 ? (
             <p className="text-sm text-gray-500">Nenhuma mentoria cadastrada.</p>
           ) : (
-            mentorias.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setSelectedId(m.id)}
+            <div className="relative inline-block min-w-[260px]">
+              <select
+                value={selectedId ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value || null
+                  setSelectedId(value)
+                  setShowAddStep(false)
+                  setShowAddTarefa(null)
+                }}
                 className={cn(
-                  'w-full text-left rounded-xl border p-3 transition-colors',
-                  selectedId === m.id
-                    ? 'border-yellow-400 bg-yellow-500/10'
-                    : isDark ? 'border-white/10 bg-black/40 hover:bg-white/5' : 'border-gray-200 bg-white hover:bg-gray-50'
+                  'w-full appearance-none rounded-lg border px-3 py-2 text-sm pr-8',
+                  isDark ? 'bg-black/60 border-white/20 text-white' : 'bg-white border-gray-300 text-gray-900'
                 )}
               >
-                <p className="font-medium text-white truncate">
-                  {(m.mentorado as any)?.name ?? m.mentorado_id}
-                </p>
-                <p className="text-xs text-gray-400 truncate">{m.objetivo_principal}</p>
-                <p className="text-[11px] text-gray-500 mt-0.5 capitalize">{m.status}</p>
-              </button>
-            ))
+                <option value="">Selecione um mentorado</option>
+                {mentorias.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {(m.mentorado as any)?.name ?? m.mentorado_id} — {m.objetivo_principal}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            </div>
           )}
         </div>
 
-        <div className={cn('rounded-xl border p-4 min-h-[200px]', isDark ? 'border-white/10 bg-black/40' : 'border-gray-200 bg-white')}>
+        <div className={cn('rounded-xl border p-4 min-h-[220px]', isDark ? 'border-white/10 bg-black/40' : 'border-gray-200 bg-white')}>
           {!selectedId ? (
             <p className="text-sm text-gray-500">Selecione uma mentoria.</p>
           ) : loadingDetail ? (
@@ -441,7 +445,7 @@ export default function AdminMentoriasTab() {
                 </div>
 
                 {showAddStep && (
-                  <div className="mb-3 p-3 rounded-lg border border-white/10 space-y-2">
+                  <div className="mb-3 p-3 rounded-lg border border-white/10 space-y-3">
                     <input
                       type="text"
                       value={newStepTitulo}
@@ -449,14 +453,66 @@ export default function AdminMentoriasTab() {
                       placeholder="Título do step"
                       className={cn('w-full rounded border px-2 py-1 text-sm', isDark ? 'bg-black/60 text-white' : 'bg-gray-50 text-gray-900')}
                     />
-                    <div className={cn(isDark ? 'text-white' : 'text-gray-900')}>
-                      <RichTextEditor
-                        value={newStepDescricao}
-                        onChange={setNewStepDescricao}
-                        placeholder="Descrição (negrito, itálico, listas...)"
-                        className={cn(isDark ? 'border-white/20 bg-black/60' : 'border-gray-300 bg-gray-50')}
-                        minHeight="80px"
-                      />
+                    <div>
+                      <div className="flex items-center gap-2 border-b border-white/10 mb-2 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setNewStepTab('edit')}
+                          className={cn(
+                            'px-3 py-1 border-b-2',
+                            newStepTab === 'edit'
+                              ? 'border-yellow-400 text-yellow-300'
+                              : 'border-transparent text-gray-400 hover:text-gray-200'
+                          )}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNewStepTab('preview')}
+                          className={cn(
+                            'px-3 py-1 border-b-2',
+                            newStepTab === 'preview'
+                              ? 'border-yellow-400 text-yellow-300'
+                              : 'border-transparent text-gray-400 hover:text-gray-200'
+                          )}
+                        >
+                          Preview
+                        </button>
+                      </div>
+                      <div className="min-h-[260px] rounded-md bg-black/40 border border-white/10">
+                        {newStepTab === 'edit' ? (
+                          <div className="h-full flex flex-col">
+                            <textarea
+                              value={newStepDescricao}
+                              onChange={(e) => setNewStepDescricao(e.target.value)}
+                              placeholder={'Exemplo:\n\n**Objetivo Principal**\n- Item 1\n- Item 2'}
+                              className={cn(
+                                'w-full rounded-md border-0 px-3 py-2 text-xs resize-y bg-transparent min-h-[220px]',
+                                'outline-none focus:ring-0',
+                                isDark ? 'text-white' : 'text-gray-900'
+                              )}
+                            />
+                            <p className="px-3 pb-2 text-[11px] text-gray-500 border-t border-white/5">
+                              Suporta **negrito**, *itálico* e listas com <code className="font-mono">- item</code> ou <code className="font-mono">1. item</code>.
+                            </p>
+                          </div>
+                        ) : (
+                          <div
+                            className={cn(
+                              'px-3 py-2 text-xs overflow-y-auto h-full',
+                              isDark ? 'text-gray-100' : 'text-gray-900',
+                              '[&_ul]:list-disc [&_ul]:list-inside [&_ol]:list-decimal [&_ol]:list-inside',
+                              '[&_p]:my-0.5 [&_li]:my-0',
+                              '[&_h2]:mt-2 [&_h2]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold',
+                              '[&_h3]:mt-1.5 [&_h3]:mb-0.5 [&_h3]:text-[13px] [&_h3]:font-semibold',
+                              '[&_h4]:mt-1.5 [&_h4]:mb-0.5 [&_h4]:text-xs [&_h4]:font-semibold',
+                              '[&_hr]:my-2 [&_hr]:border-white/10'
+                            )}
+                            dangerouslySetInnerHTML={{ __html: markdownToSafeHtml(newStepDescricao || '') }}
+                          />
+                        )}
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -488,8 +544,16 @@ export default function AdminMentoriasTab() {
                               {step.ordem}. {step.titulo}
                             </p>
                             <div
-                              className="text-xs text-gray-400 [&_ul]:list-disc [&_ul]:list-inside [&_ol]:list-decimal [&_ol]:list-inside [&_p]:my-0.5 [&_li]:my-0"
-                              dangerouslySetInnerHTML={{ __html: sanitizeHtml(step.descricao || '') }}
+                              className={cn(
+                                'text-xs text-gray-400',
+                                '[&_ul]:list-disc [&_ul]:list-inside [&_ol]:list-decimal [&_ol]:list-inside',
+                                '[&_p]:my-0.5 [&_li]:my-0',
+                                '[&_h2]:mt-2 [&_h2]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold',
+                                '[&_h3]:mt-1.5 [&_h3]:mb-0.5 [&_h3]:text-[13px] [&_h3]:font-semibold',
+                                '[&_h4]:mt-1.5 [&_h4]:mb-0.5 [&_h4]:text-xs [&_h4]:font-semibold',
+                                '[&_hr]:my-2 [&_hr]:border-white/10'
+                              )}
+                              dangerouslySetInnerHTML={{ __html: markdownToSafeHtml(step.descricao || '') }}
                             />
                             <p className="text-[11px] text-gray-500 mt-1">
                               Status: {step.status} · {step.habilitado ? 'Habilitado' : 'Desabilitado'}

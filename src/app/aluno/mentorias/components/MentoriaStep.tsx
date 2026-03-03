@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import type { DatabaseMentoriaStep, DatabaseMentoriaTarefa } from '@/types/database'
 import { cn } from '@/lib/utils'
-import { sanitizeHtml } from '@/lib/sanitizeHtml'
+import { markdownToSafeHtml } from '@/lib/markdown'
 import { MentoriaTarefas } from './MentoriaTarefas'
 
 type MentoriaStepProps = {
@@ -24,7 +24,7 @@ export function MentoriaStep({
   const isDone = step.status === 'concluido'
   const [safeHtml, setSafeHtml] = useState<string | null>(null)
   useEffect(() => {
-    setSafeHtml(sanitizeHtml(step.descricao || ''))
+    setSafeHtml(markdownToSafeHtml(step.descricao || ''))
   }, [step.descricao])
 
   return (
@@ -42,7 +42,15 @@ export function MentoriaStep({
 
       {safeHtml !== null ? (
         <div
-          className="text-sm md:text-base text-gray-300 [&_ul]:list-disc [&_ul]:list-inside [&_ol]:list-decimal [&_ol]:list-inside [&_p]:my-1 [&_li]:my-0.5"
+          className={cn(
+            'text-sm md:text-base text-gray-300',
+            '[&_ul]:list-disc [&_ul]:list-inside [&_ol]:list-decimal [&_ol]:list-inside',
+            '[&_p]:my-1 [&_li]:my-0.5',
+            '[&_h2]:mt-3 [&_h2]:mb-1 [&_h2]:text-base [&_h2]:font-semibold',
+            '[&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:text-[15px] [&_h3]:font-semibold',
+            '[&_h4]:mt-2 [&_h4]:mb-1 [&_h4]:text-sm [&_h4]:font-semibold',
+            '[&_hr]:my-3 [&_hr]:border-white/10'
+          )}
           dangerouslySetInnerHTML={{ __html: safeHtml }}
         />
       ) : (
