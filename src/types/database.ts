@@ -206,6 +206,96 @@ export interface DatabaseResposta {
   updated_at: string
 }
 
+// -----------------------------
+// Norte Tech Test (Mapa de Carreira)
+// -----------------------------
+
+/** Formações que a IA pode sugerir (exclui norte-tech e logica-programacao) */
+export type NorteTechTestFormacaoSugerida =
+  | 'android'
+  | 'frontend'
+  | 'backend'
+  | 'ios'
+  | 'analise-dados'
+  | 'ainda_explorando'
+
+export interface NorteTechTestResultadoIA {
+  formacao_sugerida: NorteTechTestFormacaoSugerida
+  confianca: number // 1-10
+  resumo: string | null
+  proximos_passos: string | null
+  analisado_em: string // ISO timestamp
+}
+
+/** Respostas do aluno por etapa (estrutura livre para flexibilidade) */
+export interface NorteTechTestRespostasData {
+  etapa_atual?: number
+  // Etapa 1 - Antes de começar
+  por_que_entrei?: string
+  o_que_assusta?: string
+  areas_interesse?: string[] // ids: android, frontend, etc.
+  avaliacoes_areas?: { area: string; avaliacao: number }[] // 1-5
+  // Etapa 2 - Decisão final / reflexão
+  o_que_aprendi?: string
+  o_que_surpreendeu?: string
+  mais_confiante?: boolean | null
+  // Etapa 3 - Comparando áreas
+  area_mais_gostei_praticar?: string
+  area_mais_energia?: string
+  area_dificil_interessante?: string
+  area_menos_gostei?: string
+  area_uma_so_6_meses?: string
+  // Etapa 4 - Minha decisão
+  area_escolhida?: string
+  porque_escolhi?: string
+  // Etapa 5 - Próximo passo
+  o_que_aprender?: string
+  proximo_passo_concreto?: string
+  quando_comeco?: string
+  // Etapa 6 - Compromisso
+  texto_compromisso?: string
+  data_entrar_formacao?: string | null
+  data_fazer_projeto?: string | null
+  data_post_linkedin?: string | null
+}
+
+export interface DatabaseNorteTechTestResposta {
+  id: string
+  user_id: string
+  respostas: NorteTechTestRespostasData
+  resultado_ia: NorteTechTestResultadoIA | null
+  created_at: string
+  updated_at: string
+}
+
+// Feedback por área (obrigatório antes da análise)
+export type NorteTechTestAreaId =
+  | 'android'
+  | 'frontend'
+  | 'backend'
+  | 'ios'
+  | 'analise-dados'
+
+export interface NorteTechTestAreaRespostasData {
+  curti_praticar?: number // 1-5
+  energia?: number // 1-5
+  dificuldade?: number // 1-5
+  confianca?: number // 1-5
+  me_vejo_6_meses?: 'sim' | 'nao' | 'talvez'
+  o_que_mais_gostei?: string
+  o_que_foi_mais_dificil?: string
+  comentario_livre?: string
+}
+
+export interface DatabaseNorteTechTestAreaResposta {
+  id: string
+  user_id: string
+  area_id: NorteTechTestAreaId
+  respostas: NorteTechTestAreaRespostasData
+  created_at: string
+  updated_at: string
+}
+
 export interface OpenAITokenUsage {
   id: string
   user_id: string

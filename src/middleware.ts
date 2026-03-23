@@ -44,6 +44,28 @@ export async function middleware(request: NextRequest) {
             }
           )
         }
+
+        // Exceção específica: evitar chamadas ao Supabase Auth no middleware
+        // durante o carregamento do Norte Tech Test (reduz risco de 429 no GoTrue).
+        if (pathname === '/aluno/norte-tech-test') {
+          const allCookies = request.cookies.getAll()
+          const supabaseCookies = allCookies.filter((c) => {
+            const name = c.name.toLowerCase()
+            return (
+              name.includes('supabase') ||
+              name.startsWith('sb-') ||
+              name.includes('auth-token')
+            )
+          })
+
+          if (supabaseCookies.length > 0) {
+            return NextResponse.next()
+          }
+
+          const loginUrl = new URL('/aluno/login', request.url)
+          loginUrl.searchParams.set('redirect', pathname)
+          return NextResponse.redirect(loginUrl)
+        }
         
         // Em produção com Supabase: verificar sessão usando createMiddlewareClient
         // Isso lê cookies automaticamente e valida a sessão
