@@ -1,5 +1,12 @@
 import OpenAI from 'openai'
 import { getSupabaseAdmin } from './server/supabaseAdmin'
+import type {
+  NorteTechTestRespostasData,
+  NorteTechTestResultadoIA,
+  NorteTechTestFormacaoSugerida,
+  NorteTechTestAreaId,
+  NorteTechTestAreaRespostasData,
+} from '@/types/database'
 
 // Cliente OpenAI - usar apenas no servidor (API routes)
 export const openai = new OpenAI({
@@ -537,5 +544,187 @@ export async function gerarQuizComIA(
 
   return {
     texto: content.trim()
+  }
+}
+
+// -----------------------------
+// Norte Tech Test - Análise de respostas e sugestão de formação
+// -----------------------------
+
+const NORTE_TECH_FORMACOES_VALIDAS: NorteTechTestFormacaoSugerida[] = [
+  'android',
+  'frontend',
+  'backend',
+  'ios',
+  'analise-dados',
+  'ainda_explorando',
+]
+
+function buildTextoFeedbackAreasParaPrompt(
+  areaRespostas: Record<NorteTechTestAreaId, NorteTechTestAreaRespostasData>
+): string {
+  const areaLabels: Record<NorteTechTestAreaId, string> = {
+    android: 'Android',
+    frontend: 'Web Frontend',
+    backend: 'Backend',
+    ios: 'iOS',
+    'analise-dados': 'Análise de Dados',
+  }
+  const lines: string[] = []
+  ;(Object.entries(areaRespostas) as [NorteTechTestAreaId, NorteTechTestAreaRespostasData][]).forEach(
+    ([areaId, r]) => {
+      if (!r || typeof r !== 'object') return
+      const label = areaLabels[areaId]
+      const parts: string[] = []
+      if (r.curti_praticar != null) parts.push(`curtiu praticar: ${r.curti_praticar}/5`)
+      if (r.energia != null) parts.push(`energia: ${r.energia}/5`)
+      if (r.dificuldade != null) parts.push(`dificuldade: ${r.dificuldade}/5`)
+      if (r.confianca != null) parts.push(`confiança: ${r.confianca}/5`)
+      if (r.me_vejo_6_meses) parts.push(`me vejo 6 meses: ${r.me_vejo_6_meses}`)
+      if (r.o_que_mais_gostei?.trim()) parts.push(`o que mais gostei: ${r.o_que_mais_gostei.trim()}`)
+      if (r.o_que_foi_mais_dificil?.trim()) parts.push(`o que foi mais difícil: ${r.o_que_foi_mais_dificil.trim()}`)
+      if (r.comentario_livre?.trim()) parts.push(`comentário: ${r.comentario_livre.trim()}`)
+      if (parts.length) lines.push(`[${label}] ${parts.join('; ')}`)
+    }
+  )
+  return lines.length ? lines.join('\n') : ''
+}
+
+function buildTextoRespostasParaPrompt(respostas: NorteTechTestRespostasData): string {
+  const lines: string[] = []
+
+  if (respostas.por_que_entrei?.trim()) lines.push(`Por que entrou no Norte Tech: ${respostas.por_que_entrei.trim()}`)
+  if (respostas.o_que_assusta?.trim()) lines.push(`O que mais assusta hoje: ${respostas.o_que_assusta.trim()}`)
+  if (respostas.areas_interesse?.length) lines.push(`Áreas que acha que pode gostar: ${respostas.areas_interesse.join(', ')}`)
+  if (respostas.avaliacoes_areas?.length) {
+    lines.push(`Avaliações por área: ${respostas.avaliacoes_areas.map(a => `${a.area}=${a.avaliacao}`).join('; ')}`)
+  }
+
+  if (respostas.o_que_aprendi?.trim()) lines.push(`O que aprendeu sobre programação: ${respostas.o_que_aprendi.trim()}`)
+  if (respostas.o_que_surpreendeu?.trim()) lines.push(`O que mais surpreendeu: ${respostas.o_que_surpreendeu.trim()}`)
+  if (respostas.mais_confiante !== undefined && respostas.mais_confiante !== null) {
+    lines.push(`Sente mais confiante que no começo: ${respostas.mais_confiante ? 'Sim' : 'Não'}`)
+  }
+
+  if (respostas.area_mais_gostei_praticar?.trim()) lines.push(`Área que mais gostou de praticar: ${respostas.area_mais_gostei_praticar.trim()}`)
+  if (respostas.area_mais_energia?.trim()) lines.push(`Área que deu mais energia: ${respostas.area_mais_energia.trim()}`)
+  if (respostas.area_dificil_interessante?.trim()) lines.push(`Área difícil mas interessante: ${respostas.area_dificil_interessante.trim()}`)
+  if (respostas.area_menos_gostei?.trim()) lines.push(`Área que menos gostou: ${respostas.area_menos_gostei.trim()}`)
+  if (respostas.area_uma_so_6_meses?.trim()) lines.push(`Se pudesse estudar só uma área por 6 meses: ${respostas.area_uma_so_6_meses.trim()}`)
+
+  if (respostas.area_escolhida?.trim()) lines.push(`Área que escolhe focar agora: ${respostas.area_escolhida.trim()}`)
+  if (respostas.porque_escolhi?.trim()) lines.push(`Por quê: ${respostas.porque_escolhi.trim()}`)
+
+  if (respostas.o_que_aprender?.trim()) lines.push(`O que precisa aprender a seguir: ${respostas.o_que_aprender.trim()}`)
+  if (respostas.proximo_passo_concreto?.trim()) lines.push(`Próximo passo concreto: ${respostas.proximo_passo_concreto.trim()}`)
+  if (respostas.quando_comeco?.trim()) lines.push(`Quando começa: ${respostas.quando_comeco.trim()}`)
+  if (respostas.texto_compromisso?.trim()) lines.push(`Compromisso: ${respostas.texto_compromisso.trim()}`)
+
+  return lines.length ? lines.join('\n') : '(Nenhuma resposta preenchida)'
+}
+
+/**
+ * Analisa as respostas do Norte Tech Test e sugere uma formação usando OpenAI.
+ * Inclui feedback por área (obrigatório). Formações possíveis: android, frontend, backend, ios, analise-dados, ainda_explorando.
+ */
+export async function analisarNorteTechTest(
+  respostas: NorteTechTestRespostasData,
+  areaRespostas: Record<NorteTechTestAreaId, NorteTechTestAreaRespostasData>,
+  userId?: string,
+  endpoint?: string
+): Promise<NorteTechTestResultadoIA> {
+  const textoRespostas = buildTextoRespostasParaPrompt(respostas)
+  const textoAreas = buildTextoFeedbackAreasParaPrompt(areaRespostas)
+
+  const prompt = `Você é um orientador de carreira em programação. Um aluno concluiu o "Norte Tech Test" (reflexão sobre áreas de programação). Com base APENAS nas respostas abaixo, indique qual formação da nossa escola melhor combina com o perfil dele.
+
+IMPORTANTE: A sugestão é para o PRÓPRIO ALUNO ler — para ajudá-lo a escolher sua formação. Escreva sempre em segunda pessoa, dirigindo-se a ele diretamente (ex.: "Você demonstrou...", "Sua experiência em...", "Com base no que você indicou..."). NUNCA escreva em terceira pessoa ("o aluno demonstrou", "ele indicou") — o texto é para o aluno, não para a escola.
+
+FORMATIONS DISPONÍVEIS (retorne o slug exatamente como está):
+- android (Android)
+- frontend (Web Frontend)
+- backend (Backend)
+- ios (iOS)
+- analise-dados (Análise de Dados)
+- ainda_explorando (use só se as respostas forem muito vagas ou contraditórias; o aluno ainda não tem direção clara)
+
+FEEDBACK POR ÁREA (avaliação do aluno em cada área - use como sinal forte):
+${textoAreas || '(Nenhum)'}
+
+RESPOSTAS GERAIS DO ALUNO:
+${textoRespostas}
+
+REGRAS:
+- Baseie-se no que o aluno escreveu e no feedback por área. Dê peso ao feedback por área (curtiu praticar, energia, me_vejo_6_meses).
+- Se as respostas forem vagas ou contraditórias, use formacao_sugerida "ainda_explorando" e confianca entre 1 e 4.
+- resumo: 2 a 3 frases em SEGUNDA PESSOA dirigidas ao aluno (ex.: "Você mostrou interesse em...", "Com base no seu feedback..."). Explicando por que essa formação faz sentido para ELE.
+- proximos_passos: 1 ou 2 sugestões práticas em uma frase, em segunda pessoa (ex.: "Você pode...", "Experimente..."). Opcional; pode ser null se não houver o que sugerir.
+
+Retorne APENAS um JSON válido, sem texto adicional:
+{
+  "formacao_sugerida": "android" | "frontend" | "backend" | "ios" | "analise-dados" | "ainda_explorando",
+  "confianca": 1 a 10,
+  "resumo": "string com 2-3 frases em segunda pessoa para o aluno",
+  "proximos_passos": "string ou null em segunda pessoa"
+}`
+
+  const model = 'gpt-4o-mini'
+  const response = await openai.chat.completions.create({
+    model,
+    messages: [
+      {
+        role: 'system',
+        content:
+          'Você é um orientador que sugere formações em programação. O texto (resumo e próximos_passos) deve ser dirigido AO ALUNO em segunda pessoa (você, seu, sua). Responda apenas com JSON válido.',
+      },
+      { role: 'user', content: prompt },
+    ],
+    temperature: 0.3,
+    max_tokens: 500,
+    response_format: { type: 'json_object' },
+  })
+
+  const content = response.choices[0]?.message?.content
+  if (!content) {
+    throw new Error('Resposta vazia da OpenAI')
+  }
+
+  if (userId && response.usage) {
+    await trackTokenUsage({
+      userId,
+      feature: 'Norte Tech Test - Análise',
+      endpoint: endpoint || '/api/norte-tech-test/analisar',
+      model,
+      promptTokens: response.usage.prompt_tokens,
+      completionTokens: response.usage.completion_tokens,
+      metadata: {},
+    })
+  }
+
+  try {
+    const parsed = JSON.parse(content) as {
+      formacao_sugerida?: string
+      confianca?: number
+      resumo?: string | null
+      proximos_passos?: string | null
+    }
+
+    const formacao = String(parsed.formacao_sugerida || 'ainda_explorando').toLowerCase().replace(/\s+/g, '-')
+    const formacaoValida: NorteTechTestFormacaoSugerida = NORTE_TECH_FORMACOES_VALIDAS.includes(formacao as NorteTechTestFormacaoSugerida)
+      ? (formacao as NorteTechTestFormacaoSugerida)
+      : 'ainda_explorando'
+
+    const confianca = Math.min(10, Math.max(1, Number(parsed.confianca) || 5))
+
+    return {
+      formacao_sugerida: formacaoValida,
+      confianca,
+      resumo: parsed.resumo ? String(parsed.resumo).trim() || null : null,
+      proximos_passos: parsed.proximos_passos ? String(parsed.proximos_passos).trim() || null : null,
+      analisado_em: new Date().toISOString(),
+    }
+  } catch (e) {
+    console.error('Erro ao parsear resposta Norte Tech Test:', content, e)
+    throw new Error('Erro ao processar análise da IA')
   }
 }

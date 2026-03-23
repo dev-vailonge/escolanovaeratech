@@ -7,7 +7,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const accessToken = searchParams.get('access_token')
     const refreshToken = searchParams.get('refresh_token')
-    const redirectTo = searchParams.get('redirect') || '/aluno'
+    const redirectRaw = searchParams.get('redirect')
+    const redirectTo = redirectRaw ? decodeURIComponent(redirectRaw) : '/aluno'
 
     if (!accessToken || !refreshToken) {
       return NextResponse.redirect(new URL('/?error=missing_tokens', request.url))
@@ -16,6 +17,20 @@ export async function GET(request: NextRequest) {
     // Criar cliente Supabase que gerencia cookies automaticamente
     const cookieStore = await cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+
+    // Idempotência: se já temos cookies de auth e o redirect é para o Norte Tech Test,
+    // não reprocessar o callback (evita rajadas que causam 429 no GoTrue).
+    const existingCookies = cookieStore.getAll()
+    const hasAuthCookie = existingCookies.some((c) => {
+      const name = c.name.toLowerCase()
+      return name.includes('supabase') || name.startsWith('sb-') || name.includes('auth-token')
+    })
+
+    if (redirectTo === '/aluno/norte-tech-test' && hasAuthCookie) {
+      const redirectUrl = new URL(redirectTo, request.url)
+      redirectUrl.searchParams.set('from_callback', 'true')
+      return NextResponse.redirect(redirectUrl)
+    }
 
     // Definir a sessão para criar os cookies
     const { data, error } = await supabase.auth.setSession({

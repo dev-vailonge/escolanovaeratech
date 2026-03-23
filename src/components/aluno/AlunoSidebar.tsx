@@ -21,6 +21,7 @@ import {
   Menu,
   X,
   Sparkles,
+  Compass,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSidebar } from '@/lib/SidebarContext'
@@ -43,6 +44,7 @@ const mainMenuItems = [
 // NOTA: Formulários foi removido - acesso apenas via notificações
 const baseMenuModalItems = [
   { icon: BookOpen, label: 'Plano de Estudos', href: '/aluno/aulas' },
+  { icon: Compass, label: 'Norte Tech Test', href: '/aluno/norte-tech-test' },
   { icon: HelpCircle, label: 'Quiz', href: '/aluno/quiz' },
   { icon: Target, label: 'Desafios', href: '/aluno/desafios' },
   { icon: Sparkles, label: 'Mentorias', href: '/aluno/mentorias' },
@@ -55,6 +57,7 @@ const baseMenuModalItems = [
 // NOTA: Formulários foi removido - acesso apenas via notificações
 const secondaryMenuItems = [
   { icon: BookOpen, label: 'Plano de Estudos', href: '/aluno/aulas' },
+  { icon: Compass, label: 'Norte Tech Test', href: '/aluno/norte-tech-test' },
   { icon: HelpCircle, label: 'Quiz', href: '/aluno/quiz' },
   { icon: Target, label: 'Desafios', href: '/aluno/desafios' },
   { icon: Sparkles, label: 'Mentorias', href: '/aluno/mentorias' },
