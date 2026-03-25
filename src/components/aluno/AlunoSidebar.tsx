@@ -98,9 +98,20 @@ export default function AlunoSidebar() {
     { id: 'desafios', label: 'Desafios', icon: Target, href: '/aluno/desafios' },
   ]
 
+  const getCursosChildFromPath = (currentPath: string): string | null => {
+    if (currentPath === '/aluno/cursos' || currentPath.startsWith('/aluno/cursos/')) return 'cursos-home'
+    if (currentPath === '/aluno/norte-tech' || currentPath.startsWith('/aluno/norte-tech/')) return 'norte-tech'
+    return null
+  }
+
   const [isCursosOpen, setIsCursosOpen] = useState(false)
-  const [selectedCursosChildId, setSelectedCursosChildId] = useState<string | null>(null) // leaf: 'norte-tech'
-  const isCursosParentSelected = selectedCursosChildId === 'norte-tech'
+  const [selectedCursosChildId, setSelectedCursosChildId] = useState<string | null>(getCursosChildFromPath(pathname))
+  const isCursosParentSelected = selectedCursosChildId !== null
+
+  useEffect(() => {
+    if (isGamificacaoRelated) return
+    setSelectedCursosChildId(getCursosChildFromPath(pathname))
+  }, [pathname, isGamificacaoRelated])
 
   // Menu items do modal - adicionar admin apenas se for admin
   const menuModalItems = isAdmin 
@@ -701,6 +712,8 @@ export default function AlunoSidebar() {
               <button
                 type="button"
                 onClick={() => {
+                  setSelectedCursosChildId('cursos-home')
+                  router.push('/aluno/cursos')
                   setIsCursosOpen((v) => !v)
                 }}
                 className={cn(

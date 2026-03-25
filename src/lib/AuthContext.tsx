@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from './supabase'
 import { User } from '@supabase/supabase-js'
 import { getUserById, getUserByEmail } from './database'
@@ -95,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true) // Inicia como true para evitar flash de login
   const [initialized, setInitialized] = useState(false)
+  const isInitializingRef = useRef(false)
 
   // Buscar dados completos do usuário do banco
   // IMPORTANTE: Esta função só é chamada quando há um usuário autenticado (supabaseUser)
@@ -233,8 +234,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const initializeAuth = useCallback(async () => {
-    if (initialized) return
+    if (initialized || isInitializingRef.current) return
     
+    isInitializingRef.current = true
     setLoading(true)
     try {
       // Verifica se Supabase está configurado antes de usar
@@ -290,13 +292,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setInitialized(true)
     } finally {
       setLoading(false)
+      isInitializingRef.current = false
     }
   }, [initialized, user])
 
   const refreshSession = async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:142',message:'refreshSession called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     try {
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
         // Adicionar timeout para getSession (5 segundos)
@@ -313,9 +313,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.warn('⚠️ refreshSession: getSession timeout ou erro:', error)
           session = null
         }
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:145',message:'getSession result',data:{hasSession:!!session,hasUser:!!session?.user,userId:session?.user?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
         if (session?.user) {
           // Adicionar timeout para fetchUserData (10 segundos)
           const fetchUserPromise = fetchUserData(session.user)
@@ -326,28 +323,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           let authUser
           try {
             authUser = await Promise.race([fetchUserPromise, fetchTimeoutPromise]) as AuthUser | null
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:148',message:'fetchUserData result',data:{hasAuthUser:!!authUser,userId:authUser?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
             setUser(authUser)
           } catch (error) {
             console.warn('⚠️ refreshSession: fetchUserData timeout ou erro:', error)
             // Não fazer logout automático - manter estado anterior
           }
-        } else {
-          // Não fazer logout automático quando não há sessão - manter estado anterior
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:151',message:'No session user, keeping previous state',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
         }
       }
       // Não fazer setUser(null) quando Supabase não está configurado - manter estado anterior
     } catch (error) {
       // Error refreshing session - não fazer logout automático
       // Não fazer setUser(null) - manter estado anterior
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/49008451-c824-441a-8f4c-4518059814cc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:156',message:'refreshSession error',data:{error:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
     } finally {
       setLoading(false)
     }
@@ -369,6 +355,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     initializeAuth()
   }, [initializeAuth])
+
+  // Fallback de segurança para evitar loading infinito em falhas de sessão.
+  useEffect(() => {
+    if (!loading) return
+
+    const timeout = setTimeout(() => {
+      setLoading(false)
+      setInitialized(true)
+      isInitializingRef.current = false
+    }, 12000)
+
+    return () => clearTimeout(timeout)
+  }, [loading])
 
   useEffect(() => {
     let mounted = true

@@ -11,7 +11,7 @@ import Image from 'next/image'
 function AlunoLoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user, loading, initializeAuth } = useAuth()
+  const { user, loading } = useAuth()
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -19,6 +19,7 @@ function AlunoLoginContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [authLoadingTimedOut, setAuthLoadingTimedOut] = useState(false)
 
   useEffect(() => {
     const message = searchParams.get('message')
@@ -34,11 +35,6 @@ function AlunoLoginContent() {
   }, [searchParams, router])
 
   useEffect(() => {
-    // Initialize auth when page loads
-    initializeAuth()
-  }, [initializeAuth])
-
-  useEffect(() => {
     // If user is already authenticated, redirect to aluno dashboard or redirect URL
     if (user && !loading) {
       const redirectParam = searchParams.get('redirect')
@@ -46,6 +42,19 @@ function AlunoLoginContent() {
       router.push(redirectTo)
     }
   }, [user, loading, router, searchParams])
+
+  useEffect(() => {
+    if (!loading) {
+      setAuthLoadingTimedOut(false)
+      return
+    }
+
+    const timeout = setTimeout(() => {
+      setAuthLoadingTimedOut(true)
+    }, 9000)
+
+    return () => clearTimeout(timeout)
+  }, [loading])
 
   const handleInputChange = (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -87,6 +96,7 @@ function AlunoLoginContent() {
         return
       } else {
         setError('Erro ao fazer login. Tente novamente.')
+        setIsLoading(false)
       }
     } catch (err: any) {
       console.error('Login error:', err)
@@ -126,7 +136,7 @@ function AlunoLoginContent() {
   )
 
   // Show loading while AuthContext is initializing
-  if (loading) {
+  if (loading && !authLoadingTimedOut) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div 

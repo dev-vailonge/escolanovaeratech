@@ -31,9 +31,14 @@ export default function NorteTechPage() {
     {
       key: 'nort-test',
       title: 'Nort Test',
-      description: 'Seu teste de evolução: etapas objetivas para validar conceitos e destravar novas fases.',
+      description: 'Nort Test é um teste feito com a ajuda de inteligência artificial para você identificar a área que mais gosta.',
       icon: Sparkles,
-      bullets: ['Etapas em sequencia', 'Automacao de verificação', 'Resultados e feedback', 'Recomeco quando precisar'],
+      bullets: [
+        'Diagnóstico guiado por IA',
+        'Preenchimento por etapa do curso',
+        'Análise do seu perfil em evolução',
+        'Recomendação da área com mais fit',
+      ],
       ctaLabel: 'Iniciar Nort Test',
       href: '/aluno/norte-tech-test',
       ribbon: 'NOVO',
