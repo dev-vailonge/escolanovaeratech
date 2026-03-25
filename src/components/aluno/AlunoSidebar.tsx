@@ -101,6 +101,7 @@ export default function AlunoSidebar() {
   const getCursosChildFromPath = (currentPath: string): string | null => {
     if (currentPath === '/aluno/cursos' || currentPath.startsWith('/aluno/cursos/')) return 'cursos-home'
     if (currentPath === '/aluno/norte-tech' || currentPath.startsWith('/aluno/norte-tech/')) return 'norte-tech'
+    if (currentPath === '/aluno/formacoes/android' || currentPath.startsWith('/aluno/formacoes/android/')) return 'formacao-android'
     return null
   }
 
@@ -765,6 +766,26 @@ export default function AlunoSidebar() {
                   >
                     <Compass className="w-5 h-5 flex-shrink-0" />
                     <span className="font-medium">Norte Tech</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCursosChildId('formacao-android')
+                      router.push('/aluno/formacoes/android')
+                    }}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-lg transition-all group relative px-4 py-2 text-left',
+                      selectedCursosChildId === 'formacao-android'
+                        ? theme === 'dark'
+                          ? 'text-yellow-400'
+                          : 'text-yellow-900'
+                        : theme === 'dark'
+                          ? 'text-gray-400 hover:text-white hover:bg-white/5'
+                          : 'text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20'
+                    )}
+                  >
+                    <BookOpen className="w-5 h-5 flex-shrink-0" />
+                    <span className="font-medium">Formação Android</span>
                   </button>
                 </div>
               )}

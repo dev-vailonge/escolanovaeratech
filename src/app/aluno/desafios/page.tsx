@@ -12,6 +12,7 @@ import { getAuthToken } from '@/lib/getAuthToken'
 import { XP_CONSTANTS } from '@/lib/gamification/constants'
 import type { DatabaseDesafio, DatabaseDesafioSubmission } from '@/types/database'
 import DesafioCard from '@/components/aluno/DesafioCard'
+import { DESAFIO_ENVIO_DESABILITADO } from '@/lib/constants/desafios'
 
 // Tecnologias organizadas por categoria/curso
 const TECNOLOGIAS_POR_CATEGORIA = {
@@ -500,6 +501,10 @@ export default function DesafiosPage() {
 
   // Submeter link do GitHub
   const handleSubmitGithub = async () => {
+    if (DESAFIO_ENVIO_DESABILITADO) {
+      setError('O envio de desafios está temporariamente indisponível.')
+      return
+    }
     if (!desafioParaSubmeter || !githubUrl) {
       setError('Informe o link do GitHub')
       return
@@ -553,6 +558,7 @@ export default function DesafiosPage() {
   }
 
   const openSubmitModal = (desafio: MeuDesafio) => {
+    if (DESAFIO_ENVIO_DESABILITADO) return
     setDesafioParaSubmeter(desafio)
     setGithubUrl('')
     setShowSubmitModal(true)
@@ -938,6 +944,19 @@ export default function DesafiosPage() {
             </div>
           )}
 
+          {DESAFIO_ENVIO_DESABILITADO && (
+            <p
+              className={cn(
+                'text-sm rounded-lg border p-3',
+                theme === 'dark'
+                  ? 'bg-white/5 border-white/15 text-amber-200/90'
+                  : 'bg-amber-50 border-amber-200 text-amber-900'
+              )}
+            >
+              O envio de solução está temporariamente indisponível. Tente novamente em breve.
+            </p>
+          )}
+
           <div>
             <label className={cn("block text-sm font-medium mb-2", theme === 'dark' ? 'text-gray-300' : 'text-gray-700')}>
               Link do repositório GitHub
@@ -951,9 +970,11 @@ export default function DesafiosPage() {
                 type="url"
                 value={githubUrl}
                 onChange={(e) => setGithubUrl(e.target.value)}
+                disabled={DESAFIO_ENVIO_DESABILITADO}
                 placeholder="https://github.com/usuario/repositorio"
                 className={cn(
                   "w-full pl-10 pr-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400",
+                  DESAFIO_ENVIO_DESABILITADO && 'opacity-60 cursor-not-allowed',
                   theme === 'dark'
                     ? "bg-black/30 border-white/10 text-white placeholder-gray-500"
                     : "bg-white border-gray-300 text-gray-900 placeholder-gray-400"
@@ -988,10 +1009,11 @@ export default function DesafiosPage() {
             </button>
             <button
               onClick={handleSubmitGithub}
-              disabled={isSubmittingGithub || !githubUrl}
+              disabled={DESAFIO_ENVIO_DESABILITADO || isSubmittingGithub || !githubUrl}
               className={cn(
                 "flex-1 px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2",
-                (isSubmittingGithub || !githubUrl) && "opacity-50 cursor-not-allowed",
+                (DESAFIO_ENVIO_DESABILITADO || isSubmittingGithub || !githubUrl) &&
+                  "opacity-50 cursor-not-allowed",
                 theme === 'dark'
                   ? "bg-yellow-400 hover:bg-yellow-500 text-black"
                   : "bg-yellow-500 hover:bg-yellow-600 text-white"
@@ -1216,12 +1238,20 @@ export default function DesafiosPage() {
                 </p>
                 {desafioAtivo.status === 'pendente_envio' && (
                   <button
-                    onClick={() => openSubmitModal(desafioAtivo)}
+                    type="button"
+                    disabled={DESAFIO_ENVIO_DESABILITADO}
+                    title={
+                      DESAFIO_ENVIO_DESABILITADO
+                        ? 'Envio de solução temporariamente indisponível'
+                        : undefined
+                    }
+                    onClick={() => !DESAFIO_ENVIO_DESABILITADO && openSubmitModal(desafioAtivo)}
                     className={cn(
-                      "px-6 py-3 rounded-lg font-semibold text-base md:text-lg transition-all flex items-center gap-2 mb-4",
+                      'px-6 py-3 rounded-lg font-semibold text-base md:text-lg transition-all flex items-center gap-2 mb-4',
+                      DESAFIO_ENVIO_DESABILITADO && 'opacity-50 cursor-not-allowed',
                       theme === 'dark'
-                        ? "bg-yellow-400 hover:bg-yellow-500 text-black"
-                        : "bg-yellow-500 hover:bg-yellow-600 text-white"
+                        ? 'bg-yellow-400 hover:bg-yellow-500 text-black'
+                        : 'bg-yellow-500 hover:bg-yellow-600 text-white'
                     )}
                   >
                     <Github className="w-5 h-5" />

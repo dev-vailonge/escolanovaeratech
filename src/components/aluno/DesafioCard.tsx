@@ -5,6 +5,7 @@ import { Target, Clock, CheckCircle2, Github, Loader2, Send, XCircle, Flag } fro
 import { cn } from '@/lib/utils'
 import type { DatabaseDesafio, DatabaseDesafioSubmission } from '@/types/database'
 import AdquirirFormacaoModal from '@/components/aluno/AdquirirFormacaoModal'
+import { DESAFIO_ENVIO_DESABILITADO } from '@/lib/constants/desafios'
 
 export interface MeuDesafioCard {
   id: string
@@ -70,10 +71,45 @@ function ActionButtons({ props }: { props: DesafioCardProps }) {
   return (
     <div className="flex flex-col gap-2">
       {(meuDesafio.status === 'pendente_envio' || meuDesafio.status === 'rejeitado') && (
-        <button onClick={() => onOpenSubmit(meuDesafio)} className={cn('px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 w-full md:w-auto', isDark ? 'bg-yellow-400 hover:bg-yellow-500 text-black' : 'bg-yellow-500 hover:bg-yellow-600 text-white')}><Github className="w-4 h-4" />{meuDesafio.status === 'rejeitado' ? 'Reenviar' : 'Enviar'}</button>
+        <button
+          type="button"
+          disabled={DESAFIO_ENVIO_DESABILITADO}
+          title={
+            DESAFIO_ENVIO_DESABILITADO
+              ? 'Envio de solução temporariamente indisponível'
+              : undefined
+          }
+          onClick={() => !DESAFIO_ENVIO_DESABILITADO && onOpenSubmit(meuDesafio)}
+          className={cn(
+            'px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 w-full md:w-auto',
+            DESAFIO_ENVIO_DESABILITADO && 'opacity-50 cursor-not-allowed',
+            isDark ? 'bg-yellow-400 hover:bg-yellow-500 text-black' : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+          )}
+        >
+          <Github className="w-4 h-4" />
+          {meuDesafio.status === 'rejeitado' ? 'Reenviar' : 'Enviar'}
+        </button>
       )}
       {meuDesafio.status === 'aguardando_aprovacao' && (
-        <button onClick={() => onOpenSubmit(meuDesafio)} className={cn('px-4 py-2 rounded-lg font-medium flex items-center justify-center gap-2 w-full md:w-auto', isDark ? 'bg-transparent border border-yellow-400/50 text-yellow-400 hover:bg-yellow-400/10' : 'bg-transparent border border-yellow-500 text-yellow-600 hover:bg-yellow-50')}><Github className="w-4 h-4" /> Editar Link</button>
+        <button
+          type="button"
+          disabled={DESAFIO_ENVIO_DESABILITADO}
+          title={
+            DESAFIO_ENVIO_DESABILITADO
+              ? 'Edição do link temporariamente indisponível'
+              : undefined
+          }
+          onClick={() => !DESAFIO_ENVIO_DESABILITADO && onOpenSubmit(meuDesafio)}
+          className={cn(
+            'px-4 py-2 rounded-lg font-medium flex items-center justify-center gap-2 w-full md:w-auto',
+            DESAFIO_ENVIO_DESABILITADO && 'opacity-50 cursor-not-allowed',
+            isDark
+              ? 'bg-transparent border border-yellow-400/50 text-yellow-400 hover:bg-yellow-400/10'
+              : 'bg-transparent border border-yellow-500 text-yellow-600 hover:bg-yellow-50'
+          )}
+        >
+          <Github className="w-4 h-4" /> Editar Link
+        </button>
       )}
       {meuDesafio.status === 'pendente_envio' && (
         <button onClick={() => onOpenDesistir(meuDesafio)} className={cn('px-4 py-2 rounded-lg font-medium flex items-center justify-center gap-2 w-full md:w-auto text-sm', isDark ? 'bg-transparent border border-red-500/50 text-red-400 hover:bg-red-500/10' : 'bg-transparent border border-red-300 text-red-600 hover:bg-red-50')}><Flag className="w-3 h-3" /> Desistir</button>

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { DESAFIO_ENVIO_DESABILITADO } from '@/lib/constants/desafios'
 import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/requestAuth'
 import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { validateGitHubRepo } from '@/lib/github'
@@ -17,6 +18,13 @@ export async function POST(
       return NextResponse.json(
         { error: 'ID do desafio não informado' },
         { status: 400 }
+      )
+    }
+
+    if (DESAFIO_ENVIO_DESABILITADO) {
+      return NextResponse.json(
+        { error: 'O envio de desafios está temporariamente indisponível.' },
+        { status: 503 }
       )
     }
 
