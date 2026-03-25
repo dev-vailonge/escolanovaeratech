@@ -218,7 +218,6 @@ export default function DesafiosPage() {
       } else {
         setRefreshing(true)
       }
-      console.log('🔍 [loadMeusDesafios] Carregando desafios para usuário:', authUser.id)
 
       // Timeout de segurança: 10 segundos para cada operação
       const createTimeoutPromise = (timeoutMs: number) => 
@@ -243,27 +242,21 @@ export default function DesafiosPage() {
         atribuicoes = result?.data
         atribError = result?.error
       } catch (error: any) {
-        console.error('❌ [loadMeusDesafios] Timeout ou erro ao buscar atribuições:', error)
         atribError = error
         atribuicoes = null
       }
 
       if (atribError) {
-        console.error('❌ [loadMeusDesafios] Erro ao buscar atribuições:', atribError)
         setMeusDesafios([])
         return
       }
 
-      console.log('📋 [loadMeusDesafios] Atribuições encontradas:', atribuicoes?.length || 0, atribuicoes)
-
       if (!atribuicoes || atribuicoes.length === 0) {
-        console.log('⚠️ [loadMeusDesafios] Nenhuma atribuição encontrada')
         setMeusDesafios([])
         return
       }
 
       const desafioIds = atribuicoes.map((a: any) => a.desafio_id)
-      console.log('🎯 [loadMeusDesafios] IDs de desafios para buscar:', desafioIds)
 
       // Buscar detalhes dos desafios (com timeout)
       let desafios, desafiosError
@@ -281,15 +274,12 @@ export default function DesafiosPage() {
         desafios = result?.data
         desafiosError = result?.error
       } catch (error: any) {
-        console.error('❌ [loadMeusDesafios] Timeout ou erro ao buscar desafios:', error)
         desafiosError = error
         desafios = null
       }
 
       if (desafiosError) {
-        console.error('❌ [loadMeusDesafios] Erro ao buscar desafios:', desafiosError)
       } else {
-        console.log('📚 [loadMeusDesafios] Desafios encontrados:', desafios?.length || 0)
       }
 
       // Buscar submissions do usuário (com timeout)
@@ -310,15 +300,12 @@ export default function DesafiosPage() {
         submissions = result?.data
         submissionsError = result?.error
       } catch (error: any) {
-        console.error('❌ [loadMeusDesafios] Timeout ou erro ao buscar submissions:', error)
         submissionsError = error
         submissions = null
       }
 
       if (submissionsError) {
-        console.error('❌ [loadMeusDesafios] Erro ao buscar submissions:', submissionsError)
       } else {
-        console.log('📝 [loadMeusDesafios] Submissions encontradas:', submissions?.length || 0)
       }
 
       // Montar lista de "Meus Desafios"
@@ -375,10 +362,8 @@ export default function DesafiosPage() {
         return true
       })
 
-      console.log('✅ [loadMeusDesafios] Lista final montada:', meusDesafiosList.length, 'desafios')
       setMeusDesafios(meusDesafiosList)
     } catch (err) {
-      console.error('❌ [loadMeusDesafios] Erro ao carregar meus desafios:', err)
       setError('Erro ao carregar desafios. Tente recarregar a página.')
       setMeusDesafios([]) // Garantir que a lista está vazia em caso de erro
     } finally {
@@ -422,7 +407,6 @@ export default function DesafiosPage() {
         }))
       }).catch((err) => {
         if (cancelled) return
-        console.error('[aulas-sugeridas]', err)
         setAulasSugeridas((prev) => ({
           ...prev,
           [desafioId]: { aulas: [], loading: false },
@@ -504,7 +488,6 @@ export default function DesafiosPage() {
       
       // Recarregar desafios em background (sem bloquear UI)
       loadMeusDesafios(false).catch(err => {
-        console.error('Erro ao recarregar desafios:', err)
         // Em caso de erro, tentar novamente após um delay
         setTimeout(() => loadMeusDesafios(false), 1000)
       })
@@ -561,7 +544,7 @@ export default function DesafiosPage() {
       setDesafioParaSubmeter(null)
       
       // Recarregar em background para garantir sincronização
-      loadMeusDesafios(false).catch(err => console.error('Erro ao recarregar:', err))
+      loadMeusDesafios(false).catch(() => {})
     } catch (e: any) {
       setError(e?.message || 'Erro ao submeter')
     } finally {
@@ -605,28 +588,9 @@ export default function DesafiosPage() {
 
       const json = await res.json()
       if (!res.ok) {
-        // Log de debug no console do navegador
-        console.error('❌ [DEBUG DESISTIR] Erro ao desistir do desafio:', {
-          error: json.error,
-          debug: json.debug,
-        })
-        if (json.debug) {
-          console.error('🔍 [DEBUG DESISTIR] Detalhes do erro:', {
-            message: json.debug.message,
-            code: json.debug.code,
-            details: json.debug.details,
-            hint: json.debug.hint,
-          })
-          if (json.debug.code === '42501') {
-            console.error('💡 Dica: Verifique se a política RLS para desistir foi criada no banco')
-          }
-        }
         throw new Error(json?.error || 'Erro ao desistir')
       }
       
-      // Log de sucesso
-      console.log('✅ [DEBUG DESISTIR] Desistência realizada com sucesso:', json)
-
       // Fechar modal e mostrar feedback imediatamente
       setSuccess('⚠️ Você desistiu do desafio e perdeu 20 XP.')
       setShowDesistirModal(false)
@@ -642,7 +606,7 @@ export default function DesafiosPage() {
       setDesafioParaDesistir(null)
       
       // Recarregar em background para garantir sincronização
-      loadMeusDesafios(false).catch(err => console.error('Erro ao recarregar:', err))
+      loadMeusDesafios(false).catch(() => {})
     } catch (e: any) {
       setError(e?.message || 'Erro ao desistir')
     } finally {

@@ -11,8 +11,8 @@ import {
   HelpCircle,
   Target,
   Users,
-  User,
   BookOpen,
+  User,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -31,7 +31,7 @@ import { useAuth } from '@/lib/AuthContext'
 // Menu items principais (mostrados na bottom bar mobile)
 const mainMenuItems = [
   { icon: Home, label: 'Início', href: '/aluno' },
-  { icon: Trophy, label: 'Ranking', href: '/aluno/ranking' },
+  { icon: Trophy, label: 'Gamificação', href: '/aluno/ranking' },
   { icon: Users, label: 'Comunidade', href: '/aluno/comunidade' },
   { icon: User, label: 'Perfil', href: '/aluno/perfil' },
 ]
@@ -40,29 +40,19 @@ const mainMenuItems = [
 // NOTA: Painel Admin foi removido daqui - será adicionado dinamicamente se o usuário for admin
 // NOTA: Perfil foi movido para a bottom bar, então foi removido daqui
 // NOTA: Comunidade foi movida para a bottom bar, então foi removida daqui
-// NOTA: Plano de Estudos aparece apenas no menu modal e no sidebar desktop
 // NOTA: Formulários foi removido - acesso apenas via notificações
 const baseMenuModalItems = [
-  { icon: BookOpen, label: 'Plano de Estudos', href: '/aluno/aulas' },
-  { icon: Compass, label: 'Norte Tech Test', href: '/aluno/norte-tech-test' },
-  { icon: HelpCircle, label: 'Quiz', href: '/aluno/quiz' },
   { icon: Target, label: 'Desafios', href: '/aluno/desafios' },
   { icon: Sparkles, label: 'Mentorias', href: '/aluno/mentorias' },
-  { icon: ClipboardList, label: 'Central de Ajuda', href: '/aluno/central-de-ajuda' },
 ]
 
 // Menu items secundários (apenas no sidebar desktop)
 // NOTA: Perfil e Comunidade foram removidos daqui pois já estão em mainMenuItems
-// NOTA: Plano de Estudos aparece aqui também para o sidebar desktop
 // NOTA: Formulários foi removido - acesso apenas via notificações
 const secondaryMenuItems = [
-  { icon: BookOpen, label: 'Plano de Estudos', href: '/aluno/aulas' },
-  { icon: Compass, label: 'Norte Tech Test', href: '/aluno/norte-tech-test' },
-  { icon: HelpCircle, label: 'Quiz', href: '/aluno/quiz' },
-  { icon: Target, label: 'Desafios', href: '/aluno/desafios' },
   { icon: Sparkles, label: 'Mentorias', href: '/aluno/mentorias' },
 ]
-const helpCenterItem = { icon: ClipboardList, label: 'Central de Ajuda', href: '/aluno/central-de-ajuda' }
+const helpCenterItem = null
 
 // Menu items administrativos (apenas para admins)
 const adminMenuItems = [
@@ -79,6 +69,38 @@ export default function AlunoSidebar() {
 
   // Verificar se o usuário é admin
   const isAdmin = user?.role === 'admin'
+
+  const isGamificacaoRelated =
+    pathname === '/aluno/ranking' ||
+    pathname === '/aluno/quiz' ||
+    pathname === '/aluno/desafios' ||
+    pathname === '/aluno/pontos-e-bonus' ||
+    pathname.startsWith('/aluno/ranking/') ||
+    pathname.startsWith('/aluno/quiz/') ||
+    pathname.startsWith('/aluno/desafios/') ||
+    pathname.startsWith('/aluno/pontos-e-bonus/')
+
+  // Regra: só "Pontos e Bônus" deve deixar o item pai (Gamificação) selecionado.
+  const isGamificacaoParentSelected =
+    pathname === '/aluno/pontos-e-bonus' || pathname.startsWith('/aluno/pontos-e-bonus/')
+
+  const [isGamificacaoOpen, setIsGamificacaoOpen] = useState(isGamificacaoRelated)
+
+  useEffect(() => {
+    // Mantem menus expandidos conforme clique do usuário.
+    // Apenas remove seleção do submenu de Cursos quando estamos em uma rota de Gamificação.
+    if (isGamificacaoRelated) setSelectedCursosChildId(null)
+  }, [isGamificacaoRelated])
+
+  const gamificacaoChildren = [
+    { id: 'ranking', label: 'Ranking', icon: Trophy, href: '/aluno/ranking' },
+    { id: 'quiz', label: 'Quiz', icon: HelpCircle, href: '/aluno/quiz' },
+    { id: 'desafios', label: 'Desafios', icon: Target, href: '/aluno/desafios' },
+  ]
+
+  const [isCursosOpen, setIsCursosOpen] = useState(false)
+  const [selectedCursosChildId, setSelectedCursosChildId] = useState<string | null>(null) // leaf: 'norte-tech'
+  const isCursosParentSelected = selectedCursosChildId === 'norte-tech'
 
   // Menu items do modal - adicionar admin apenas se for admin
   const menuModalItems = isAdmin 
@@ -235,23 +257,23 @@ export default function AlunoSidebar() {
                         "flex flex-col items-center justify-center gap-2 p-4 rounded-xl transition-all",
                         isActive
                           ? theme === 'dark'
-                            ? "bg-yellow-400/20 border border-yellow-400/30"
-                            : "bg-yellow-100 border border-yellow-400"
+                            ? "text-yellow-400"
+                            : "text-yellow-800"
                           : theme === 'dark'
-                            ? "bg-white/5 border border-white/10 hover:bg-white/10"
-                            : "bg-gray-50 border border-gray-200 hover:bg-gray-100"
+                            ? "bg-white/5 hover:bg-white/10 text-gray-300"
+                            : "bg-gray-50 hover:bg-gray-100 text-gray-700"
                       )}
                     >
                       <Icon className={cn(
                         "w-6 h-6",
                         isActive
-                          ? theme === 'dark' ? "text-yellow-400" : "text-yellow-700"
+                          ? theme === 'dark' ? "text-yellow-400" : "text-yellow-800"
                           : theme === 'dark' ? "text-gray-300" : "text-gray-600"
                       )} />
                       <span className={cn(
                         "text-xs font-medium text-center",
                         isActive
-                          ? theme === 'dark' ? "text-yellow-400" : "text-yellow-700"
+                          ? theme === 'dark' ? "text-yellow-400" : "text-yellow-800"
                           : theme === 'dark' ? "text-gray-300" : "text-gray-700"
                       )}>
                         {item.label}
@@ -558,6 +580,81 @@ export default function AlunoSidebar() {
           {/* Menu items principais */}
           {mainMenuItems.map((item) => {
             const Icon = item.icon
+            if (item.label === 'Gamificação') {
+              return (
+                <div key={item.href} className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isGamificacaoOpen) {
+                        // Garante exclusividade: abre Gamificação e fecha Cursos/Norte Tech
+                        // Nao colapsamos os outros menus: apenas limpamos a selecao para manter 1 item amarelo.
+                        setSelectedCursosChildId(null)
+                        setIsGamificacaoOpen(true)
+                        router.push('/aluno/pontos-e-bonus')
+                      } else {
+                        // Permite colapsar manualmente
+                        setIsGamificacaoOpen(false)
+                      }
+                    }}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-lg transition-all group relative',
+                      isExpanded ? 'px-4 py-3' : 'px-3 py-3 justify-center',
+                      isGamificacaoParentSelected
+                        ? theme === 'dark'
+                          ? 'text-yellow-400'
+                          : 'text-yellow-900'
+                        : theme === 'dark'
+                        ? 'text-gray-400 hover:text-white hover:bg-white/5'
+                        : 'text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20'
+                    )}
+                    title={!isExpanded ? item.label : undefined}
+                  >
+                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    {isExpanded && <span className="font-medium">{item.label}</span>}
+                    {isExpanded && (
+                      <ChevronRight
+                        className={cn(
+                          'ml-auto w-4 h-4 transition-transform',
+                          isGamificacaoOpen ? 'rotate-90' : 'rotate-0',
+                          isGamificacaoParentSelected ? 'text-yellow-400' : theme === 'dark' ? 'text-gray-400' : 'text-gray-700'
+                        )}
+                      />
+                    )}
+                  </button>
+
+                  {isExpanded && isGamificacaoOpen && (
+                    <div className="pl-4 space-y-1">
+                      {gamificacaoChildren.map((child) => {
+                        const ChildIcon = child.icon
+                        const isChildActive =
+                          pathname === child.href || pathname.startsWith(child.href + '/')
+                        return (
+                          <Link
+                            key={child.id}
+                            href={child.href}
+                            className={cn(
+                              'flex items-center gap-3 rounded-lg transition-all group relative w-full',
+                              'px-4 py-2',
+                              isChildActive
+                                ? theme === 'dark'
+                                  ? 'text-yellow-400'
+                                  : 'text-yellow-900'
+                                : theme === 'dark'
+                                ? 'text-gray-400 hover:text-white hover:bg-white/5'
+                                : 'text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20'
+                            )}
+                          >
+                            <ChildIcon className="w-5 h-5 flex-shrink-0" />
+                            <span className="font-medium">{child.label}</span>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            }
             // Início só é ativo na rota exata, outros itens podem ter rotas filhas
             const isActive = item.href === '/aluno' 
               ? pathname === '/aluno' || pathname === '/aluno/'
@@ -572,8 +669,8 @@ export default function AlunoSidebar() {
                   isExpanded ? 'px-4 py-3' : 'px-3 py-3 justify-center',
                   isActive
                     ? theme === 'dark'
-                      ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/30'
-                      : 'bg-yellow-600/30 text-yellow-900 border border-yellow-700/40'
+                      ? 'text-yellow-400'
+                      : 'text-yellow-900'
                     : theme === 'dark'
                       ? 'text-gray-400 hover:text-white hover:bg-white/5'
                       : 'text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20'
@@ -597,6 +694,69 @@ export default function AlunoSidebar() {
               </Link>
             )
           })}
+
+          {/* Submenu Cursos */}
+          {isExpanded ? (
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCursosOpen((v) => !v)
+                }}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-lg transition-all group relative',
+                  isExpanded ? 'px-4 py-3' : 'px-3 py-3 justify-center',
+                  isCursosParentSelected
+                    ? theme === 'dark'
+                      ? 'text-yellow-400'
+                      : 'text-yellow-900'
+                    : theme === 'dark'
+                      ? 'text-gray-400 hover:text-white hover:bg-white/5'
+                      : 'text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20'
+                )}
+              >
+                {(() => {
+                  const CursosIcon = BookOpen
+                  return <CursosIcon className="w-5 h-5 flex-shrink-0" />
+                })()}
+                {isExpanded && <span className="font-medium">Cursos</span>}
+                {isExpanded && (
+                  <ChevronRight
+                    className={cn(
+                      'ml-auto w-4 h-4 transition-transform',
+                      isCursosOpen ? 'rotate-90' : 'rotate-0',
+                      isCursosParentSelected ? 'text-yellow-400' : theme === 'dark' ? 'text-gray-400' : 'text-gray-700'
+                    )}
+                  />
+                )}
+              </button>
+
+              {isCursosOpen && (
+                <div className="pl-4 space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCursosChildId('norte-tech')
+                      router.push('/aluno/norte-tech')
+                    }}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-lg transition-all group relative px-4 py-2 text-left',
+                      selectedCursosChildId === 'norte-tech'
+                        ? theme === 'dark'
+                          ? 'text-yellow-400'
+                          : 'text-yellow-900'
+                        : theme === 'dark'
+                          ? 'text-gray-400 hover:text-white hover:bg-white/5'
+                          : 'text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20'
+                    )}
+                  >
+                    <Compass className="w-5 h-5 flex-shrink-0" />
+                    <span className="font-medium">Norte Tech</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : null}
 
           {/* Separador */}
           {isExpanded && (
@@ -620,8 +780,8 @@ export default function AlunoSidebar() {
                   isExpanded ? 'px-4 py-3' : 'px-3 py-3 justify-center',
                   isActive
                     ? theme === 'dark'
-                      ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/30'
-                      : 'bg-yellow-600/30 text-yellow-900 border border-yellow-700/40'
+                      ? 'text-yellow-400'
+                      : 'text-yellow-900'
                     : theme === 'dark'
                       ? 'text-gray-400 hover:text-white hover:bg-white/5'
                       : 'text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20'
@@ -646,49 +806,7 @@ export default function AlunoSidebar() {
             )
           })}
 
-          {/* Separador antes da Central de Ajuda */}
-          <div className={cn(
-            "my-4 border-t",
-            theme === 'dark' ? "border-white/10" : "border-yellow-500/30"
-          )} />
-
-          {/* Central de Ajuda */}
-          {(() => {
-            const Icon = helpCenterItem.icon
-            const isActive = pathname === helpCenterItem.href || pathname.startsWith(helpCenterItem.href + '/')
-            return (
-              <Link
-                href={helpCenterItem.href}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg transition-all group relative',
-                  isExpanded ? 'px-4 py-3' : 'px-3 py-3 justify-center',
-                  isActive
-                    ? theme === 'dark'
-                      ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/30'
-                      : 'bg-yellow-600/30 text-yellow-900 border border-yellow-700/40'
-                    : theme === 'dark'
-                      ? 'text-gray-400 hover:text-white hover:bg-white/5'
-                      : 'text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20'
-                )}
-                title={!isExpanded ? helpCenterItem.label : undefined}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                {isExpanded && (
-                  <span className="font-medium">{helpCenterItem.label}</span>
-                )}
-                {!isExpanded && (
-                  <div className={cn(
-                    "absolute left-full ml-2 px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50",
-                    theme === 'dark'
-                      ? "bg-[#111]/90 border border-white/10 text-white"
-                      : "bg-yellow-500/95 border border-yellow-600/30 text-gray-900"
-                  )}>
-                    {helpCenterItem.label}
-                  </div>
-                )}
-              </Link>
-            )
-          })()}
+          {/* Central de Ajuda removida do menu */}
 
           {/* Separador Admin - apenas se for admin */}
           {isExpanded && isAdmin && (
@@ -712,8 +830,8 @@ export default function AlunoSidebar() {
                   isExpanded ? 'px-4 py-3' : 'px-3 py-3 justify-center',
                   isActive
                     ? theme === 'dark'
-                      ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/30'
-                      : 'bg-yellow-600/30 text-yellow-900 border border-yellow-700/40'
+                      ? 'text-yellow-400'
+                      : 'text-yellow-900'
                     : theme === 'dark'
                       ? 'text-gray-400 hover:text-white hover:bg-white/5'
                       : 'text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20'

@@ -786,34 +786,6 @@ export default function RankingPage() {
     <div className="space-y-4 md:space-y-6">
       {/* Header */}
       <div>
-        <h1 className={cn(
-          "text-2xl md:text-3xl font-bold mb-2",
-          theme === 'dark' ? "text-white" : "text-gray-900"
-        )}>
-          Ranking
-        </h1>
-        {/* CTA: Pontos e bônus (prêmios) */}
-        <p className={cn(
-          "text-center text-base md:text-lg mb-2 max-w-md mx-auto",
-          theme === 'dark' ? "text-gray-400" : "text-gray-600"
-        )}>
-          Veja o que você pode ganhar com os pontos que fizer na nossa plataforma. Clique no botão abaixo 👇
-        </p>
-        <div className="flex justify-center mb-4">
-          <Link
-            href="/aluno/pontos-e-bonus"
-            className={cn(
-              "inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg hover:scale-[1.02]",
-              theme === 'dark'
-                ? "bg-yellow-500 text-black hover:bg-yellow-400"
-                : "bg-yellow-500 text-black hover:bg-yellow-400"
-            )}
-          >
-            <Trophy className="w-5 h-5" />
-            Pontos e bônus (prêmios)
-          </Link>
-        </div>
-
         {(loading || error) && (
           <div
             className={cn(

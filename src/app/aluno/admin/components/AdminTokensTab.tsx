@@ -114,7 +114,6 @@ export default function AdminTokensTab() {
       setRecords(data.records || [])
       setSummary(data.summary || null)
     } catch (err: any) {
-      console.error('Erro ao carregar dados de tokens:', err)
       setError(err.message || 'Erro ao carregar dados')
     } finally {
       setLoading(false)

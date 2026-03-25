@@ -8,11 +8,6 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-
-    console.log("🔍 Checando variável de ambiente...");
-    console.log("ENV webhookUrl presente?", Boolean(process.env.LEADCONNECTOR_WEBHOOK_URL));
-    console.log("Valor parcial (só para debug local):", process.env.LEADCONNECTOR_WEBHOOK_URL?.slice(0, 30) + "...");
-
     const body = await request.json()
     const { name, email, phone, source, course, utm_source, utm_medium, utm_campaign, utm_content, utm_term } = body
 
@@ -73,7 +68,6 @@ export async function POST(request: NextRequest) {
       const webhookUrl = process.env.LEADCONNECTOR_WEBHOOK_URL
       
       if (!webhookUrl) {
-        console.log("⚠️ Nenhum webhook configurado (LEADCONNECTOR_WEBHOOK_URL ausente).")
         return NextResponse.json({ success: true, data })
       }
 
@@ -91,18 +85,6 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString()
       }
 
-       // ✅ LOGS SEGUROS
-  console.log("🚀 Enviando webhook:", {
-    url: webhookUrl,
-    payloadPreview: {
-      name: normalizedName.split(" ")[0], // só o primeiro nome
-      emailHash: Buffer.from(normalizedEmail).toString('base64').slice(0, 10) + "...", // anonimizado
-      source: normalizedSource,
-      utm_campaign,
-      timestamp: webhookPayload.timestamp
-    }
-  })
-
     const res = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
@@ -110,7 +92,6 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify(webhookPayload)
       })
-      console.log(`✅ Webhook enviado. Status: ${res.status}`)
     } catch (webhookError) {
       // Webhook error - don't fail the main request
       console.error("❌ Falha ao enviar webhook:", (webhookError as Error)?.message)
