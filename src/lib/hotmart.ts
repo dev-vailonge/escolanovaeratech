@@ -144,6 +144,11 @@ export interface AulaHotmart {
   url?: string
 }
 
+export interface HotmartClubUser {
+  email: string
+  status: string
+}
+
 /**
  * Busca todos os módulos e todas as páginas (aulas) de um curso Hotmart.
  */
@@ -171,4 +176,28 @@ export async function getAulasDoCurso(subdomain: string, productId: string): Pro
   }
 
   return aulas
+}
+
+/**
+ * Lista usuários matriculados em uma formação (Hotmart Club).
+ * GET v1/users?subdomain={subdomain}
+ */
+export async function getUsersBySubdomain(subdomain: string): Promise<HotmartClubUser[]> {
+  const url = `${HOTMART_BASE}/v1/users?subdomain=${encodeURIComponent(subdomain)}`
+  const res = await fetchHotmartGet(url)
+
+  if (!res.ok) {
+    const text = await res.text()
+    console.error('[Hotmart] getUsersBySubdomain error:', res.status, text)
+    throw new Error(`Hotmart users: ${res.status} ${text}`)
+  }
+
+  const data = await res.json()
+  const raw = Array.isArray(data) ? data : data?.items ?? []
+  return (Array.isArray(raw) ? raw : [])
+    .map((u: { email?: string; status?: string }) => ({
+      email: String(u.email ?? '').trim(),
+      status: String(u.status ?? '').trim(),
+    }))
+    .filter((u) => u.email.length > 0)
 }

@@ -231,8 +231,8 @@ export async function POST(request: Request) {
 
     console.log('👤 [API] Dados do usuário:', { role: user.role, access_level: user.access_level })
 
-    // Apenas alunos com acesso full ou admins podem criar perguntas
-    if (user.role === 'aluno' && user.access_level !== 'full') {
+    // Apenas alunos (aluno/formacao) com acesso full ou admins podem criar perguntas
+    if ((user.role === 'aluno' || user.role === 'formacao') && user.access_level !== 'full') {
       console.warn('⚠️ [API] Usuário sem acesso full tentou criar pergunta')
       return NextResponse.json(
         { error: 'Apenas alunos com acesso completo podem criar perguntas' },

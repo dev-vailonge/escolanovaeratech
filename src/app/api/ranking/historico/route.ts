@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       .from('users')
       .select('id, name, avatar_url, xp')
       // Não incluir admins no ranking/histórico
-      .eq('role', 'aluno')
+      .in('role', ['aluno', 'formacao'])
       .eq('access_level', 'full')
 
     if (usersError) {

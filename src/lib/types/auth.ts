@@ -4,9 +4,13 @@
  * Define os tipos de usuário e níveis de acesso do sistema.
  */
 
-export type UserRole = "aluno" | "admin"
+export type UserRole = "aluno" | "formacao" | "admin"
 
 export type AccessLevel = "full" | "limited"
+
+export function isStudentRole(role: UserRole | undefined | null): boolean {
+  return role === "aluno" || role === "formacao"
+}
 
 /**
  * Interface do usuário autenticado
@@ -23,7 +27,7 @@ export interface AuthUser {
   name: string
   email: string
   role: UserRole
-  accessLevel?: AccessLevel // Apenas para role === "aluno"
+  accessLevel?: AccessLevel // Apenas para roles de aluno ("aluno" | "formacao")
   avatarUrl?: string | null
   bio?: string | null
   level?: number
@@ -40,7 +44,7 @@ export interface AuthUser {
 export function hasFullAccess(user: AuthUser | null): boolean {
   if (!user) return false
   if (user.role === "admin") return true
-  return user.role === "aluno" && user.accessLevel === "full"
+  return isStudentRole(user.role) && user.accessLevel === "full"
 }
 
 /**
@@ -48,7 +52,7 @@ export function hasFullAccess(user: AuthUser | null): boolean {
  */
 export function hasLimitedAccess(user: AuthUser | null): boolean {
   if (!user) return false
-  return user.role === "aluno" && user.accessLevel === "limited"
+  return isStudentRole(user.role) && user.accessLevel === "limited"
 }
 
 

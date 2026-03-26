@@ -112,7 +112,10 @@ export async function updateUserAccessLevel(userId: string, accessLevel: 'full' 
  * Atualiza a role de um usuário (admin ou aluno)
  * Usado no painel administrativo
  */
-export async function updateUserRole(userId: string, role: 'admin' | 'aluno'): Promise<boolean> {
+export async function updateUserRole(
+  userId: string,
+  role: 'admin' | 'aluno' | 'formacao'
+): Promise<boolean> {
   if (!isSupabaseConfigured()) {
     console.warn('Supabase não configurado - updateUserRole retornando false')
     return false
@@ -144,7 +147,7 @@ export async function createUser(userData: {
   id?: string // ID opcional (geralmente do auth.users.id)
   email: string
   name: string
-  role?: 'aluno' | 'admin'
+  role?: 'aluno' | 'formacao' | 'admin'
   access_level?: 'full' | 'limited'
 }): Promise<DatabaseUser | null> {
   if (!isSupabaseConfigured()) {
@@ -243,7 +246,7 @@ export async function getRankingGeral(limit: number = 100): Promise<DatabaseUser
   const { data, error } = await supabase
     .from('users')
     .select('*')
-    .eq('role', 'aluno')
+    .in('role', ['aluno', 'formacao'])
     .eq('access_level', 'full')
     .order('xp', { ascending: false })
     .limit(limit)
@@ -264,7 +267,7 @@ export async function getRankingMensal(limit: number = 100): Promise<DatabaseUse
   const { data, error } = await supabase
     .from('users')
     .select('*')
-    .eq('role', 'aluno')
+    .in('role', ['aluno', 'formacao'])
     .eq('access_level', 'full')
     .order('xp_mensal', { ascending: false })
     .limit(limit)

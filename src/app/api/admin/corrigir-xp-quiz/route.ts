@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       .from('users')
       .select('id, name, email, role')
       .in('id', userIds)
-      .eq('role', 'aluno')
+      .in('role', ['aluno', 'formacao'])
 
     if (usersError) {
       console.error('Erro ao buscar usuários:', usersError)

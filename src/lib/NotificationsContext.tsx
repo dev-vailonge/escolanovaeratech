@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from 'react'
 import { supabase } from './supabase'
 import { useAuth } from './AuthContext'
+import { isStudentRole } from './types/auth'
 import type { DatabaseNotificacao } from '@/types/database'
 
 interface NotificationsContextType {
@@ -110,7 +111,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         .lte('data_inicio', now)
         .gte('data_fim', now)
       
-      if (user?.role === 'aluno') {
+      if (isStudentRole(user?.role)) {
         // Alunos não devem ver notificações de sugestões/bugs
         // Usar neq para excluir is_sugestao_bug = true
         individualQuery = individualQuery.or('is_sugestao_bug.is.null,is_sugestao_bug.eq.false')
@@ -134,7 +135,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         .gte('data_fim', now)
       
       // Para alunos, excluir notificações de sugestões/bugs
-      if (user?.role === 'aluno') {
+      if (isStudentRole(user?.role)) {
         broadcastQuery = broadcastQuery.or('is_sugestao_bug.is.null,is_sugestao_bug.eq.false')
       }
       
@@ -158,7 +159,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         if (user?.role === 'admin') return true
         
         // Para alunos, filtrar por accessLevel
-        if (user?.role === 'aluno') {
+        if (isStudentRole(user?.role)) {
           if (notif.publico_alvo === 'alunos-full') return user?.accessLevel === 'full'
           if (notif.publico_alvo === 'alunos-limited') return user?.accessLevel === 'limited'
         }
@@ -171,7 +172,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
       // Filtrar notificações de sugestões/bugs para alunos (apenas admins devem ver)
-      if (user?.role === 'aluno') {
+      if (isStudentRole(user?.role)) {
         allNotifications = allNotifications.filter(notif => !notif.is_sugestao_bug)
       }
 
@@ -212,7 +213,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           if (!newNotification) return
 
           // Filtrar notificações de sugestões/bugs para alunos (apenas admins devem ver)
-          if (user?.role === 'aluno' && newNotification.is_sugestao_bug) {
+          if (isStudentRole(user?.role) && newNotification.is_sugestao_bug) {
             console.log('⏭️ [NotificationsContext] Ignorando notificação de sugestão/bug para aluno')
             return
           }
@@ -243,7 +244,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
             } else if (user?.role === 'admin') {
               // Admins recebem todas as notificações broadcast
               isForUser = true
-            } else if (user?.role === 'aluno') {
+            } else if (isStudentRole(user?.role)) {
               // Para alunos, filtrar por accessLevel
               if (newNotification.publico_alvo === 'alunos-full' && user?.accessLevel === 'full') {
                 isForUser = true

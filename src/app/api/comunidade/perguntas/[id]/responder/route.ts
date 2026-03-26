@@ -77,7 +77,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         
         // Usar o novo usuário criado
         const createdUser = newUser
-        if (createdUser.role === 'aluno' && createdUser.access_level !== 'full') {
+        if ((createdUser.role === 'aluno' || createdUser.role === 'formacao') && createdUser.access_level !== 'full') {
           return NextResponse.json(
             { error: 'Apenas alunos com acesso completo podem responder perguntas' },
             { status: 403 }
@@ -102,8 +102,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
       }
     }
 
-    // Apenas alunos com acesso full ou admins podem responder perguntas
-    if (user.role === 'aluno' && user.access_level !== 'full') {
+    // Apenas alunos (aluno/formacao) com acesso full ou admins podem responder perguntas
+    if ((user.role === 'aluno' || user.role === 'formacao') && user.access_level !== 'full') {
       return NextResponse.json(
         { error: 'Apenas alunos com acesso completo podem responder perguntas' },
         { status: 403 }
