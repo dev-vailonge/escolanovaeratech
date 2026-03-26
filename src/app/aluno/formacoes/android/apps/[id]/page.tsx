@@ -401,9 +401,10 @@ export default function FormacaoAndroidAppDetailPage() {
                         <span className="font-semibold">{l.title}</span>
                       )}
                       <span className={cn('block text-xs mt-1', labelMuted)}>
-                        {l.href
-                          ? 'Abre em nova aba no player da Escola Nova Era Tech.'
-                          : 'Digite na busca do curso ou navegue pelos módulos com esse tema.'}
+                        {l.description ??
+                          (l.href
+                            ? 'Conteúdo recomendado para avançar nesse desafio.'
+                            : 'Digite na busca do curso ou navegue pelos módulos com esse tema.')}
                       </span>
                     </div>
                   </li>

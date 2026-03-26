@@ -6,6 +6,7 @@ export type DesafioDifficulty = 'Iniciante' | 'Intermediário' | 'Avançado'
 export type FormacaoAndroidRelatedLesson = {
   title: string
   href?: string
+  description?: string
 }
 
 export type FormacaoAndroidApp = {
@@ -77,50 +78,62 @@ export const FORMACAO_ANDROID_APPS: FormacaoAndroidApp[] = [
       {
         title: 'O que é uma Activity?',
         href: 'https://hotmart.com/pt-BR/club/escolanovaeratech/products/6576377/content/k458n8pJOl',
+        description: 'Entenda o papel da Activity e como estruturar cada tela principal do app.',
       },
       {
         title: 'Navegação entre activities',
         href: 'https://hotmart.com/pt-BR/club/escolanovaeratech/products/6576377/content/K4k2q2VkOY',
+        description: 'Aprenda a abrir telas com Intents e organizar o fluxo de navegação do desafio.',
       },
       {
         title: 'Passando dados entre activities',
         href: 'https://hotmart.com/pt-BR/club/escolanovaeratech/products/6576377/content/37dpXpjd7L',
+        description: 'Veja como enviar e receber dados entre telas para montar a simulação e o resultado.',
       },
       {
         title: 'Aprendendo sobre XML',
         href: 'https://hotmart.com/pt-BR/club/escolanovaeratech/products/6576377/content/r48ENERAeR',
+        description: 'Base para montar os layouts do app com boa hierarquia visual e organização.',
       },
       {
         title: 'FindViewById',
         href: 'https://hotmart.com/pt-BR/club/escolanovaeratech/products/6576377/content/EOgplpGp46',
+        description: 'Conecte os componentes da interface ao código para ler inputs e exibir resultados.',
       },
       {
         title: 'ConstraintLayout',
         href: 'https://hotmart.com/pt-BR/club/escolanovaeratech/products/6576377/content/meLx0kAgen',
+        description: 'Monte telas flexíveis com constraints para diferentes tamanhos de tela.',
       },
       {
         title: 'ScrollView',
         href: 'https://hotmart.com/pt-BR/club/escolanovaeratech/products/6576377/content/a4RvLaxx4n',
+        description: 'Permita rolagem em telas com muitos campos sem quebrar a experiência do usuário.',
       },
       {
         title: 'TextInputLayout',
         href: 'https://hotmart.com/pt-BR/club/escolanovaeratech/products/6576377/content/V4VQrp6rO2',
+        description: 'Aplique campos com validação e feedback visual seguindo boas práticas de formulário.',
       },
       {
         title: 'Recuperando dados digitados',
         href: 'https://hotmart.com/pt-BR/club/escolanovaeratech/products/6576377/content/K4k2qr0ZOY',
+        description: 'Capture e trate os valores digitados para alimentar os cálculos de investimento.',
       },
       {
         title: 'Introdução a Fragment',
         href: 'https://hotmart.com/pt-BR/club/escolanovaeratech/products/6576377/content/0OvzkzdBOj',
+        description: 'Entenda quando usar Fragments para modularizar a interface da tela de resultado.',
       },
       {
         title: 'Criando um Fragment',
         href: 'https://hotmart.com/pt-BR/club/escolanovaeratech/products/6576377/content/k458n8PrOl',
+        description: 'Implemente um Fragment na prática para separar responsabilidades da UI.',
       },
       {
         title: 'Criando um Fragment Interface',
         href: 'https://hotmart.com/pt-BR/club/escolanovaeratech/products/6576377/content/BOnw6wGq4R',
+        description: 'Aprenda a comunicação entre Activity e Fragment para trocar dados de forma organizada.',
       },
     ],
   },
