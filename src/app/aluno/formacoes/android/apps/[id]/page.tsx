@@ -14,12 +14,16 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
+import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
+import { getAuthToken } from '@/lib/getAuthToken'
+import { HOTMART_CURSOS } from '@/lib/constants/hotmart'
 import {
   getFormacaoAndroidApp,
   type FormacaoAndroidRelatedLesson,
 } from '@/data/formacao-android-desafios'
 import { DESAFIO_ENVIO_DESABILITADO } from '@/lib/constants/desafios'
+import ValidarFormacaoModal from '@/components/aluno/ValidarFormacaoModal'
 
 type DetailTab = 'overview' | 'requisitos' | 'aulas' | 'concluidos'
 
@@ -39,9 +43,15 @@ export default function FormacaoAndroidAppDetailPage() {
   const id = typeof params.id === 'string' ? params.id : ''
   const app = useMemo(() => getFormacaoAndroidApp(id), [id])
   const { theme } = useTheme()
+  const { user, refreshSession } = useAuth()
   const isDark = theme === 'dark'
   const [activeTab, setActiveTab] = useState<DetailTab>('overview')
   const [repoUrl, setRepoUrl] = useState('')
+  const [showValidarModal, setShowValidarModal] = useState(false)
+  const [hotmartEmail, setHotmartEmail] = useState('')
+  const [isValidatingFormacao, setIsValidatingFormacao] = useState(false)
+  const [validarError, setValidarError] = useState('')
+  const [canSubmitAfterValidation, setCanSubmitAfterValidation] = useState(false)
 
   if (!app) {
     notFound()
@@ -67,8 +77,90 @@ export default function FormacaoAndroidAppDetailPage() {
   const muted = isDark ? 'text-gray-400' : 'text-gray-600'
   const labelMuted = isDark ? 'text-gray-500' : 'text-gray-500'
 
+  const continueToSubmitFlow = () => {
+    // Fluxo de envio (será implementado depois).
+  }
+
+  const handleClickEnviarProjeto = () => {
+    if (DESAFIO_ENVIO_DESABILITADO) return
+    if (user?.role !== 'formacao' && !canSubmitAfterValidation) {
+      setValidarError('')
+      setShowValidarModal(true)
+      return
+    }
+    continueToSubmitFlow()
+  }
+
+  const handleValidateFormacao = async () => {
+    if (!hotmartEmail.trim()) {
+      setValidarError('Informe o e-mail usado na Hotmart.')
+      return
+    }
+
+    setIsValidatingFormacao(true)
+    setValidarError('')
+
+    try {
+      const token = await getAuthToken()
+      if (!token) {
+        setValidarError('Não foi possível obter o token de autenticação. Faça login novamente.')
+        return
+      }
+
+      const res = await fetch('/api/formacoes/validar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          email: hotmartEmail.trim(),
+          subdomain: HOTMART_CURSOS.android.subdomain,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data?.error || 'Erro ao validar formação')
+      }
+
+      if (!data?.validated) {
+        if (data?.reason === 'email_not_found') {
+          setValidarError('E-mail não encontrado na formação informada.')
+        } else if (data?.reason === 'status_not_active') {
+          setValidarError('Seu acesso na Hotmart não está ACTIVE para essa formação.')
+        } else {
+          setValidarError('Não foi possível validar sua formação com os dados informados.')
+        }
+        return
+      }
+
+      setCanSubmitAfterValidation(true)
+      await refreshSession()
+      setShowValidarModal(false)
+      continueToSubmitFlow()
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao validar formação'
+      setValidarError(message)
+    } finally {
+      setIsValidatingFormacao(false)
+    }
+  }
+
   return (
     <div className={shell}>
+      <ValidarFormacaoModal
+        isOpen={showValidarModal}
+        onClose={() => {
+          if (isValidatingFormacao) return
+          setShowValidarModal(false)
+        }}
+        email={hotmartEmail}
+        onEmailChange={setHotmartEmail}
+        onValidate={handleValidateFormacao}
+        isValidating={isValidatingFormacao}
+        errorMessage={validarError}
+      />
       <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-8">
         <Link
           href="/aluno/formacoes/android#desafios"
@@ -225,6 +317,7 @@ export default function FormacaoAndroidAppDetailPage() {
                     ? 'Envio temporariamente indisponível'
                     : undefined
                 }
+                onClick={handleClickEnviarProjeto}
                 className={cn(
                   'mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-extrabold uppercase tracking-wide transition-colors',
                   'bg-[#F2C94C] text-black hover:bg-[#f5d35c] border border-[#F2C94C]',

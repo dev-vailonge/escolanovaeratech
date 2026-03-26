@@ -443,8 +443,8 @@ export default function AdminAlunosTab() {
                             }
                           </button>
 
-                          {/* Botão para mudar access_level (só para alunos) */}
-                          {user.role === 'aluno' && (
+                          {/* Botão para mudar access_level (só para roles de aluno) */}
+                          {(user.role === 'aluno' || user.role === 'formacao') && (
                             <button
                               onClick={() => handleChangeAccessLevel(user.id, user.access_level)}
                               disabled={updatingAccess === user.id}

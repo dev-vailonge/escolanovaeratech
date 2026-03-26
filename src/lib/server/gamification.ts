@@ -515,7 +515,7 @@ export async function getRanking(params: { type: RankingType; limit?: number; ac
     const { data: users, error: usersError } = await supabase
       .from('users')
       .select('id,name,level,xp,avatar_url')
-      .eq('role', 'aluno')
+      .in('role', ['aluno', 'formacao'])
       .eq('access_level', 'full')
 
     if (usersError) throw usersError
@@ -542,7 +542,7 @@ export async function getRanking(params: { type: RankingType; limit?: number; ac
   const { data: users, error: usersError } = await supabase
     .from('users')
     .select('id,name,level,xp,xp_mensal,avatar_url')
-    .eq('role', 'aluno')
+    .in('role', ['aluno', 'formacao'])
     .eq('access_level', 'full')
     .order('xp', { ascending: false })
     .limit(limit)

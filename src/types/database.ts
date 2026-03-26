@@ -9,7 +9,7 @@ export interface DatabaseUser {
   id: string
   email: string
   name: string
-  role: 'aluno' | 'admin'
+  role: 'aluno' | 'formacao' | 'admin'
   access_level: 'full' | 'limited'
   level: number
   xp: number

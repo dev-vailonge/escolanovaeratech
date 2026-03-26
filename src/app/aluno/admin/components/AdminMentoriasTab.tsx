@@ -134,7 +134,7 @@ export default function AdminMentoriasTab() {
   useEffect(() => {
     getAllUsers().then((users) => {
       const alunosList = users
-        .filter((u) => u.role === 'aluno')
+        .filter((u) => u.role === 'aluno' || u.role === 'formacao')
         .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'pt-BR'))
       setAlunos(alunosList)
     })

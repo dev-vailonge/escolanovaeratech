@@ -26,7 +26,7 @@ function convertToAuthUser(dbUser: DatabaseUser | null, supabaseUser: User | nul
     id: dbUser.id,
     name: dbUser.name,
     email: dbUser.email,
-    role: dbUser.role as 'aluno' | 'admin',
+    role: dbUser.role as 'aluno' | 'formacao' | 'admin',
     accessLevel: dbUser.access_level as 'full' | 'limited',
     avatarUrl: dbUser.avatar_url || null,
     bio: dbUser.bio || null,

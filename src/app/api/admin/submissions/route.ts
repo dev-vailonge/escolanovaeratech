@@ -84,7 +84,7 @@ export async function GET(request: Request) {
       .from('users')
       .select('id, xp')
       // Posição de ranking baseada apenas em alunos
-      .eq('role', 'aluno')
+      .in('role', ['aluno', 'formacao'])
       .eq('access_level', 'full')
       .order('xp', { ascending: false })
 
