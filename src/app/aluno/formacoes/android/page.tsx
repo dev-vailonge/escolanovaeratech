@@ -397,7 +397,7 @@ export default function FormacaoAndroidPage() {
                   >
                     {c.title}
                   </h3>
-                  {c.mission === 1 ? (
+                  {c.mission <= 6 ? (
                     <Link
                       href={`/aluno/formacoes/android/apps/${c.id}`}
                       className="mt-auto w-full inline-flex items-center justify-center rounded-xl bg-[#F2C94C] py-3 text-xs font-bold uppercase tracking-wide text-black border border-[#F2C94C] hover:bg-[#f5d35c] transition-colors"
