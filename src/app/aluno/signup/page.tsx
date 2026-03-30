@@ -123,6 +123,13 @@ function AlunoSignUpContent() {
       console.error('Erro no signup:', err)
       if (err?.message?.includes('User already registered') || err?.message?.includes('already registered')) {
         setError('Este email já está cadastrado. Tente fazer login.')
+      } else if (
+        err?.message?.includes('Error sending confirmation email') ||
+        err?.message?.includes('sending confirmation')
+      ) {
+        setError(
+          'Não foi possível enviar o e-mail de confirmação no momento. Verifique a configuração de Auth/SMTP no Supabase e tente novamente.'
+        )
       } else if (err?.message?.includes('Password')) {
         setError('A senha deve ter pelo menos 6 caracteres')
       } else if (err?.message?.includes('Invalid email')) {

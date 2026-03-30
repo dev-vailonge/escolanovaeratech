@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { useEffect, useState } from 'react'
 import {
   Home,
+  Award,
   Trophy,
   HelpCircle,
   Target,
@@ -22,6 +23,7 @@ import {
   X,
   Sparkles,
   Compass,
+  LayoutDashboard,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSidebar } from '@/lib/SidebarContext'
@@ -43,6 +45,7 @@ const mainMenuItems = [
 // NOTA: Formulários foi removido - acesso apenas via notificações
 const baseMenuModalItems = [
   { icon: Target, label: 'Desafios', href: '/aluno/desafios' },
+  { icon: LayoutDashboard, label: 'Plano de estudos', href: '/aluno/command' },
   { icon: Sparkles, label: 'Mentorias', href: '/aluno/mentorias' },
 ]
 
@@ -50,6 +53,7 @@ const baseMenuModalItems = [
 // NOTA: Perfil e Comunidade foram removidos daqui pois já estão em mainMenuItems
 // NOTA: Formulários foi removido - acesso apenas via notificações
 const secondaryMenuItems = [
+  { icon: LayoutDashboard, label: 'Plano de estudos', href: '/aluno/command' },
   { icon: Sparkles, label: 'Mentorias', href: '/aluno/mentorias' },
 ]
 const helpCenterItem = null
@@ -71,10 +75,12 @@ export default function AlunoSidebar() {
   const isAdmin = user?.role === 'admin'
 
   const isGamificacaoRelated =
+    pathname === '/aluno/bonus' ||
     pathname === '/aluno/ranking' ||
     pathname === '/aluno/quiz' ||
     pathname === '/aluno/desafios' ||
     pathname === '/aluno/pontos-e-bonus' ||
+    pathname.startsWith('/aluno/bonus/') ||
     pathname.startsWith('/aluno/ranking/') ||
     pathname.startsWith('/aluno/quiz/') ||
     pathname.startsWith('/aluno/desafios/') ||
@@ -82,7 +88,10 @@ export default function AlunoSidebar() {
 
   // Regra: só "Pontos e Bônus" deve deixar o item pai (Gamificação) selecionado.
   const isGamificacaoParentSelected =
-    pathname === '/aluno/pontos-e-bonus' || pathname.startsWith('/aluno/pontos-e-bonus/')
+    pathname === '/aluno/bonus' ||
+    pathname.startsWith('/aluno/bonus/') ||
+    pathname === '/aluno/pontos-e-bonus' ||
+    pathname.startsWith('/aluno/pontos-e-bonus/')
 
   const [isGamificacaoOpen, setIsGamificacaoOpen] = useState(isGamificacaoRelated)
 
@@ -93,13 +102,16 @@ export default function AlunoSidebar() {
   }, [isGamificacaoRelated])
 
   const gamificacaoChildren = [
+    { id: 'bonus', label: 'Bônus', icon: Award, href: '/aluno/bonus' },
     { id: 'ranking', label: 'Ranking', icon: Trophy, href: '/aluno/ranking' },
     { id: 'quiz', label: 'Quiz', icon: HelpCircle, href: '/aluno/quiz' },
     { id: 'desafios', label: 'Desafios', icon: Target, href: '/aluno/desafios' },
   ]
 
   const getCursosChildFromPath = (currentPath: string): string | null => {
-    if (currentPath === '/aluno/cursos' || currentPath.startsWith('/aluno/cursos/')) return 'cursos-home'
+    if (currentPath === '/aluno/marketplace' || currentPath.startsWith('/aluno/marketplace/'))
+      return 'marketplace'
+    if (currentPath === '/aluno/cursos' || currentPath.startsWith('/aluno/cursos/')) return 'marketplace'
     if (currentPath === '/aluno/norte-tech' || currentPath.startsWith('/aluno/norte-tech/')) return 'norte-tech'
     if (currentPath === '/aluno/formacoes/android' || currentPath.startsWith('/aluno/formacoes/android/')) return 'formacao-android'
     return null
@@ -598,16 +610,8 @@ export default function AlunoSidebar() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (!isGamificacaoOpen) {
-                        // Garante exclusividade: abre Gamificação e fecha Cursos/Norte Tech
-                        // Nao colapsamos os outros menus: apenas limpamos a selecao para manter 1 item amarelo.
-                        setSelectedCursosChildId(null)
-                        setIsGamificacaoOpen(true)
-                        router.push('/aluno/pontos-e-bonus')
-                      } else {
-                        // Permite colapsar manualmente
-                        setIsGamificacaoOpen(false)
-                      }
+                      // Menu pai agora apenas expande/colapsa.
+                      setIsGamificacaoOpen((v) => !v)
                     }}
                     className={cn(
                       'flex w-full items-center gap-3 rounded-lg transition-all group relative',
@@ -713,8 +717,7 @@ export default function AlunoSidebar() {
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedCursosChildId('cursos-home')
-                  router.push('/aluno/cursos')
+                  // Menu pai agora apenas expande/colapsa.
                   setIsCursosOpen((v) => !v)
                 }}
                 className={cn(
@@ -747,6 +750,26 @@ export default function AlunoSidebar() {
 
               {isCursosOpen && (
                 <div className="pl-4 space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCursosChildId('marketplace')
+                      router.push('/aluno/marketplace')
+                    }}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-lg transition-all group relative px-4 py-2 text-left',
+                      selectedCursosChildId === 'marketplace'
+                        ? theme === 'dark'
+                          ? 'text-yellow-400'
+                          : 'text-yellow-900'
+                        : theme === 'dark'
+                          ? 'text-gray-400 hover:text-white hover:bg-white/5'
+                          : 'text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20'
+                    )}
+                  >
+                    <BookOpen className="w-5 h-5 flex-shrink-0" />
+                    <span className="font-medium">Marketplace</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -803,7 +826,7 @@ export default function AlunoSidebar() {
           {/* Menu items secundários */}
           {secondaryMenuItems.map((item) => {
             const Icon = item.icon
-            const isActive = pathname === item.href
+            const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
 
             return (
               <Link

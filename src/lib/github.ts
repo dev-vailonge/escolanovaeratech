@@ -43,24 +43,34 @@ export function parseGitHubUrl(url: string): GitHubRepoInfo | null {
   }
 }
 
+const GITHUB_REPO_CHECK_MS = 12_000
+
 /**
- * Verifica se um repositório GitHub existe (público)
- * Usa a API pública do GitHub, sem necessidade de token
+ * Verifica se um repositório GitHub existe (público).
+ * @returns true = existe, false = não encontrado ou erro de rede, null = timeout (não concluiu a tempo)
  */
-export async function checkRepoExists(owner: string, repo: string): Promise<boolean> {
+export async function checkRepoExists(owner: string, repo: string): Promise<boolean | null> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), GITHUB_REPO_CHECK_MS)
   try {
     const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
       method: 'GET',
       headers: {
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'EscolaNovaEra-App'
-      }
+        Accept: 'application/vnd.github.v3+json',
+        'User-Agent': 'EscolaNovaEra-App',
+      },
+      signal: controller.signal,
     })
-    
+
     return response.status === 200
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return null
+    }
     console.error('Erro ao verificar repositório GitHub:', error)
     return false
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 
@@ -81,13 +91,20 @@ export async function validateGitHubRepo(url: string): Promise<{
     }
   }
   
-  // Verificar se o repositório existe
   const exists = await checkRepoExists(repoInfo.owner, repoInfo.repo)
+  if (exists === null) {
+    return {
+      valid: false,
+      error:
+        'Tempo esgotado ao falar com o GitHub. Tente de novo em alguns segundos ou confira sua conexão.',
+      repoInfo,
+    }
+  }
   if (!exists) {
     return {
       valid: false,
       error: 'Repositório não encontrado. Verifique se o repositório é público e se a URL está correta.',
-      repoInfo
+      repoInfo,
     }
   }
   

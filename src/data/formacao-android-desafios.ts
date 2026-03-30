@@ -29,6 +29,8 @@ export type FormacaoAndroidApp = {
   relatedLessons: FormacaoAndroidRelatedLesson[]
   /** Repositório público de referência; se omitido, o botão GitHub usa busca pelo título */
   githubRepoUrl?: string
+  /** `public.cursos_desafios.id` quando carregado do Supabase — conclusões em `curso_desafio_conclusoes` */
+  cursosDesafioId?: string | null
 }
 
 export const BONUS_COMPLETAR_TODOS_XP = 4000

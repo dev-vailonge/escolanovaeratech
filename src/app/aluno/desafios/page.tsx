@@ -13,6 +13,7 @@ import { XP_CONSTANTS } from '@/lib/gamification/constants'
 import type { DatabaseDesafio, DatabaseDesafioSubmission } from '@/types/database'
 import DesafioCard from '@/components/aluno/DesafioCard'
 import { DESAFIO_ENVIO_DESABILITADO } from '@/lib/constants/desafios'
+import type { FacepilePerson } from '@/components/ui/SubmittersFacepile'
 
 // Tecnologias organizadas por categoria/curso
 const TECNOLOGIAS_POR_CATEGORIA = {
@@ -203,6 +204,11 @@ export default function DesafiosPage() {
   const [aulasSugeridas, setAulasSugeridas] = useState<Record<string, { aulas: AulaSugeridaUI[]; loading: boolean }>>({})
   const [expandedAulasSugeridas, setExpandedAulasSugeridas] = useState<Record<string, boolean>>({})
 
+  const [envioSubmittersByDesafio, setEnvioSubmittersByDesafio] = useState<
+    Record<string, { people: FacepilePerson[]; count: number }>
+  >({})
+  const [envioSubmittersLoading, setEnvioSubmittersLoading] = useState(false)
+
   const DESAFIO_EM_ABERTO: MeuDesafio['status'][] = ['pendente_envio', 'aguardando_aprovacao', 'rejeitado']
 
   // Carregar desafios do usuário
@@ -376,6 +382,62 @@ export default function DesafiosPage() {
   useEffect(() => {
     loadMeusDesafios(true) // Primeiro carregamento com loading completo
   }, [loadMeusDesafios])
+
+  // Facepile: quem já enviou por desafio (API agregada)
+  useEffect(() => {
+    if (!authUser?.id || meusDesafios.length === 0) {
+      setEnvioSubmittersByDesafio({})
+      setEnvioSubmittersLoading(false)
+      return
+    }
+
+    const ids = [...new Set(meusDesafios.map((m) => m.desafio.id))]
+    let cancelled = false
+    setEnvioSubmittersLoading(true)
+
+    void (async () => {
+      try {
+        const token = await getAuthToken()
+        if (!token || cancelled) return
+
+        const CHUNK = 40
+        const merged: Record<string, { people: FacepilePerson[]; count: number }> = {}
+
+        for (let i = 0; i < ids.length; i += CHUNK) {
+          const part = ids.slice(i, i + CHUNK)
+          const res = await fetch(`/api/desafios/submitters-summary?ids=${part.join(',')}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          if (!res.ok || cancelled) continue
+          const json = (await res.json()) as {
+            byDesafio?: Record<
+              string,
+              { count: number; submitters: { userId: string; name: string | null; avatarUrl: string | null }[] }
+            >
+          }
+          const by = json.byDesafio ?? {}
+          for (const [id, v] of Object.entries(by)) {
+            merged[id] = {
+              count: v.count,
+              people: v.submitters.map((s) => ({
+                id: s.userId,
+                name: s.name,
+                avatarUrl: s.avatarUrl,
+              })),
+            }
+          }
+        }
+
+        if (!cancelled) setEnvioSubmittersByDesafio(merged)
+      } finally {
+        if (!cancelled) setEnvioSubmittersLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, meusDesafios])
 
   // Buscar aulas sugeridas para desafios em aberto (apenas quando na aba Meus Desafios)
   useEffect(() => {
@@ -1367,6 +1429,9 @@ export default function DesafiosPage() {
                   onOpenSubmit={openSubmitModal}
                   onOpenDesistir={openDesistirModal}
                   xpCompleto={XP_CONSTANTS.desafio.completo}
+                  envioSubmitters={envioSubmittersByDesafio[meuDesafio.desafio.id]?.people}
+                  envioSubmittersCount={envioSubmittersByDesafio[meuDesafio.desafio.id]?.count}
+                  envioSubmittersLoading={envioSubmittersLoading}
                 />
               ))
             )}

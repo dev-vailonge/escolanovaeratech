@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
-import { HelpCircle, Target, Bell, FileText, Users, Loader2, DollarSign, Settings, Gift, Sparkles } from 'lucide-react'
+import { HelpCircle, Target, Bell, FileText, Users, Loader2, DollarSign, Settings, Gift, Sparkles, BookOpen } from 'lucide-react'
 import SafeLoading from '@/components/ui/SafeLoading'
 
 // Lazy loading dos componentes das abas para melhor performance
@@ -18,6 +18,7 @@ const AdminBonificacaoTab = lazy(() => import('./components/AdminBonificacaoTab'
 const AdminTokensTab = lazy(() => import('./components/AdminTokensTab'))
 const AdminCorrigirXPTab = lazy(() => import('./components/AdminCorrigirXPTab'))
 const AdminMentoriasTab = lazy(() => import('./components/AdminMentoriasTab'))
+const AdminCursosFormacaoTab = lazy(() => import('./components/AdminCursosFormacaoTab'))
 
 type AdminTab =
   | 'quiz'
@@ -26,6 +27,7 @@ type AdminTab =
   | 'formularios'
   | 'alunos'
   | 'mentorias'
+  | 'cursos-formacao'
   | 'bonificacao'
   | 'tokens'
   | 'corrigir-xp'
@@ -38,6 +40,7 @@ const validTabs: AdminTab[] = [
   'formularios',
   'alunos',
   'mentorias',
+  'cursos-formacao',
   'bonificacao',
   'tokens',
   'corrigir-xp',
@@ -98,6 +101,8 @@ export default function AdminPage() {
       import('./components/AdminCorrigirXPTab')
     } else if (tabToPreload === 'mentorias') {
       import('./components/AdminMentoriasTab')
+    } else if (tabToPreload === 'cursos-formacao') {
+      import('./components/AdminCursosFormacaoTab')
     }
   }, [tabFromUrl]) // Executar quando a aba da URL mudar
 
@@ -173,6 +178,7 @@ export default function AdminPage() {
     { id: 'formularios', label: 'Formulários', icon: FileText },
     { id: 'alunos', label: 'Alunos', icon: Users },
     { id: 'mentorias', label: 'Mentorias', icon: Sparkles },
+    { id: 'cursos-formacao', label: 'Cursos (formação)', icon: BookOpen },
     { id: 'bonificacao', label: 'Bonificação', icon: Gift },
     { id: 'tokens', label: 'Tokens', icon: DollarSign },
     { id: 'corrigir-xp', label: 'Manutenção de XP', icon: Settings },
@@ -258,6 +264,11 @@ export default function AdminPage() {
           </div>
           <div style={{ display: activeTab === 'mentorias' ? 'block' : 'none' }}>
             {(activeTab === 'mentorias' || visitedTabs.has('mentorias')) && <AdminMentoriasTab />}
+          </div>
+          <div style={{ display: activeTab === 'cursos-formacao' ? 'block' : 'none' }}>
+            {(activeTab === 'cursos-formacao' || visitedTabs.has('cursos-formacao')) && (
+              <AdminCursosFormacaoTab />
+            )}
           </div>
           <div style={{ display: activeTab === 'bonificacao' ? 'block' : 'none' }}>
             {(activeTab === 'bonificacao' || visitedTabs.has('bonificacao')) && <AdminBonificacaoTab />}

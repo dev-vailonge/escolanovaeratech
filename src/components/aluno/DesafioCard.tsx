@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import type { DatabaseDesafio, DatabaseDesafioSubmission } from '@/types/database'
 import AdquirirFormacaoModal from '@/components/aluno/AdquirirFormacaoModal'
 import { DESAFIO_ENVIO_DESABILITADO } from '@/lib/constants/desafios'
+import { SubmittersFacepile, type FacepilePerson } from '@/components/ui/SubmittersFacepile'
 
 export interface MeuDesafioCard {
   id: string
@@ -46,6 +47,10 @@ export interface DesafioCardProps {
   onOpenSubmit: (d: MeuDesafioCard) => void
   onOpenDesistir: (d: MeuDesafioCard) => void
   xpCompleto: number
+  /** Quem já enviou solução neste desafio (facepile); opcional */
+  envioSubmitters?: FacepilePerson[]
+  envioSubmittersLoading?: boolean
+  envioSubmittersCount?: number
 }
 
 function getStatusBadge(status: MeuDesafioCard['status'], theme: 'dark' | 'light') {
@@ -119,8 +124,10 @@ function ActionButtons({ props }: { props: DesafioCardProps }) {
 }
 
 export default function DesafioCard(props: DesafioCardProps) {
-  const { theme, meuDesafio, expandedPassos, setExpandedPassos, xpCompleto } = props
+  const { theme, meuDesafio, expandedPassos, setExpandedPassos, xpCompleto, envioSubmitters, envioSubmittersLoading, envioSubmittersCount } = props
   const isDark = theme === 'dark'
+  const submitters = envioSubmitters ?? []
+  const submittersTotal = envioSubmittersCount ?? submitters.length
   const passos = normalizePassos((meuDesafio.desafio as any).passos)
   const isPassosExpanded = !!expandedPassos[meuDesafio.id]
   const visiblePassos = isPassosExpanded ? passos : passos.slice(0, 4)
@@ -152,6 +159,22 @@ export default function DesafioCard(props: DesafioCardProps) {
             {getStatusBadge(meuDesafio.status, theme)}
           </div>
           <p className={cn('text-sm md:text-base mb-3', isDark ? 'text-gray-400' : 'text-gray-600')}>{meuDesafio.desafio.descricao}</p>
+
+          {(envioSubmittersLoading || submittersTotal > 0) && (
+            <div className={cn('flex flex-wrap items-center gap-2 mb-3', isDark ? 'text-gray-400' : 'text-gray-600')}>
+              <span className="text-xs font-medium shrink-0">Quem já enviou</span>
+              {envioSubmittersLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin opacity-70" aria-hidden />
+              ) : (
+                <>
+                  <SubmittersFacepile people={submitters} isDark={isDark} maxVisible={5} />
+                  <span className="text-xs">
+                    {submittersTotal === 1 ? '1 pessoa' : `${submittersTotal} pessoas`}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Tabs: Passo a passo, Requisitos, Aulas */}
           <div className="mb-3">

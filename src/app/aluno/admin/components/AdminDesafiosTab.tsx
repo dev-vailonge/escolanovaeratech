@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
@@ -17,6 +17,7 @@ import Pagination from '@/components/ui/Pagination'
 import SafeLoading from '@/components/ui/SafeLoading'
 import { safeFetch } from '@/lib/utils/safeSupabaseQuery'
 import { XP_CONSTANTS } from '@/lib/gamification/constants'
+import { SubmittersFacepile, type FacepilePerson } from '@/components/ui/SubmittersFacepile'
 
 type TabType = 'desafios' | 'submissions'
 type StatusFilter = 'pendente' | 'aprovado' | 'rejeitado' | 'todos'
@@ -51,6 +52,54 @@ export default function AdminDesafiosTab() {
   const [isApproving, setIsApproving] = useState(false)
   const [currentPageSubmissions, setCurrentPageSubmissions] = useState(1)
 
+  const [submittersByDesafio, setSubmittersByDesafio] = useState<
+    Record<string, { people: FacepilePerson[]; count: number }>
+  >({})
+
+  const carregarSubmittersResumo = useCallback(async (desafioIds: string[]) => {
+    const unique = [...new Set(desafioIds)].filter(Boolean)
+    if (unique.length === 0) return
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+
+      const CHUNK = 40
+      const merged: Record<string, { people: FacepilePerson[]; count: number }> = {}
+
+      for (let i = 0; i < unique.length; i += CHUNK) {
+        const part = unique.slice(i, i + CHUNK)
+        const res = await fetch(`/api/desafios/submitters-summary?ids=${part.join(',')}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) continue
+        const json = (await res.json()) as {
+          byDesafio?: Record<
+            string,
+            { count: number; submitters: { userId: string; name: string | null; avatarUrl: string | null }[] }
+          >
+        }
+        const by = json.byDesafio ?? {}
+        for (const [id, v] of Object.entries(by)) {
+          merged[id] = {
+            count: v.count,
+            people: v.submitters.map((s) => ({
+              id: s.userId,
+              name: s.name,
+              avatarUrl: s.avatarUrl,
+            })),
+          }
+        }
+      }
+
+      setSubmittersByDesafio((prev) => ({ ...prev, ...merged }))
+    } catch (e) {
+      console.error('submitters-summary', e)
+    }
+  }, [])
+
   useEffect(() => {
     carregarDesafios()
   }, [])
@@ -61,6 +110,16 @@ export default function AdminDesafiosTab() {
       setCurrentPageSubmissions(1) // Resetar página ao mudar filtro
     }
   }, [activeTab, statusFilter])
+
+  useEffect(() => {
+    if (desafios.length === 0) return
+    void carregarSubmittersResumo(desafios.map((d) => d.id))
+  }, [desafios, carregarSubmittersResumo])
+
+  useEffect(() => {
+    if (submissions.length === 0) return
+    void carregarSubmittersResumo(submissions.map((s) => s.desafio_id))
+  }, [submissions, carregarSubmittersResumo])
 
   // Resetar página de desafios ao mudar filtro de curso
   useEffect(() => {
@@ -484,6 +543,25 @@ export default function AdminDesafiosTab() {
                           </span>
                         )}
                       </div>
+                      {submittersByDesafio[desafio.id] != null && submittersByDesafio[desafio.id]!.count > 0 && (
+                        <div
+                          className={cn(
+                            'flex flex-wrap items-center gap-2 mt-2 text-xs',
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                          )}
+                        >
+                          <span className="font-medium shrink-0">Quem enviou</span>
+                          <SubmittersFacepile
+                            people={submittersByDesafio[desafio.id]!.people}
+                            isDark={theme === 'dark'}
+                            maxVisible={5}
+                          />
+                          <span>
+                            {submittersByDesafio[desafio.id]!.count}{' '}
+                            {submittersByDesafio[desafio.id]!.count === 1 ? 'pessoa' : 'pessoas'}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <button
@@ -811,9 +889,31 @@ export default function AdminDesafiosTab() {
           ) : (
             <>
               <div className="space-y-3">
-                {submissionsPaginados.map((submission) => (
+                {submissionsPaginados.map((submission, idx) => {
+                const prev = idx > 0 ? submissionsPaginados[idx - 1] : null
+                const showDesafioBand = !prev || prev.desafio_id !== submission.desafio_id
+                const band = submittersByDesafio[submission.desafio_id]
+                return (
+                <Fragment key={submission.id}>
+                {showDesafioBand && (
+                  <div
+                    className={cn(
+                      'flex flex-wrap items-center gap-2 py-2 px-1',
+                      theme === 'dark' ? 'border-b border-white/10 text-gray-300' : 'border-b border-gray-200 text-gray-800'
+                    )}
+                  >
+                    <span className="text-sm font-semibold">{submission.desafio?.titulo ?? 'Desafio'}</span>
+                    {band != null && band.count > 0 && (
+                      <>
+                        <SubmittersFacepile people={band.people} isDark={theme === 'dark'} maxVisible={6} size="sm" />
+                        <span className={cn('text-xs', theme === 'dark' ? 'text-gray-400' : 'text-gray-600')}>
+                          {band.count} {band.count === 1 ? 'envio' : 'envios'}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
                 <div
-                  key={submission.id}
                   className={cn(
                     "p-4 rounded-lg border transition-colors",
                     theme === 'dark'
@@ -824,6 +924,27 @@ export default function AdminDesafiosTab() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        {submission.user?.avatar_url ? (
+                          <img
+                            src={submission.user.avatar_url}
+                            alt=""
+                            className={cn(
+                              'w-8 h-8 rounded-full object-cover flex-shrink-0 border-2',
+                              theme === 'dark' ? 'border-white/15' : 'border-gray-200'
+                            )}
+                          />
+                        ) : (
+                          <div
+                            className={cn(
+                              'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border-2',
+                              theme === 'dark'
+                                ? 'bg-white/10 border-white/15 text-gray-400'
+                                : 'bg-gray-200 border-gray-200 text-gray-600'
+                            )}
+                          >
+                            <User className="w-4 h-4" />
+                          </div>
+                        )}
                         <span className={cn("font-medium", theme === 'dark' ? "text-white" : "text-gray-900")}>
                           {submission.user?.name || 'Usuário'}
                         </span>
@@ -912,7 +1033,9 @@ export default function AdminDesafiosTab() {
                     )}
                   </div>
                 </div>
-              ))}
+                </Fragment>
+                )
+              })}
             </div>
             
             <Pagination

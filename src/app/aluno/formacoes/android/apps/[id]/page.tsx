@@ -2,28 +2,23 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
-import { useParams, notFound } from 'next/navigation'
-import {
-  ArrowLeft,
-  Zap,
-  Cloud,
-  Send,
-  CheckCircle2,
-  Search,
-  ExternalLink,
-} from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useParams, notFound, useRouter, useSearchParams } from 'next/navigation'
+import { ArrowLeft, Zap, CheckCircle2, Search, ExternalLink } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
-import { getAuthToken } from '@/lib/getAuthToken'
+import type { FormacaoAndroidRelatedLesson } from '@/data/formacao-android-desafios'
+import { useAndroidCursoBundleQuery, useFormacaoAndroidAppBySlug } from '@/lib/formacao/androidCursoFromDb'
+import { useCursoModulosSubmittersSummary } from '@/lib/hooks/useCursoModulosSubmittersSummary'
+import { useCursoModuloXpClaimed } from '@/lib/hooks/useCursoModuloXpClaimed'
+import IniciarDesafioPlanoModal from '@/components/aluno/IniciarDesafioPlanoModal'
+import Modal from '@/components/ui/Modal'
+import { DesafioEntregasHistorico } from '@/components/aluno/DesafioEntregasHistorico'
+import { ModuloConcluintesFacepile } from '@/components/formacao-android/ModuloConcluintesFacepile'
 import { HOTMART_CURSOS } from '@/lib/constants/hotmart'
-import {
-  getFormacaoAndroidApp,
-  type FormacaoAndroidRelatedLesson,
-} from '@/data/formacao-android-desafios'
-import { DESAFIO_ENVIO_DESABILITADO } from '@/lib/constants/desafios'
-import ValidarFormacaoModal from '@/components/aluno/ValidarFormacaoModal'
+import { useFormacaoDesafioAccessGate } from '@/lib/hooks/useFormacaoDesafioAccessGate'
+import { FormacaoGateAdminTestToggle } from '@/components/aluno/FormacaoGateAdminTestToggle'
 
 type DetailTab = 'overview' | 'requisitos' | 'aulas' | 'concluidos'
 
@@ -40,22 +35,141 @@ const TABS: { id: DetailTab; label: string }[] = [
 
 export default function FormacaoAndroidAppDetailPage() {
   const params = useParams()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const id = typeof params.id === 'string' ? params.id : ''
-  const app = useMemo(() => getFormacaoAndroidApp(id), [id])
+  const { app, isLoading: appLoading, fromDb } = useFormacaoAndroidAppBySlug(id)
+  const androidBundleQ = useAndroidCursoBundleQuery()
+  const androidBundle = androidBundleQ.data
   const { theme } = useTheme()
-  const { user, refreshSession } = useAuth()
+  const { user } = useAuth()
   const isDark = theme === 'dark'
   const [activeTab, setActiveTab] = useState<DetailTab>('overview')
-  const [repoUrl, setRepoUrl] = useState('')
-  const [showValidarModal, setShowValidarModal] = useState(false)
-  const [hotmartEmail, setHotmartEmail] = useState('')
-  const [isValidatingFormacao, setIsValidatingFormacao] = useState(false)
-  const [validarError, setValidarError] = useState('')
-  const [canSubmitAfterValidation, setCanSubmitAfterValidation] = useState(false)
+
+  const [planoModalOpen, setPlanoModalOpen] = useState(false)
+  const [redoWarningOpen, setRedoWarningOpen] = useState(false)
+  const [pendingIniciarDeepLink, setPendingIniciarDeepLink] = useState(false)
+  const iniciarDeepLinkConsumedRef = useRef(false)
+
+  const cursosDesafioIdParaConclusoes = useMemo(() => {
+    if (!app) return null
+    return app.cursosDesafioId ?? androidBundle?.modulos.find((m) => m.slug === id)?.id ?? null
+  }, [app, androidBundle, id])
+
+  const xpClaimedQuery = useCursoModuloXpClaimed(cursosDesafioIdParaConclusoes, {
+    enabled: Boolean(user?.id && fromDb && cursosDesafioIdParaConclusoes && !appLoading),
+  })
+
+  const { gate, validarModal } = useFormacaoDesafioAccessGate({
+    hotmartSubdomain: HOTMART_CURSOS.android.subdomain,
+  })
+
+  const abrirFluxoFazerDesafioAposXp = useCallback(() => {
+    if (!fromDb || !cursosDesafioIdParaConclusoes) {
+      setPlanoModalOpen(true)
+      return
+    }
+    if (xpClaimedQuery.data?.xp_already_claimed) {
+      setRedoWarningOpen(true)
+    } else {
+      setPlanoModalOpen(true)
+    }
+  }, [fromDb, cursosDesafioIdParaConclusoes, xpClaimedQuery.data?.xp_already_claimed])
+
+  useEffect(() => {
+    iniciarDeepLinkConsumedRef.current = false
+  }, [id])
+
+  useEffect(() => {
+    if (appLoading || !id || !user) return
+    if (searchParams.get('iniciar') !== '1') return
+    if (iniciarDeepLinkConsumedRef.current) return
+    iniciarDeepLinkConsumedRef.current = true
+    router.replace(`/aluno/formacoes/android/apps/${id}`, { scroll: false })
+    setPendingIniciarDeepLink(true)
+  }, [appLoading, id, router, searchParams, user])
+
+  useEffect(() => {
+    if (!pendingIniciarDeepLink) return
+    if (!user || appLoading) return
+    if (fromDb && cursosDesafioIdParaConclusoes && xpClaimedQuery.isPending) return
+    setPendingIniciarDeepLink(false)
+    gate(abrirFluxoFazerDesafioAposXp)
+  }, [
+    pendingIniciarDeepLink,
+    user,
+    appLoading,
+    fromDb,
+    cursosDesafioIdParaConclusoes,
+    xpClaimedQuery.isPending,
+    gate,
+    abrirFluxoFazerDesafioAposXp,
+  ])
+
+  const handleClickFazerDesafio = () => {
+    if (!user) return
+    if (fromDb && cursosDesafioIdParaConclusoes && xpClaimedQuery.isPending) return
+    gate(abrirFluxoFazerDesafioAposXp)
+  }
+
+  const concluintesFacepileQuery = useCursoModulosSubmittersSummary(
+    cursosDesafioIdParaConclusoes ? [cursosDesafioIdParaConclusoes] : [],
+    {
+      somenteAprovados: true,
+      enabled:
+        Boolean(user?.id) &&
+        fromDb &&
+        Boolean(cursosDesafioIdParaConclusoes) &&
+        !appLoading,
+    }
+  )
+  const concluintesFacepile = cursosDesafioIdParaConclusoes
+    ? concluintesFacepileQuery.data?.[cursosDesafioIdParaConclusoes]
+    : undefined
+
+  useEffect(() => {
+    if (appLoading) return
+    const bundleRow = androidBundle?.modulos?.find((m) => m.slug === id)
+    console.info('[Concluídos] Formação app — resolução cursos_desafio_id', {
+      id,
+      cursosDesafioIdParaConclusoes,
+      appCursosDesafioId: app?.cursosDesafioId ?? null,
+      bundleRowId: bundleRow?.id ?? null,
+      bundlePending: androidBundleQ.isPending,
+      hasApp: Boolean(app),
+    })
+  }, [
+    appLoading,
+    id,
+    app,
+    cursosDesafioIdParaConclusoes,
+    androidBundle?.modulos,
+    androidBundleQ.isPending,
+  ])
+
+  if (appLoading) {
+    return (
+      <div
+        className={cn(
+          'flex min-h-[calc(100vh-4rem)] items-center justify-center',
+          theme === 'dark' ? 'bg-[#0a0a0a] text-white' : 'bg-[#f4f4f5] text-gray-900'
+        )}
+      >
+        <p className="text-sm font-medium opacity-80">Carregando desafio…</p>
+      </div>
+    )
+  }
 
   if (!app) {
     notFound()
   }
+
+  const carregandoIdModulo = Boolean(
+    user && !cursosDesafioIdParaConclusoes && (appLoading || androidBundleQ.isPending)
+  )
+  const entregasSemModuloId = Boolean(
+    user && !cursosDesafioIdParaConclusoes && !appLoading && !androidBundleQ.isPending
+  )
 
   const heroSrc = app.detailCoverSrc ?? app.coverSrc
   const heroIsWideDetail = Boolean(app.detailCoverSrc)
@@ -76,91 +190,57 @@ export default function FormacaoAndroidAppDetailPage() {
 
   const muted = isDark ? 'text-gray-400' : 'text-gray-600'
   const labelMuted = isDark ? 'text-gray-500' : 'text-gray-500'
-
-  const continueToSubmitFlow = () => {
-    // Fluxo de envio (será implementado depois).
-  }
-
-  const handleClickEnviarProjeto = () => {
-    if (DESAFIO_ENVIO_DESABILITADO) return
-    if (user?.role !== 'formacao' && !canSubmitAfterValidation) {
-      setValidarError('')
-      setShowValidarModal(true)
-      return
-    }
-    continueToSubmitFlow()
-  }
-
-  const handleValidateFormacao = async () => {
-    if (!hotmartEmail.trim()) {
-      setValidarError('Informe o e-mail usado na Hotmart.')
-      return
-    }
-
-    setIsValidatingFormacao(true)
-    setValidarError('')
-
-    try {
-      const token = await getAuthToken()
-      if (!token) {
-        setValidarError('Não foi possível obter o token de autenticação. Faça login novamente.')
-        return
-      }
-
-      const res = await fetch('/api/formacoes/validar', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          email: hotmartEmail.trim(),
-          subdomain: HOTMART_CURSOS.android.subdomain,
-        }),
-      })
-
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data?.error || 'Erro ao validar formação')
-      }
-
-      if (!data?.validated) {
-        if (data?.reason === 'email_not_found') {
-          setValidarError('E-mail não encontrado na formação informada.')
-        } else if (data?.reason === 'status_not_active') {
-          setValidarError('Seu acesso na Hotmart não está ACTIVE para essa formação.')
-        } else {
-          setValidarError('Não foi possível validar sua formação com os dados informados.')
-        }
-        return
-      }
-
-      setCanSubmitAfterValidation(true)
-      await refreshSession()
-      setShowValidarModal(false)
-      continueToSubmitFlow()
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Erro ao validar formação'
-      setValidarError(message)
-    } finally {
-      setIsValidatingFormacao(false)
-    }
-  }
+  const fazerDesafioXpCheckPending = Boolean(
+    user && fromDb && cursosDesafioIdParaConclusoes && xpClaimedQuery.isPending
+  )
 
   return (
     <div className={shell}>
-      <ValidarFormacaoModal
-        isOpen={showValidarModal}
-        onClose={() => {
-          if (isValidatingFormacao) return
-          setShowValidarModal(false)
-        }}
-        email={hotmartEmail}
-        onEmailChange={setHotmartEmail}
-        onValidate={handleValidateFormacao}
-        isValidating={isValidatingFormacao}
-        errorMessage={validarError}
+      {validarModal}
+      <IniciarDesafioPlanoModal
+        open={planoModalOpen}
+        onClose={() => setPlanoModalOpen(false)}
+        moduloSlug={id}
+        isDark={isDark}
+        desafioLabel={app.title}
       />
+
+      <Modal
+        isOpen={redoWarningOpen}
+        onClose={() => setRedoWarningOpen(false)}
+        title="Refazer o desafio"
+        size="md"
+      >
+        <p className={cn('text-sm leading-relaxed', muted)}>
+          Você já concluiu este módulo e recebeu os pontos da primeira vez. Pode gerar um novo plano e enviar o
+          repositório de novo para praticar, mas{' '}
+          <strong className={isDark ? 'text-white' : 'text-gray-900'}>novos XP não serão creditados</strong> ao
+          finalizar.
+        </p>
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={() => setRedoWarningOpen(false)}
+            className={cn(
+              'rounded-xl border px-4 py-3 text-sm font-bold transition-colors',
+              isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-300 text-gray-800 hover:bg-gray-100'
+            )}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setRedoWarningOpen(false)
+              setPlanoModalOpen(true)
+            }}
+            className="rounded-xl bg-[#F2C94C] px-4 py-3 text-sm font-extrabold text-black transition-colors hover:bg-[#f5d35c]"
+          >
+            Continuar
+          </button>
+        </div>
+      </Modal>
+
       <div className="mx-auto max-w-6xl px-4 md:px-6 py-6 md:py-8">
         <Link
           href="/aluno/formacoes/android#desafios"
@@ -239,7 +319,45 @@ export default function FormacaoAndroidAppDetailPage() {
               ))}
             </div>
 
+            {cursosDesafioIdParaConclusoes && user && fromDb ? (
+              <ModuloConcluintesFacepile
+                submitters={concluintesFacepile?.submitters ?? []}
+                totalCount={concluintesFacepile?.count ?? 0}
+                isDark={isDark}
+                label="veja alunos que finalizaram:"
+                labelVariant="sentence"
+                className="mb-8"
+              />
+            ) : null}
+
+            <FormacaoGateAdminTestToggle isDark={isDark} className="mb-4 w-full max-w-xl" />
+
             <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3">
+              {user ? (
+                <button
+                  type="button"
+                  disabled={fazerDesafioXpCheckPending}
+                  title={fazerDesafioXpCheckPending ? 'Verificando…' : undefined}
+                  onClick={() => handleClickFazerDesafio()}
+                  className={cn(
+                    'inline-flex items-center justify-center rounded-xl px-6 py-3.5 text-sm font-extrabold uppercase tracking-wide transition-colors',
+                    'bg-[#F2C94C] text-black hover:bg-[#f5d35c] border border-[#F2C94C]',
+                    fazerDesafioXpCheckPending && 'cursor-wait opacity-70'
+                  )}
+                >
+                  {fazerDesafioXpCheckPending ? 'Carregando…' : 'Fazer desafio'}
+                </button>
+              ) : (
+                <Link
+                  href={`/?redirect=${encodeURIComponent(`/aluno/formacoes/android/apps/${id}?iniciar=1`)}`}
+                  className={cn(
+                    'inline-flex items-center justify-center rounded-xl px-6 py-3.5 text-sm font-extrabold uppercase tracking-wide transition-colors',
+                    'bg-[#F2C94C] text-black hover:bg-[#f5d35c] border border-[#F2C94C]'
+                  )}
+                >
+                  Fazer desafio
+                </Link>
+              )}
               <a
                 href={githubHref}
                 target="_blank"
@@ -273,60 +391,6 @@ export default function FormacaoAndroidAppDetailPage() {
                   </dd>
                 </div>
               </dl>
-            </div>
-
-            <div id="submit-mission" className={cn(card, 'scroll-mt-24')}>
-              <div className="flex items-center gap-2 mb-4">
-                <Cloud className={cn('h-5 w-5', isDark ? 'text-gray-400' : 'text-gray-600')} aria-hidden />
-                <h2 className={cn('text-sm font-extrabold uppercase tracking-wide', isDark ? 'text-white' : 'text-gray-900')}>
-                  Enviar projeto
-                </h2>
-              </div>
-              <p className={cn('text-xs mb-3', labelMuted)}>URL do repositório (GitHub ou similar)</p>
-              {DESAFIO_ENVIO_DESABILITADO && (
-                <p
-                  className={cn(
-                    'text-xs rounded-xl border px-3 py-2 mb-3',
-                    isDark
-                      ? 'bg-amber-500/10 border-amber-500/25 text-amber-200/90'
-                      : 'bg-amber-50 border-amber-200 text-amber-900'
-                  )}
-                >
-                  O envio do projeto está temporariamente indisponível.
-                </p>
-              )}
-              <input
-                type="url"
-                value={repoUrl}
-                onChange={(e) => setRepoUrl(e.target.value)}
-                disabled={DESAFIO_ENVIO_DESABILITADO}
-                placeholder="https://github.com/usuario/repositorio"
-                className={cn(
-                  'w-full rounded-xl border px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#F2C94C]/50',
-                  DESAFIO_ENVIO_DESABILITADO && 'opacity-60 cursor-not-allowed',
-                  isDark
-                    ? 'bg-black border-white/15 text-white placeholder:text-gray-600'
-                    : 'bg-gray-50 border-gray-300 text-gray-900 placeholder:text-gray-400'
-                )}
-              />
-              <button
-                type="button"
-                disabled={DESAFIO_ENVIO_DESABILITADO}
-                title={
-                  DESAFIO_ENVIO_DESABILITADO
-                    ? 'Envio temporariamente indisponível'
-                    : undefined
-                }
-                onClick={handleClickEnviarProjeto}
-                className={cn(
-                  'mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-extrabold uppercase tracking-wide transition-colors',
-                  'bg-[#F2C94C] text-black hover:bg-[#f5d35c] border border-[#F2C94C]',
-                  DESAFIO_ENVIO_DESABILITADO && 'opacity-50 cursor-not-allowed'
-                )}
-              >
-                <Send className="h-4 w-4" aria-hidden />
-                Enviar projeto
-              </button>
             </div>
 
             <div className={card}>
@@ -507,12 +571,15 @@ export default function FormacaoAndroidAppDetailPage() {
           )}
 
           {activeTab === 'concluidos' && (
-            <div className={cn(card, 'text-center py-10')}>
-              <p className={muted}>
-                Nenhuma entrega registrada ainda. Quando você enviar o link do repositório, o histórico aparecerá
-                aqui.
-              </p>
-            </div>
+            <DesafioEntregasHistorico
+              isDark={isDark}
+              containerClassName={cn(card, 'p-0')}
+              carregandoIdModulo={carregandoIdModulo}
+              cursosDesafioId={cursosDesafioIdParaConclusoes}
+              userId={user?.id}
+              semModuloId={entregasSemModuloId}
+              precisaLogin={!user}
+            />
           )}
         </div>
       </div>

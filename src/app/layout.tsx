@@ -1,7 +1,11 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/AuthContext";
+import { QueryProvider } from "@/lib/QueryProvider";
 import "@/lib/utils/consoleFilter"; // Filtra erros de extensões do navegador
+import { metadata } from "./metadata";
+
+export { metadata };
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -12,12 +16,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <head>
-        <link rel="icon" href="/images/logo.png" />
-      </head>
       <body className={`${inter.className} antialiased`}>
         <AuthProvider>
-          {children}
+          <QueryProvider>{children}</QueryProvider>
         </AuthProvider>
       </body>
     </html>

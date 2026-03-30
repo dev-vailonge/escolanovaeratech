@@ -5,21 +5,10 @@ export const metadata: Metadata = {
   description: 'Aprenda programação com estratégia',
   icons: {
     icon: [
-      {
-        url: '/images/logo.png',
-        type: 'image/png',
-        sizes: '32x32',
-      },
-      {
-        url: '/images/logo.png',
-        type: 'image/png',
-        sizes: '16x16',
-      }
+      { url: '/logo%20light%20.svg', type: 'image/svg+xml' },
+      { url: '/logo_light_circle.svg', type: 'image/svg+xml' },
     ],
-    apple: {
-      url: '/images/logo.png',
-      type: 'image/png',
-      sizes: '180x180',
-    },
+    shortcut: [{ url: '/logo%20light%20.svg', type: 'image/svg+xml' }],
+    apple: { url: '/logo_light_circle.svg', type: 'image/svg+xml' },
   },
 } 

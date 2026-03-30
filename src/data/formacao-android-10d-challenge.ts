@@ -16,7 +16,7 @@ export type FormacaoAndroid10dDayPlan = {
   lessons: FormacaoAndroid10dLesson[]
 }
 
-function splitLessonsIntoDays(
+export function splitLessonsIntoDays(
   lessons: FormacaoAndroid10dLesson[],
   dayCount: number
 ): FormacaoAndroid10dDayPlan[] {

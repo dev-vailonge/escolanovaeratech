@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/requestAuth'
 import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { getUsersBySubdomain } from '@/lib/hotmart'
+import { FORMACAO_GATE_ADMIN_VALIDATE_MODE_HEADER } from '@/lib/formacao/formacaoGateAdminTest'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -19,6 +20,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Token de acesso não fornecido' }, { status: 401 })
     }
 
+    const supabase = await getSupabaseClient(accessToken)
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle()
+
     const body = (await request.json().catch(() => ({}))) as ValidateBody
     const email = String(body.email ?? '').trim().toLowerCase()
     const subdomain = String(body.subdomain ?? '').trim()
@@ -28,6 +36,27 @@ export async function POST(request: Request) {
         { error: 'email e subdomain são obrigatórios', validated: false },
         { status: 400 }
       )
+    }
+
+    const adminValidateMode = request.headers.get(FORMACAO_GATE_ADMIN_VALIDATE_MODE_HEADER)?.trim()
+    const isAdmin = profile?.role === 'admin'
+
+    // Admin: resultado do fluxo é simulado pelo toggle (success/fail), sem Hotmart e sem UPDATE de role.
+    if (isAdmin && (adminValidateMode === 'success' || adminValidateMode === 'fail')) {
+      if (adminValidateMode === 'fail') {
+        return NextResponse.json({
+          success: true,
+          validated: false,
+          reason: 'email_not_found',
+          admin_test_matricula_simulada: true,
+        })
+      }
+      return NextResponse.json({
+        success: true,
+        validated: true,
+        role: 'admin',
+        admin_test_matricula_simulada: true,
+      })
     }
 
     const users = await getUsersBySubdomain(subdomain)
@@ -50,7 +79,16 @@ export async function POST(request: Request) {
       })
     }
 
-    const supabase = await getSupabaseClient(accessToken)
+    // Admin nunca muda para `formacao`; apenas confirmamos sucesso do fluxo.
+    if (isAdmin) {
+      return NextResponse.json({
+        success: true,
+        validated: true,
+        role: 'admin',
+        admin_test_matricula_simulada: true,
+      })
+    }
+
     const { error: updateError } = await supabase
       .from('users')
       .update({ role: 'formacao', updated_at: new Date().toISOString() })

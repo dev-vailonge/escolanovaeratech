@@ -47,12 +47,93 @@ export interface DatabaseDesafio {
   prazo: string | null
   requisitos: any[] // JSONB - array de requisitos
   passos: any[] // JSONB - guia passo-a-passo (array de { titulo, detalhes })
+  /** Capa opcional do desafio (URL pública). Se ausente, o card não exibe área de imagem. */
+  imagem_url?: string | null
   curso_id?: string | null // ID do curso/formação vinculado: 'android', 'frontend', 'backend', 'ios', 'analise-dados', 'norte-tech', 'logica-programacao', ou null para desafios gerais
   gerado_por_ia?: boolean // Se foi gerado pela IA
   solicitado_por?: string | null // ID do usuário que solicitou o desafio (se gerado por IA)
   created_at: string
   updated_at: string
   created_by: string | null
+}
+
+/** Plano de estudos (JSON em cursos_desafios.plano_estudos) — ex.: 10D Challenge */
+export interface CursoPlanoEstudoLessonJson {
+  title: string
+  href: string
+  description: string
+}
+
+export interface CursoPlanoEstudosJson {
+  journeyDayCount: number
+  lessons: CursoPlanoEstudoLessonJson[]
+}
+
+export interface DatabaseCurso {
+  id: string
+  slug: string
+  nome: string
+  descricao_curta: string | null
+  ativo: boolean
+  ordem: number | null
+  xp_maximo: number
+  tags: unknown
+  desafio_destaque_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** Plano de estudos personalizado (1 ativo por aluno) — tabela aluno_planos_estudo */
+export interface DatabaseAlunoPlanoEstudo {
+  id: string
+  user_id: string
+  cursos_desafio_id: string
+  status: 'active' | 'completed' | 'abandoned'
+  dias: number
+  plano: unknown
+  progress: unknown
+  modulo_snapshot: unknown
+  github_repo_url?: string | null
+  started_at: string
+  created_at: string
+  updated_at: string
+}
+
+/** Conclusão de aluno em módulo de formação (`cursos_desafios`). Separado de desafio_submissions. */
+export interface DatabaseCursoDesafioConclusao {
+  id: string
+  cursos_desafio_id: string
+  user_id: string
+  github_url: string
+  status: 'pendente' | 'aprovado' | 'rejeitado'
+  admin_notes?: string | null
+  reviewed_by?: string | null
+  reviewed_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface DatabaseCursoDesafio {
+  id: string
+  curso_id: string
+  ordem: number
+  slug: string
+  titulo: string
+  hero_titulo: string
+  resumo: string
+  objetivo: string
+  xp: number
+  tags: unknown
+  itens_pratica: unknown
+  requisitos: unknown
+  aulas_sugeridas: unknown
+  imagem_capa_url: string | null
+  imagem_detalhe_url: string | null
+  url_repositorio_referencia: string | null
+  metadata: unknown
+  plano_estudos: unknown
+  created_at: string
+  updated_at: string
 }
 
 export interface DatabaseDesafioSubmission {

@@ -38,7 +38,17 @@ export default function SignUpPage() {
         router.push('/dashboard')
       }
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Erro ao criar conta')
+      const message = error instanceof Error ? error.message : ''
+      if (
+        message.includes('Error sending confirmation email') ||
+        message.includes('sending confirmation')
+      ) {
+        setError(
+          'Não foi possível enviar o e-mail de confirmação no momento. Verifique a configuração de Auth/SMTP no Supabase e tente novamente.'
+        )
+      } else {
+        setError(message || 'Erro ao criar conta')
+      }
     } finally {
       setIsLoading(false)
     }

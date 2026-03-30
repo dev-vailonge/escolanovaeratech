@@ -1,7 +1,48 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { XP_CONSTANTS } from '@/lib/gamification/constants'
 import { calculateLevel } from '@/lib/gamification'
 import { getSupabaseClient } from './getSupabaseClient'
 import { getSupabaseAdmin } from './supabaseAdmin'
+
+/**
+ * Já existe XP de bonificação por concluir um plano deste módulo (`cursos_desafios.id`).
+ * Histórico antigo: `source_id` = id de `aluno_planos_estudo`; atual: `source_id` = módulo.
+ */
+export async function userAlreadyHasBonificacaoXpForCursoDesafioModule(params: {
+  supabase: SupabaseClient
+  userId: string
+  cursosDesafioId: string
+}): Promise<boolean> {
+  const { supabase, userId, cursosDesafioId } = params
+
+  const { data: byModuleId } = await supabase
+    .from('user_xp_history')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('source', 'bonificacao')
+    .eq('source_id', cursosDesafioId)
+    .maybeSingle()
+  if (byModuleId) return true
+
+  const { data: planos } = await supabase
+    .from('aluno_planos_estudo')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('cursos_desafio_id', cursosDesafioId)
+
+  const planIds = (planos ?? []).map((p) => p.id).filter(Boolean)
+  if (planIds.length === 0) return false
+
+  const { data: xpRows } = await supabase
+    .from('user_xp_history')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('source', 'bonificacao')
+    .in('source_id', planIds)
+    .limit(1)
+
+  return (xpRows?.length ?? 0) > 0
+}
 
 export type XPSource = 'aula' | 'quiz' | 'desafio' | 'comunidade' | 'bonificacao'
 

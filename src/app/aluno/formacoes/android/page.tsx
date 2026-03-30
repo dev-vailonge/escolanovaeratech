@@ -1,11 +1,14 @@
 'use client'
 
-import type { CSSProperties } from 'react'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
+import {
+  ChallengeCardVisual,
+  challengePreviewFrameStyle,
+} from '@/components/formacao-android/ChallengeCardVisual'
 import {
   Rocket,
   Code2,
@@ -17,124 +20,24 @@ import {
   CalendarRange,
   Zap,
 } from 'lucide-react'
-import {
-  BONUS_COMPLETAR_TODOS_XP,
-  FORMACAO_ANDROID_APPS,
-  type ChallengeVisual,
-} from '@/data/formacao-android-desafios'
+import { BONUS_COMPLETAR_TODOS_XP } from '@/data/formacao-android-desafios'
 import { FORMACAO_ANDROID_PROJETOS_REAIS } from '@/data/formacao-android-projetos'
-import {
-  FORMACAO_ANDROID_10D_CHALLENGE,
-  FORMACAO_ANDROID_10D_PLAN_BY_DAY,
-} from '@/data/formacao-android-10d-challenge'
 import Modal from '@/components/ui/Modal'
+import IniciarDesafioPlanoModal from '@/components/aluno/IniciarDesafioPlanoModal'
+import { useAuth } from '@/lib/AuthContext'
+import { useFormacaoAndroidData } from '@/lib/formacao/androidCursoFromDb'
+import { MODULO_SLUG_ANDROID_10D_CHALLENGE } from '@/lib/planoEstudoAluno'
+import { useCursoModulosSubmittersSummary } from '@/lib/hooks/useCursoModulosSubmittersSummary'
+import { ModuloConcluintesFacepile } from '@/components/formacao-android/ModuloConcluintesFacepile'
+import { FormacaoGateAdminTestToggle } from '@/components/aluno/FormacaoGateAdminTestToggle'
+import { HOTMART_CURSOS } from '@/lib/constants/hotmart'
+import { useFormacaoDesafioAccessGate } from '@/lib/hooks/useFormacaoDesafioAccessGate'
 
 const heroBadges = [
   { icon: Rocket, label: '+15 APLICATIVOS' },
   { icon: Code2, label: 'PROJETOS REAIS' },
   { icon: Award, label: 'DESAFIOS GAMIFICADOS' },
 ] as const
-
-/** Área de preview: mais baixa que o screenshot inteiro; imagens usam crop (cover), sem distorção */
-const CHALLENGE_COVER_WIDTH = 280
-const CHALLENGE_COVER_HEIGHT = 360
-
-const challengePreviewFrameStyle: CSSProperties = {
-  maxWidth: CHALLENGE_COVER_WIDTH,
-  aspectRatio: `${CHALLENGE_COVER_WIDTH} / ${CHALLENGE_COVER_HEIGHT}`,
-}
-
-function challengePreviewShell(className: string) {
-  return {
-    className: cn('relative mx-auto w-full overflow-hidden', className),
-    style: challengePreviewFrameStyle,
-  }
-}
-
-function ChallengeCardVisual({ visual, isDark }: { visual: ChallengeVisual; isDark: boolean }) {
-  switch (visual) {
-    case 'phone':
-      return (
-        <div
-          {...challengePreviewShell(
-            'flex h-full min-h-0 items-center justify-center bg-gradient-to-b from-sky-400/25 to-blue-700/40'
-          )}
-        >
-          <div className="h-[7.5rem] w-24 rounded-2xl border-2 border-white/50 bg-gradient-to-b from-sky-300/90 to-blue-600/90 shadow-lg" />
-        </div>
-      )
-    case 'wireframe':
-      return (
-        <div {...challengePreviewShell('bg-gray-100 p-4 flex h-full min-h-0 flex-col gap-2')}>
-          <div className="h-3 rounded bg-gray-300/90 w-4/5" />
-          <div className="grid grid-cols-2 gap-2 flex-1 min-h-0">
-            <div className="rounded-lg bg-white border border-gray-300 shadow-sm" />
-            <div className="rounded-lg bg-white border border-gray-300 shadow-sm" />
-          </div>
-          <div className="h-8 rounded bg-gray-200" />
-        </div>
-      )
-    case 'chart':
-      return (
-        <div
-          {...challengePreviewShell(
-            'bg-[#0f172a] px-4 pb-4 pt-6 flex h-full min-h-0 items-end justify-center gap-1.5'
-          )}
-        >
-          {[40, 68, 48, 82, 56, 72].map((h, i) => (
-            <div
-              key={i}
-              className="w-5 rounded-t bg-gradient-to-t from-cyan-600 to-cyan-300/90"
-              style={{ height: `${h}%`, maxHeight: '85%' }}
-            />
-          ))}
-        </div>
-      )
-    case 'map':
-      return (
-        <div
-          {...challengePreviewShell(
-            'bg-gradient-to-br from-emerald-900/40 to-slate-900 flex h-full min-h-0 items-center justify-center p-4'
-          )}
-        >
-          <div className="grid grid-cols-3 gap-1 w-28 opacity-90">
-            {Array.from({ length: 9 }).map((_, i) => (
-              <div key={i} className="h-6 rounded-sm bg-emerald-500/40 border border-emerald-400/30" />
-            ))}
-          </div>
-        </div>
-      )
-    case 'crypto':
-      return (
-        <div
-          {...challengePreviewShell(
-            'bg-gradient-to-br from-amber-900/30 to-zinc-900 flex h-full min-h-0 items-center justify-center'
-          )}
-        >
-          <div className="flex gap-2 items-end h-24">
-            {[30, 55, 40, 70, 45].map((h, i) => (
-              <div key={i} className="w-4 rounded-t bg-amber-400/70" style={{ height: `${h}%` }} />
-            ))}
-          </div>
-        </div>
-      )
-    case 'media':
-      return (
-        <div
-          {...challengePreviewShell(
-            'bg-gradient-to-br from-violet-900/35 to-indigo-950 flex h-full min-h-0 items-center justify-center gap-3'
-          )}
-        >
-          <div className="h-16 w-12 rounded-lg bg-white/10 border border-white/20" />
-          <div className="h-20 w-20 rounded-full border-4 border-violet-400/50 bg-violet-500/20" />
-        </div>
-      )
-    default:
-      return (
-        <div {...challengePreviewShell(isDark ? 'bg-[#1a1a1a]' : 'bg-gray-200')} />
-      )
-  }
-}
 
 function ProjetoRealPhonePreview({
   variant,
@@ -206,18 +109,53 @@ function ProjetoRealPhonePreview({
 export default function FormacaoAndroidPage() {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
+  const { user } = useAuth()
+  const {
+    apps,
+    challenge10d,
+    planByDay,
+    xpApps,
+    totalXpDesafios,
+    fromDb,
+    loading: formacaoLoading,
+    cursosDesafioId10d,
+  } = useFormacaoAndroidData()
+
+  const moduloIdsFacepile = useMemo(() => {
+    const ids = apps
+      .map((a) => a.cursosDesafioId)
+      .filter((id): id is string => Boolean(id))
+    if (cursosDesafioId10d) ids.push(cursosDesafioId10d)
+    return [...new Set(ids)]
+  }, [apps, cursosDesafioId10d])
+
+  const concluintesQuery = useCursoModulosSubmittersSummary(moduloIdsFacepile, {
+    somenteAprovados: true,
+    enabled: Boolean(user?.id) && fromDb && !formacaoLoading && moduloIdsFacepile.length > 0,
+  })
+  const concluintesByModulo = concluintesQuery.data
   const [planoEstudosModalOpen, setPlanoEstudosModalOpen] = useState(false)
   const [planoEstudosDia, setPlanoEstudosDia] = useState(1)
-  const planoDiaAtual = FORMACAO_ANDROID_10D_PLAN_BY_DAY.find((d) => d.day === planoEstudosDia)
+  const [iniciarPlanoModalOpen, setIniciarPlanoModalOpen] = useState(false)
+  const { gate, validarModal } = useFormacaoDesafioAccessGate({
+    hotmartSubdomain: HOTMART_CURSOS.android.subdomain,
+  })
+
+  const fazerDesafioLoginHref = `/?redirect=${encodeURIComponent(
+    `/aluno/formacoes/android#${MODULO_SLUG_ANDROID_10D_CHALLENGE}`
+  )}`
+  const podeIniciarPlano10d = planByDay.length > 0
+
+  useEffect(() => {
+    const maxDay = planByDay.length > 0 ? Math.max(...planByDay.map((d) => d.day)) : 1
+    setPlanoEstudosDia((d) => (d > maxDay ? maxDay : d < 1 ? 1 : d))
+  }, [planByDay])
+
+  const planoDiaAtual = planByDay.find((d) => d.day === planoEstudosDia)
   const planoIndiceInicioAula =
     planoDiaAtual != null
-      ? FORMACAO_ANDROID_10D_PLAN_BY_DAY.filter((d) => d.day < planoDiaAtual.day).reduce(
-          (acc, d) => acc + d.lessons.length,
-          0
-        )
+      ? planByDay.filter((d) => d.day < planoDiaAtual.day).reduce((acc, d) => acc + d.lessons.length, 0)
       : 0
-  const xpApps = FORMACAO_ANDROID_APPS.reduce((total, app) => total + app.xp, 0)
-  const totalXpDesafios = xpApps + BONUS_COMPLETAR_TODOS_XP
 
   return (
     <section className={cn('min-h-[60vh]', isDark ? 'bg-[#0e0e0e]' : 'bg-gray-100')}>
@@ -271,17 +209,7 @@ export default function FormacaoAndroidPage() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-col sm:flex-row flex-wrap gap-3">
-              <a
-                href="https://pay.hotmart.com/A102787902R?bid=1769602808367"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#FFD600] px-6 py-3.5 text-sm font-extrabold uppercase tracking-wide text-black hover:bg-[#ffe033] transition-colors"
-              >
-                Explorar formação
-                <ArrowRight className="h-5 w-5" aria-hidden />
-              </a>
-            </div>
+            
             <div
               className={cn(
                 'mt-4 w-full max-w-xl rounded-2xl border p-4 md:p-5 lg:hidden',
@@ -364,8 +292,8 @@ export default function FormacaoAndroidPage() {
                 )}
               >
                 <Image
-                  src={FORMACAO_ANDROID_10D_CHALLENGE.previewSrc}
-                  alt={FORMACAO_ANDROID_10D_CHALLENGE.previewAlt}
+                  src={challenge10d.previewSrc}
+                  alt={challenge10d.previewAlt}
                   fill
                   className="object-contain object-center p-3 sm:p-4 md:p-5"
                   sizes="(max-width: 1152px) 100vw, 1152px"
@@ -381,7 +309,7 @@ export default function FormacaoAndroidPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-[#828282]">
-                  {FORMACAO_ANDROID_10D_CHALLENGE.title}
+                  {challenge10d.title}
                 </p>
                 <span
                   className={cn(
@@ -389,7 +317,7 @@ export default function FormacaoAndroidPage() {
                     isDark ? 'bg-[#2a2a2a] border-white/10' : 'bg-gray-200 border-gray-300'
                   )}
                 >
-                  +{FORMACAO_ANDROID_10D_CHALLENGE.xpReward} XP
+                  +{challenge10d.xpReward} XP
                 </span>
               </div>
 
@@ -403,7 +331,7 @@ export default function FormacaoAndroidPage() {
                   )}
                 >
                   <Zap className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                  {FORMACAO_ANDROID_10D_CHALLENGE.badgeLabel}
+                  {challenge10d.badgeLabel}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-[#9ca3af]">
                   <CalendarRange className="h-3.5 w-3.5" aria-hidden />
@@ -412,16 +340,16 @@ export default function FormacaoAndroidPage() {
               </div>
 
               <h2 className="text-2xl sm:text-3xl md:text-[2rem] font-black uppercase tracking-tight leading-[1.1] text-white max-w-4xl">
-                {FORMACAO_ANDROID_10D_CHALLENGE.heroLine1}{' '}
-                <span className="text-[#F2C94C]">{FORMACAO_ANDROID_10D_CHALLENGE.heroHighlight}</span>
+                {challenge10d.heroLine1}{' '}
+                <span className="text-[#F2C94C]">{challenge10d.heroHighlight}</span>
               </h2>
 
               <p className="text-sm sm:text-base leading-relaxed text-gray-400 max-w-3xl">
-                {FORMACAO_ANDROID_10D_CHALLENGE.subtitle}
+                {challenge10d.subtitle}
               </p>
 
               <div className="flex flex-wrap gap-2 pt-1">
-                {FORMACAO_ANDROID_10D_CHALLENGE.tags.map((tag) => (
+                {challenge10d.tags.map((tag) => (
                   <span
                     key={tag}
                     className="inline-flex rounded-full border border-white/25 bg-black px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-white"
@@ -430,6 +358,18 @@ export default function FormacaoAndroidPage() {
                   </span>
                 ))}
               </div>
+
+              {cursosDesafioId10d && user && fromDb ? (
+                <ModuloConcluintesFacepile
+                  submitters={concluintesByModulo?.[cursosDesafioId10d]?.submitters ?? []}
+                  totalCount={concluintesByModulo?.[cursosDesafioId10d]?.count ?? 0}
+                  isDark={isDark}
+                  variant="onDarkSurface"
+                  className="pt-2"
+                />
+              ) : null}
+
+              <FormacaoGateAdminTestToggle isDark className="w-full max-w-xl border-white/20 bg-black/40" />
 
               <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:flex-wrap sm:items-stretch">
                 <button
@@ -447,15 +387,30 @@ export default function FormacaoAndroidPage() {
                 >
                   Ver plano de estudos
                 </button>
-                <Link
-                  href={FORMACAO_ANDROID_10D_CHALLENGE.desafioHref}
-                  className={cn(
-                    'inline-flex min-h-[2.75rem] flex-1 items-center justify-center gap-2 rounded-xl border border-[#F2C94C] bg-[#F2C94C] px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-black transition-colors hover:bg-[#f5d35c] sm:min-w-[180px] sm:flex-initial'
-                  )}
-                >
-                  Fazer desafio
-                  <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
-                </Link>
+                {user ? (
+                  <button
+                    type="button"
+                    disabled={!podeIniciarPlano10d}
+                    onClick={() => gate(() => setIniciarPlanoModalOpen(true))}
+                    title={!podeIniciarPlano10d ? 'Carregando plano…' : undefined}
+                    className={cn(
+                      'inline-flex min-h-[2.75rem] flex-1 items-center justify-center gap-2 rounded-xl border border-[#F2C94C] bg-[#F2C94C] px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-black transition-colors hover:bg-[#f5d35c] sm:min-w-[180px] sm:flex-initial disabled:cursor-not-allowed disabled:opacity-60'
+                    )}
+                  >
+                    Fazer desafio
+                    <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+                  </button>
+                ) : (
+                  <Link
+                    href={fazerDesafioLoginHref}
+                    className={cn(
+                      'inline-flex min-h-[2.75rem] flex-1 items-center justify-center gap-2 rounded-xl border border-[#F2C94C] bg-[#F2C94C] px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-black transition-colors hover:bg-[#f5d35c] sm:min-w-[180px] sm:flex-initial'
+                    )}
+                  >
+                    Fazer desafio
+                    <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+                  </Link>
+                )}
               </div>
             </div>
           </div>
@@ -463,7 +418,7 @@ export default function FormacaoAndroidPage() {
           <Modal
             isOpen={planoEstudosModalOpen}
             onClose={() => setPlanoEstudosModalOpen(false)}
-            title={`Plano de estudos — ${FORMACAO_ANDROID_10D_CHALLENGE.journeyDayCount} dias (Hotmart Club)`}
+            title={`Plano de estudos — ${challenge10d.journeyDayCount} dias (Hotmart Club)`}
             size="lg"
           >
             <p
@@ -480,7 +435,7 @@ export default function FormacaoAndroidPage() {
               role="tablist"
               aria-label="Dias da jornada"
             >
-              {FORMACAO_ANDROID_10D_PLAN_BY_DAY.map(({ day }) => (
+              {planByDay.map(({ day }) => (
                 <button
                   key={day}
                   type="button"
@@ -574,16 +529,40 @@ export default function FormacaoAndroidPage() {
                 isDark ? 'border-white/10' : 'border-gray-200'
               )}
             >
-              <Link
-                href={FORMACAO_ANDROID_10D_CHALLENGE.desafioHref}
-                onClick={() => setPlanoEstudosModalOpen(false)}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#F2C94C] bg-[#F2C94C] px-5 py-3 text-xs font-bold uppercase tracking-wide text-black transition-colors hover:bg-[#f5d35c]"
-              >
-                Fazer desafio
-                <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
-              </Link>
+              {user ? (
+                <button
+                  type="button"
+                  disabled={!podeIniciarPlano10d}
+                  onClick={() => {
+                    setPlanoEstudosModalOpen(false)
+                    gate(() => setIniciarPlanoModalOpen(true))
+                  }}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#F2C94C] bg-[#F2C94C] px-5 py-3 text-xs font-bold uppercase tracking-wide text-black transition-colors hover:bg-[#f5d35c] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Fazer desafio
+                  <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+                </button>
+              ) : (
+                <Link
+                  href={fazerDesafioLoginHref}
+                  onClick={() => setPlanoEstudosModalOpen(false)}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#F2C94C] bg-[#F2C94C] px-5 py-3 text-xs font-bold uppercase tracking-wide text-black transition-colors hover:bg-[#f5d35c]"
+                >
+                  Fazer desafio
+                  <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+                </Link>
+              )}
             </div>
           </Modal>
+
+          {validarModal}
+          <IniciarDesafioPlanoModal
+            open={iniciarPlanoModalOpen}
+            onClose={() => setIniciarPlanoModalOpen(false)}
+            moduloSlug={MODULO_SLUG_ANDROID_10D_CHALLENGE}
+            isDark={isDark}
+            desafioLabel={`${challenge10d.title} · ${challenge10d.heroHighlight}`}
+          />
         </div>
 
         {/* Desafios de aplicativos */}
@@ -613,7 +592,7 @@ export default function FormacaoAndroidPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 md:gap-6">
-            {FORMACAO_ANDROID_APPS.map((c) => (
+            {apps.map((c) => (
               <article
                 key={c.id}
                 className={cn(
@@ -659,12 +638,20 @@ export default function FormacaoAndroidPage() {
                   </div>
                   <h3
                     className={cn(
-                      'text-lg md:text-xl font-extrabold tracking-tight mb-4 leading-snug',
+                      'text-lg md:text-xl font-extrabold tracking-tight mb-3 leading-snug',
                       isDark ? 'text-white' : 'text-gray-900'
                     )}
                   >
                     {c.title}
                   </h3>
+                  {c.cursosDesafioId && user && fromDb ? (
+                    <ModuloConcluintesFacepile
+                      submitters={concluintesByModulo?.[c.cursosDesafioId]?.submitters ?? []}
+                      totalCount={concluintesByModulo?.[c.cursosDesafioId]?.count ?? 0}
+                      isDark={isDark}
+                      className="mb-4"
+                    />
+                  ) : null}
                   {c.mission <= 6 ? (
                     <Link
                       href={`/aluno/formacoes/android/apps/${c.id}`}
