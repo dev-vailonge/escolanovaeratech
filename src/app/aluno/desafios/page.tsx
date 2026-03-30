@@ -319,8 +319,15 @@ export default function DesafiosPage() {
       const meusDesafiosList: MeuDesafio[] = atribuicoes.map((atrib: any) => {
         const desafio = desafios?.find((d: any) => d.id === atrib.desafio_id)
         
-        // Buscar todas as submissões para este desafio (para contar tentativas)
-        const todasSubmissions = submissions?.filter((s: any) => s.desafio_id === atrib.desafio_id) || []
+        // Buscar submissões deste desafio apenas após a atribuição atual.
+        // Evita herdar status antigo (ex.: "desistiu") de atribuições passadas do mesmo desafio.
+        const atribuicaoTs = new Date(atrib.created_at).getTime()
+        const todasSubmissions = (submissions?.filter((s: any) => {
+          if (s.desafio_id !== atrib.desafio_id) return false
+          const subTs = new Date(s.created_at).getTime()
+          if (!Number.isFinite(atribuicaoTs) || !Number.isFinite(subTs)) return true
+          return subTs >= atribuicaoTs
+        }) || [])
         
         // A submissão atual é a última (mais recente)
         const submission = todasSubmissions.length > 0 

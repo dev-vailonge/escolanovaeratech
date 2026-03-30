@@ -32,7 +32,13 @@ export function mergeAtribuicoesComDesafios(
     const desafio = desafios?.find((d) => d.id === atrib.desafio_id)
     if (!desafio) continue
 
-    const todasSubmissions = submissions?.filter((s) => s.desafio_id === atrib.desafio_id) || []
+    const atribuicaoTs = new Date(atrib.created_at).getTime()
+    const todasSubmissions = (submissions?.filter((s) => {
+      if (s.desafio_id !== atrib.desafio_id) return false
+      const subTs = new Date(s.created_at).getTime()
+      if (!Number.isFinite(atribuicaoTs) || !Number.isFinite(subTs)) return true
+      return subTs >= atribuicaoTs
+    }) || [])
     const submission =
       todasSubmissions.length > 0 ? todasSubmissions[todasSubmissions.length - 1] : undefined
 

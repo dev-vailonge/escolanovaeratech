@@ -64,9 +64,13 @@ export async function GET(request: Request) {
       `)
       .order('created_at', { ascending: false })
 
-    // Filtrar por status se não for 'todos'
-    if (status !== 'todos') {
-      query = query.eq('status', status)
+    // Compatibilidade com status legados em inglês.
+    if (status === 'pendente') {
+      query = query.in('status', ['pendente', 'pending'])
+    } else if (status === 'aprovado') {
+      query = query.in('status', ['aprovado', 'approved'])
+    } else if (status === 'rejeitado') {
+      query = query.in('status', ['rejeitado', 'rejected'])
     }
 
     const { data: submissions, error } = await query
@@ -95,12 +99,22 @@ export async function GET(request: Request) {
     })
 
     // Formatar resposta
-    const formattedSubmissions = (submissions || []).map((s: any) => ({
+    const formattedSubmissions = (submissions || []).map((s: any) => {
+      const normalizedStatus =
+        s.status === 'pending'
+          ? 'pendente'
+          : s.status === 'approved'
+            ? 'aprovado'
+            : s.status === 'rejected'
+              ? 'rejeitado'
+              : s.status
+
+      return {
       id: s.id,
       user_id: s.user_id,
       desafio_id: s.desafio_id,
       github_url: s.github_url,
-      status: s.status,
+      status: normalizedStatus,
       admin_notes: s.admin_notes,
       reviewed_by: s.reviewed_by,
       reviewed_at: s.reviewed_at,
@@ -110,7 +124,8 @@ export async function GET(request: Request) {
         ranking_position: rankingMap.get(s.user_id) || null
       } : null,
       desafio: s.desafios
-    }))
+      }
+    })
 
     return NextResponse.json({
       success: true,

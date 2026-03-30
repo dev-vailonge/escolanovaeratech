@@ -84,7 +84,7 @@ export async function PUT(
       )
     }
 
-    if (submission.status !== 'pendente') {
+    if (submission.status !== 'pendente' && submission.status !== 'pending') {
       return NextResponse.json(
         { error: 'Esta submissão já foi revisada' },
         { status: 400 }
@@ -105,7 +105,6 @@ export async function PUT(
       .single()
 
     if (updateError) {
-      console.error('Erro ao atualizar submissão:', updateError)
       return NextResponse.json(
         { error: 'Erro ao atualizar submissão' },
         { status: 500 }
@@ -129,12 +128,10 @@ export async function PUT(
         if (result.awarded) {
           xpAwarded = result.xp ?? 0
           xpAwardedSuccessfully = true
-          console.log(`✅ XP concedido ao aluno: ${xpAwarded} (awarded: ${result.awarded})`)
         } else {
           // Se já estava completo, ainda mostrar o XP padrão na notificação
           xpAwarded = XP_CONSTANTS.desafio.completo
           xpError = { reason: result.reason, message: `Desafio já estava completo: ${result.reason}` }
-          console.log(`⚠️ Desafio já estava completo (reason: ${result.reason}), usando XP padrão: ${xpAwarded}`)
         }
       } catch (xpErrorCaught: any) {
         xpError = {
@@ -143,17 +140,8 @@ export async function PUT(
           code: xpErrorCaught?.code,
           rpcError: xpErrorCaught?.rpcError, // Incluir erro RPC se existir
         }
-        console.error('❌ [API] Erro ao dar XP - detalhes completos:', {
-          message: xpErrorCaught?.message,
-          code: xpErrorCaught?.code,
-          details: xpErrorCaught?.details,
-          hint: xpErrorCaught?.hint,
-          stack: xpErrorCaught?.stack,
-          rpcError: xpErrorCaught?.rpcError,
-        })
         // Em caso de erro, ainda mostrar o XP padrão na notificação
         xpAwarded = XP_CONSTANTS.desafio.completo
-        console.log(`⚠️ [API] Erro ao dar XP, usando XP padrão: ${xpAwarded}`)
       }
 
       // Notificar aluno sobre aprovação
@@ -163,7 +151,7 @@ export async function PUT(
         desafioId: submission.desafio_id,
         xpGanho: xpAwarded,
         accessToken
-      }).catch(err => console.error('Erro ao notificar aluno:', err))
+      }).catch(() => {})
     } else {
       // Notificar aluno sobre rejeição
       notificarAlunoDesafioRejeitado({
@@ -172,7 +160,7 @@ export async function PUT(
         desafioId: submission.desafio_id,
         motivo: admin_notes,
         accessToken
-      }).catch(err => console.error('Erro ao notificar aluno:', err))
+      }).catch(() => {})
     }
 
     // Retornar informações detalhadas para debug no console do navegador
@@ -206,8 +194,6 @@ export async function PUT(
     return NextResponse.json(responseData)
 
   } catch (error: any) {
-    console.error('Erro ao atualizar submissão:', error)
-    
     if (error.message === 'Não autenticado') {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }

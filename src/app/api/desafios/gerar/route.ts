@@ -260,12 +260,11 @@ export async function POST(request: Request) {
             })
             if (rows.length > 0) {
               await supabase.from('desafio_aulas_sugeridas').insert(rows)
-              console.log(`✅ Aulas sugeridas em cache para desafio ${novoDesafio.id}: ${rows.length} aulas`)
             }
           }
         }
       } catch (err) {
-        console.error('⚠️ Erro ao popular aulas sugeridas (não bloqueia resposta):', err)
+        void err
       }
     }
 

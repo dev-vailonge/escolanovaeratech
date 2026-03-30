@@ -81,7 +81,6 @@ export async function POST(
       .maybeSingle()
     
     if (existingError && existingError.code !== 'PGRST116') {
-      console.error('❌ Erro ao verificar submissão existente:', existingError)
       return NextResponse.json(
         { error: 'Erro ao verificar submissão existente' },
         { status: 500 }
@@ -116,13 +115,6 @@ export async function POST(
         .single()
 
       if (updateError) {
-        console.error('❌ Erro ao atualizar submissão:', updateError)
-        console.error('❌ Detalhes do erro:', {
-          message: updateError.message,
-          details: updateError.details,
-          hint: updateError.hint,
-          code: updateError.code,
-        })
         return NextResponse.json(
           { 
             error: 'Erro ao atualizar submissão',
@@ -141,7 +133,7 @@ export async function POST(
         desafioId: desafio.id,
         submissionId: updated.id,
         accessToken
-      }).catch(err => console.error('Erro ao notificar admins:', err))
+      }).catch(() => {})
 
       return NextResponse.json({
         success: true,
@@ -165,7 +157,6 @@ export async function POST(
       .single()
 
     if (insertError) {
-      console.error('Erro ao criar submissão:', insertError)
       return NextResponse.json(
         { error: 'Erro ao criar submissão' },
         { status: 500 }
@@ -180,7 +171,7 @@ export async function POST(
       desafioId: desafio.id,
       submissionId: submission.id,
       accessToken
-    }).catch(err => console.error('Erro ao notificar admins:', err))
+    }).catch(() => {})
 
     return NextResponse.json({
       success: true,
@@ -189,8 +180,6 @@ export async function POST(
     })
 
   } catch (error: any) {
-    console.error('Erro ao submeter desafio:', error)
-    
     if (error.message === 'Não autenticado') {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }

@@ -20,7 +20,6 @@ import { XP_CONSTANTS } from '@/lib/gamification/constants'
 import { SubmittersFacepile, type FacepilePerson } from '@/components/ui/SubmittersFacepile'
 
 type TabType = 'desafios' | 'submissions'
-type StatusFilter = 'pendente' | 'aprovado' | 'rejeitado' | 'todos'
 
 export default function AdminDesafiosTab() {
   const { theme } = useTheme()
@@ -46,7 +45,6 @@ export default function AdminDesafiosTab() {
   // Estados para submissions
   const [submissions, setSubmissions] = useState<DesafioSubmissionWithUser[]>([])
   const [loadingSubmissions, setLoadingSubmissions] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('pendente')
   const [reviewingSubmission, setReviewingSubmission] = useState<DesafioSubmissionWithUser | null>(null)
   const [adminNotes, setAdminNotes] = useState('')
   const [isApproving, setIsApproving] = useState(false)
@@ -109,7 +107,7 @@ export default function AdminDesafiosTab() {
       carregarSubmissions()
       setCurrentPageSubmissions(1) // Resetar página ao mudar filtro
     }
-  }, [activeTab, statusFilter])
+  }, [activeTab])
 
   useEffect(() => {
     if (desafios.length === 0) return
@@ -179,7 +177,7 @@ export default function AdminDesafiosTab() {
       const token = session?.access_token
       if (!token) throw new Error('Não autenticado')
 
-      const res = await safeFetch(`/api/admin/submissions?status=${statusFilter}`, {
+      const res = await safeFetch('/api/admin/submissions?status=todos', {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 10000,
         retry: true,
@@ -199,7 +197,7 @@ export default function AdminDesafiosTab() {
     } finally {
       setLoadingSubmissions(false)
     }
-  }, [statusFilter])
+  }, [])
 
   const handleReviewSubmission = async (status: 'aprovado' | 'rejeitado') => {
     if (!reviewingSubmission) return
@@ -626,29 +624,6 @@ export default function AdminDesafiosTab() {
             </div>
           </div>
 
-          {/* Filtro por status */}
-          <div className="flex items-center gap-2">
-            <Filter className={cn(
-              "w-4 h-4",
-              theme === 'dark' ? "text-gray-400" : "text-gray-600"
-            )} />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className={cn(
-                "px-3 py-1.5 rounded-lg border text-sm focus:outline-none focus:ring-2 transition-colors",
-                theme === 'dark'
-                  ? "bg-black/50 border-white/10 text-white focus:border-yellow-400 focus:ring-yellow-400/20"
-                  : "bg-white border-gray-300 text-gray-900 focus:border-yellow-500 focus:ring-yellow-500/20"
-              )}
-            >
-              <option value="pendente">Pendentes</option>
-              <option value="aprovado">Aprovados</option>
-              <option value="rejeitado">Rejeitados</option>
-              <option value="todos">Todos</option>
-            </select>
-          </div>
-
           {/* Modal de Revisão */}
           <Modal
             isOpen={!!reviewingSubmission}
@@ -881,10 +856,7 @@ export default function AdminDesafiosTab() {
                 ? "bg-black/20 border-white/10 text-gray-400"
                 : "bg-gray-50 border-gray-200 text-gray-600"
             )}>
-              {statusFilter === 'pendente'
-                ? 'Nenhuma submissão pendente de revisão.'
-                : `Nenhuma submissão ${statusFilter === 'todos' ? '' : statusFilter} encontrada.`
-              }
+              Nenhuma submissão encontrada.
             </div>
           ) : (
             <>

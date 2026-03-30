@@ -95,7 +95,6 @@ export async function POST(request: Request) {
       .eq('id', userId)
 
     if (updateError) {
-      console.error('[API /formacoes/validar] erro ao atualizar role:', updateError)
       return NextResponse.json({ error: 'Erro ao atualizar role do usuário' }, { status: 500 })
     }
 
@@ -109,7 +108,6 @@ export async function POST(request: Request) {
     if (message.includes('Não autenticado')) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
-    console.error('[API /formacoes/validar]', error)
     return NextResponse.json({ error: message, validated: false }, { status: 500 })
   }
 }
