@@ -30,8 +30,8 @@ export default function NorteTechPage() {
     },
     {
       key: 'nort-test',
-      title: 'Nort Test',
-      description: 'Nort Test é um teste feito com a ajuda de inteligência artificial para você identificar a área que mais gosta.',
+      title: 'Norte Test',
+      description: 'Norte Test é um teste feito com a ajuda de inteligência artificial para você identificar a área que mais gosta.',
       icon: Sparkles,
       bullets: [
         'Diagnóstico guiado por IA',
@@ -39,7 +39,7 @@ export default function NorteTechPage() {
         'Análise do seu perfil em evolução',
         'Recomendação da área com mais fit',
       ],
-      ctaLabel: 'Iniciar Nort Test',
+      ctaLabel: 'Iniciar Norte Test',
       href: '/aluno/norte-tech-test',
       ribbon: 'NOVO',
     },
@@ -64,7 +64,7 @@ export default function NorteTechPage() {
                 <h1 className={cn('text-[2.6rem] font-extrabold tracking-[-0.02em]', isDark ? 'text-white' : 'text-gray-900')}>Norte Tech</h1>
               </div>
               <p className={cn('text-[1.01rem] md:text-[1.15rem] max-w-2xl', isDark ? 'text-gray-400' : 'text-gray-600')}>
-                Curso criado para você dar o primeiro passo na área da programação. Aqui você fará na prática 1 projeto para as principais áreas e, no final, realizará nosso teste Nort Test para identificar a área que mais gosta.
+                Curso criado para você dar o primeiro passo na área da programação. Aqui você fará na prática 1 projeto para as principais áreas e, no final, realizará nosso teste Norte Test para identificar a área que mais gosta.
               </p>
             </div>
 
@@ -205,7 +205,7 @@ export default function NorteTechPage() {
               Aqui na Escola Nova Era, tudo está configurado para o seu sucesso: não são somente aulas gravadas. Será uma experiência imersiva, com a oportunidade de trabalhar em projetos reais com programadores reais, ganhando experiência enquanto estuda.
               <br />
               <br />
-              Mas, calma: sem pressa. Primeiro, evolua no Norte Tech e decida em qual área você quer se aprofundar. E não esqueça de fazer o Nort Test.
+              Mas, calma: sem pressa. Primeiro, evolua no Norte Tech e decida em qual área você quer se aprofundar. E não esqueça de fazer o Norte Test.
             </p>
           </div>
 
