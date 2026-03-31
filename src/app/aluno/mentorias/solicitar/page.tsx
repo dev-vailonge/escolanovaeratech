@@ -45,10 +45,9 @@ export default function SolicitarMentoriaPage() {
         >
           Aqui você poderá contar um pouco sobre seu momento, sua rotina e o
           que espera da mentoria. Usaremos essas informações para entender se a
-          mentoria individual com o Rock faz sentido para você agora.
+          mentoria individual com o Roque faz sentido para você agora.
         </p>
       </div>
     </section>
   )
 }
-

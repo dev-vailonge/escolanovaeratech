@@ -91,7 +91,7 @@ export default function MentoriasPage() {
               isDark ? 'text-gray-300' : 'text-gray-700'
             )}
           >
-            Se deseja participar de uma mentoria individual com o Rock, preencha
+            Se deseja participar de uma mentoria individual com o Roque, preencha
             o formulário abaixo.
           </p>
         </div>
@@ -127,7 +127,7 @@ export default function MentoriasPage() {
         )}
       >
         Acompanhe sua evolução etapa por etapa na mentoria individual com o
-        Rock.
+        Roque.
       </p>
 
       <MentoriaTimeline mentoria={mentoria} onRefetch={loadMentoria} />
