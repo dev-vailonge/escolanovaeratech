@@ -64,7 +64,7 @@ function normalizePassos(raw: any): DesafioPassoUI[] {
 
 export default function DesafiosPage() {
   const { theme } = useTheme()
-  const { user: authUser } = useAuth()
+  const { user: authUser, initialized: authInitialized } = useAuth()
   const canParticipate = hasFullAccess(authUser)
 
   // Estados
@@ -387,8 +387,9 @@ export default function DesafiosPage() {
   }, [authUser?.id])
 
   useEffect(() => {
+    if (!authInitialized) return
     loadMeusDesafios(true) // Primeiro carregamento com loading completo
-  }, [loadMeusDesafios])
+  }, [authInitialized, loadMeusDesafios])
 
   // Facepile: quem já enviou por desafio (API agregada)
   useEffect(() => {
