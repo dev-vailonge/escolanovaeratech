@@ -183,21 +183,42 @@ export async function getAulasDoCurso(subdomain: string, productId: string): Pro
  * GET v1/users?subdomain={subdomain}
  */
 export async function getUsersBySubdomain(subdomain: string): Promise<HotmartClubUser[]> {
-  const url = `${HOTMART_BASE}/v1/users?subdomain=${encodeURIComponent(subdomain)}`
-  const res = await fetchHotmartGet(url)
+  const users: HotmartClubUser[] = []
+  let pageToken: string | null = null
 
-  if (!res.ok) {
-    const text = await res.text()
-    console.error('[Hotmart] getUsersBySubdomain error:', res.status, text)
-    throw new Error(`Hotmart users: ${res.status} ${text}`)
+  while (true) {
+    const url =
+      `${HOTMART_BASE}/v1/users?subdomain=${encodeURIComponent(subdomain)}` +
+      `&max_results=100` +
+      (pageToken ? `&page_token=${encodeURIComponent(pageToken)}` : '')
+
+    const res = await fetchHotmartGet(url)
+
+    if (!res.ok) {
+      const text = await res.text()
+      console.error('[Hotmart] getUsersBySubdomain error:', res.status, text)
+      throw new Error(`Hotmart users: ${res.status} ${text}`)
+    }
+
+    const data = (await res.json()) as {
+      items?: Array<{ email?: string; status?: string }>
+      page_info?: { next_page_token?: string | null }
+    }
+
+    const items = Array.isArray(data?.items) ? data.items : []
+    users.push(
+      ...items
+        .map((u) => ({
+          email: String(u.email ?? '').trim(),
+          status: String(u.status ?? '').trim(),
+        }))
+        .filter((u) => u.email.length > 0)
+    )
+
+    const next = String(data?.page_info?.next_page_token ?? '').trim()
+    if (!next) break
+    pageToken = next
   }
 
-  const data = await res.json()
-  const raw = Array.isArray(data) ? data : data?.items ?? []
-  return (Array.isArray(raw) ? raw : [])
-    .map((u: { email?: string; status?: string }) => ({
-      email: String(u.email ?? '').trim(),
-      status: String(u.status ?? '').trim(),
-    }))
-    .filter((u) => u.email.length > 0)
+  return users
 }
