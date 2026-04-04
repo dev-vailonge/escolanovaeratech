@@ -48,10 +48,6 @@ export async function GET(request: NextRequest) {
       type,
       ranking: ranking || [],
       currentUserPosition: currentUser?.position || null,
-      debug: {
-        rankingCount: ranking?.length || 0,
-        hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      },
     })
 
     // Headers de cache para o browser

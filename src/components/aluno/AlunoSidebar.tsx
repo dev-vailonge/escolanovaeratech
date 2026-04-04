@@ -24,11 +24,30 @@ import {
   Sparkles,
   Compass,
   LayoutDashboard,
+  FolderKanban,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSidebar } from '@/lib/SidebarContext'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
+
+/** `true` quando for liberar o hub /aluno/projetos na navegação */
+const SHOW_PROJETOS_REAIS_MENU = false
+
+function isProjetosReaisNavActive(p: string): boolean {
+  return (
+    p === '/aluno/projetos' ||
+    p.startsWith('/aluno/projetos/') ||
+    (p.includes('/formacoes/') && p.includes('/projetos/'))
+  )
+}
+
+function navItemActive(
+  item: { href: string; isActive?: (pathname: string) => boolean },
+  p: string
+): boolean {
+  return item.isActive ? item.isActive(p) : p === item.href || p.startsWith(item.href + '/')
+}
 
 // Menu items principais (mostrados na bottom bar mobile)
 const mainMenuItems = [
@@ -43,17 +62,48 @@ const mainMenuItems = [
 // NOTA: Perfil foi movido para a bottom bar, então foi removido daqui
 // NOTA: Comunidade foi movida para a bottom bar, então foi removida daqui
 // NOTA: Formulários foi removido - acesso apenas via notificações
-const baseMenuModalItems = [
+const baseMenuModalItems: {
+  icon: typeof Target
+  label: string
+  href: string
+  isActive?: (pathname: string) => boolean
+}[] = [
   { icon: Target, label: 'Desafios', href: '/aluno/desafios' },
   { icon: LayoutDashboard, label: 'Plano de estudos', href: '/aluno/command' },
+  ...(SHOW_PROJETOS_REAIS_MENU
+    ? [
+        {
+          icon: FolderKanban,
+          label: 'Projetos reais',
+          href: '/aluno/projetos',
+          isActive: isProjetosReaisNavActive,
+        },
+      ]
+    : []),
   { icon: Sparkles, label: 'Mentorias', href: '/aluno/mentorias' },
 ]
 
 // Menu items secundários (apenas no sidebar desktop)
 // NOTA: Perfil e Comunidade foram removidos daqui pois já estão em mainMenuItems
 // NOTA: Formulários foi removido - acesso apenas via notificações
-const secondaryMenuItems = [
+const secondaryMenuItems: {
+  icon: typeof LayoutDashboard
+  label: string
+  href: string
+  /** Quando definido, usa esta regra no lugar de prefixo de `href` */
+  isActive?: (pathname: string) => boolean
+}[] = [
   { icon: LayoutDashboard, label: 'Plano de estudos', href: '/aluno/command' },
+  ...(SHOW_PROJETOS_REAIS_MENU
+    ? [
+        {
+          icon: FolderKanban,
+          label: 'Projetos reais',
+          href: '/aluno/projetos',
+          isActive: isProjetosReaisNavActive,
+        },
+      ]
+    : []),
   { icon: Sparkles, label: 'Mentorias', href: '/aluno/mentorias' },
 ]
 const helpCenterItem = null
@@ -150,7 +200,6 @@ export default function AlunoSidebar() {
       // Forçar reload completo para limpar todos os estados
       window.location.href = '/'
     } catch (error) {
-      console.error('Erro ao fazer logout:', error)
       // Mesmo com erro, redirecionar
       window.location.href = '/'
     }
@@ -193,14 +242,10 @@ export default function AlunoSidebar() {
   }, [pathname])
 
   // Verifica se algum item do modal está ativo
-  const isMenuItemActive = menuModalItems.some(item => 
-    pathname === item.href || pathname.startsWith(item.href + '/')
-  )
+  const isMenuItemActive = menuModalItems.some((item) => navItemActive(item, pathname))
 
   // Encontra qual item do modal está ativo
-  const activeMenuItem = menuModalItems.find(item => 
-    pathname === item.href || pathname.startsWith(item.href + '/')
-  )
+  const activeMenuItem = menuModalItems.find((item) => navItemActive(item, pathname))
 
   // Ícone a ser exibido no botão central
   const CentralIcon = activeMenuItem ? activeMenuItem.icon : Menu
@@ -270,7 +315,7 @@ export default function AlunoSidebar() {
               <div className="px-4 pb-6 grid grid-cols-3 gap-3">
                 {menuModalItems.map((item) => {
                   const Icon = item.icon
-                  const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+                  const isActive = navItemActive(item, pathname)
 
                   return (
                     <Link
@@ -826,7 +871,9 @@ export default function AlunoSidebar() {
           {/* Menu items secundários */}
           {secondaryMenuItems.map((item) => {
             const Icon = item.icon
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+            const isActive = item.isActive
+              ? item.isActive(pathname)
+              : pathname === item.href || pathname.startsWith(item.href + '/')
 
             return (
               <Link

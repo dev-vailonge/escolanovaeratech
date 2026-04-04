@@ -3,6 +3,25 @@ import { requireUserIdFromBearer } from '@/lib/server/requestAuth'
 import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { calculateLevel } from '@/lib/gamification'
 
+/** Mês civil para o ranking (alinhado ao mural “março de 2026”, etc.) */
+const RANKING_TIMEZONE = 'America/Sao_Paulo'
+
+function monthKeyFromTimestamp(isoOrDate: string | Date): string {
+  const d = typeof isoOrDate === 'string' ? new Date(isoOrDate) : isoOrDate
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: RANKING_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+  }).formatToParts(d)
+  const y = parts.find((p) => p.type === 'year')?.value ?? '1970'
+  const m = parts.find((p) => p.type === 'month')?.value ?? '01'
+  return `${y}-${m}`
+}
+
+function currentMonthKeyRanking(): string {
+  return monthKeyFromTimestamp(new Date())
+}
+
 export async function GET(request: NextRequest) {
   try {
     await requireUserIdFromBearer(request)
@@ -29,9 +48,8 @@ export async function GET(request: NextRequest) {
     const { data: users, error: usersError } = await supabase
       .from('users')
       .select('id, name, avatar_url, xp')
-      // Não incluir admins no ranking/histórico
-      .in('role', ['aluno', 'formacao'])
-      .eq('access_level', 'full')
+      // Única regra do ranking: admins não entram
+      .neq('role', 'admin')
 
     if (usersError) {
       console.error('Erro ao buscar usuários:', usersError)
@@ -44,24 +62,22 @@ export async function GET(request: NextRequest) {
     // Agrupar XP por mês/ano e por usuário
     const xpPorMesUsuario = new Map<string, Map<string, number>>()
 
-    // Processar histórico de XP
+    // Processar histórico de XP (mês civil America/Sao_Paulo, alinhado ao mural)
     if (xpHistory && xpHistory.length > 0) {
       for (const entry of xpHistory) {
-        const date = new Date(entry.created_at)
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-        
+        const monthKey = monthKeyFromTimestamp(entry.created_at)
+
         if (!xpPorMesUsuario.has(monthKey)) {
           xpPorMesUsuario.set(monthKey, new Map())
         }
 
         const usuariosDoMes = xpPorMesUsuario.get(monthKey)!
         const xpAtual = usuariosDoMes.get(entry.user_id) || 0
-        usuariosDoMes.set(entry.user_id, xpAtual + entry.amount)
+        usuariosDoMes.set(entry.user_id, xpAtual + (entry.amount || 0))
       }
     }
 
-    const now = new Date()
-    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const currentMonthKey = currentMonthKeyRanking()
 
     // Encontrar campeão de cada mês
     const historico: any[] = []
@@ -80,29 +96,28 @@ export async function GET(request: NextRequest) {
 
     for (const monthKey of mesesOrdenados) {
       const [year, month] = monthKey.split('-')
-      const monthName = new Date(parseInt(year), parseInt(month) - 1, 1).toLocaleDateString('pt-BR', {
-        month: 'long',
-        year: 'numeric',
-      })
+      const monthName = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1).toLocaleDateString(
+        'pt-BR',
+        {
+          month: 'long',
+          year: 'numeric',
+        }
+      )
 
       // Evitar meses duplicados
       if (mesesProcessados.has(monthKey)) continue
       mesesProcessados.add(monthKey)
 
       const usuariosDoMes = xpPorMesUsuario.get(monthKey)!
-      
-      // Encontrar usuário com mais XP no mês
-      let campeaoId: string | null = null
-      let maxXp = 0
 
-      for (const [userId, xp] of usuariosDoMes.entries()) {
-        if (xp > maxXp) {
-          maxXp = xp
-          campeaoId = userId
-        }
-      }
+      // Campeão = maior XP no mês entre alunos/formação com access full (ignora admin no topo)
+      const eligible = Array.from(usuariosDoMes.entries())
+        .filter(([userId]) => usersMap.has(userId))
+        .sort((a, b) => b[1] - a[1])
 
-      if (campeaoId && usersMap.has(campeaoId)) {
+      const top = eligible[0]
+      if (top && top[1] > 0) {
+        const [campeaoId, maxXp] = top
         const user = usersMap.get(campeaoId)!
         const xpTotal = user.xp || 0
         const level = calculateLevel(xpTotal)

@@ -392,14 +392,13 @@ export default function RankingPage() {
   }, [rankingMensal, isDia1])
 
 
-  // Criar lista de meses (12 meses do ano atual: Jan a Dez)
+  // 12 meses do ano corrente (keys YYYY-MM iguais à API / ranking/historico)
+  const calendarYear = new Date().getFullYear()
   const mesesAno = useMemo(() => {
     const lista: Array<{ key: string; nome: string; nomeAbreviado: string; date: Date }> = []
-    const anoAtual = now.getFullYear()
 
-    // Sempre mostrar os 12 meses do ano atual (janeiro a dezembro)
     for (let i = 0; i < 12; i++) {
-      const date = new Date(anoAtual, i, 1)
+      const date = new Date(calendarYear, i, 1)
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
       const nomeCompleto = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
       const nomeAbreviado = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
@@ -407,12 +406,12 @@ export default function RankingPage() {
         key,
         nome: nomeCompleto.charAt(0).toUpperCase() + nomeCompleto.slice(1),
         nomeAbreviado: nomeAbreviado.charAt(0).toUpperCase() + nomeAbreviado.slice(1),
-        date
+        date,
       })
     }
 
     return lista
-  }, [])
+  }, [calendarYear])
 
   // Criar mapa de posições no ranking geral por user_id
   const posicoesGeral = useMemo(() => {

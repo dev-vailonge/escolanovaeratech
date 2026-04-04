@@ -482,16 +482,13 @@ export default function CreateQuizModal({ isOpen, onClose, onSave, quiz }: Creat
         perguntas: questions
       }
       
-      console.log('📝 Salvando quiz com', questions.length, 'perguntas...')
       
       // Esperar o save completar - NÃO fechar o modal aqui
       // O AdminQuizTab vai fechar quando terminar
       await onSave(dadosParaSalvar)
       
-      console.log('✅ Quiz salvo com sucesso!')
       // Não chamar onClose() aqui - deixar o AdminQuizTab controlar
     } catch (err: any) {
-      console.error('❌ Erro ao salvar quiz:', err)
       setValidationErrors({ general: err?.message || 'Erro ao salvar quiz. Tente novamente.' })
     } finally {
       setSaving(false)

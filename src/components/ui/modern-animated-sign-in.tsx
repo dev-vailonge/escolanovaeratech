@@ -471,7 +471,6 @@ const AnimatedForm = memo(function AnimatedForm({
                 e.currentTarget.style.borderColor = 'rgba(251, 191, 36, 0.2)'
               }}
               type='button'
-              onClick={() => console.log('Google login clicked')}
             >
               <span className='flex items-center justify-center w-full h-full gap-3 text-white'>
                 <Image

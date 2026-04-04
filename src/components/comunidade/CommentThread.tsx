@@ -68,7 +68,6 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
         setComentariosCount(json.comentarios.length)
       }
     } catch (e: any) {
-      console.error('Erro ao buscar contagem de comentários:', e)
     } finally {
       setLoadingCount(false)
     }
@@ -97,7 +96,6 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
         setBadgesMap(badges)
       }
     } catch (e: any) {
-      console.error('Erro ao buscar comentários:', e)
     } finally {
       setLoading(false)
     }
@@ -136,7 +134,6 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
           setShowMentionSuggestions(json.users.length > 0)
         }
       } catch (e) {
-        console.error('Erro ao buscar usuários:', e)
         setMentionUsers([])
         setShowMentionSuggestions(false)
       }
@@ -283,10 +280,8 @@ export default function CommentThread({ respostaId, perguntaId, canCreate = true
             // Atualizar o comentário com a URL da imagem
             json.comentario.imagemUrl = jsonImagem.imagem_url
           } else {
-            console.error('Erro ao fazer upload de imagem do comentário:', jsonImagem)
           }
         } catch (imgError: any) {
-          console.error('Erro ao fazer upload de imagem:', imgError)
         }
       }
 

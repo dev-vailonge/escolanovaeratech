@@ -12,6 +12,7 @@ type MentoriaStepProps = {
   isCurrent: boolean
   isBlocked: boolean
   onRefetch?: () => void
+  readOnly?: boolean
 }
 
 export function MentoriaStep({
@@ -20,6 +21,7 @@ export function MentoriaStep({
   isCurrent,
   isBlocked,
   onRefetch,
+  readOnly,
 }: MentoriaStepProps) {
   const isDone = step.status === 'concluido'
   const [safeHtml, setSafeHtml] = useState<string | null>(null)
@@ -64,8 +66,8 @@ export function MentoriaStep({
           </p>
           <MentoriaTarefas
             tarefas={tarefas}
-            canToggle={!isBlocked}
-            onToggleSuccess={onRefetch}
+            canToggle={!readOnly && !isBlocked}
+            onToggleSuccess={readOnly ? undefined : onRefetch}
           />
         </div>
       )}

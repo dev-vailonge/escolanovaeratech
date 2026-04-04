@@ -83,7 +83,6 @@ export default function AlunoHeader() {
           setXpHistory(json.history.slice(0, 10)) // Mostrar apenas os 10 mais recentes
         }
       } catch (error) {
-        console.error('Erro ao buscar histórico de XP:', error)
       } finally {
         setLoadingHistory(false)
       }

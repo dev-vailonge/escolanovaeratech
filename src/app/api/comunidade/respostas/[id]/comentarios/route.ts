@@ -40,7 +40,6 @@ export async function GET(
       .order('created_at', { ascending: true })
 
     if (error) {
-      console.error('Erro ao buscar comentários:', error)
       return NextResponse.json({ error: 'Erro ao buscar comentários' }, { status: 500 })
     }
 
@@ -64,8 +63,7 @@ export async function GET(
     }) || []
 
     return NextResponse.json({ success: true, comentarios: comentariosFormatados })
-  } catch (error: any) {
-    console.error('Erro ao buscar comentários:', error)
+  } catch {
     return NextResponse.json({ error: 'Erro ao buscar comentários' }, { status: 500 })
   }
 }
@@ -107,7 +105,6 @@ export async function POST(
       .single()
 
     if (perguntaError) {
-      console.error('❌ [API] Erro ao buscar pergunta:', perguntaError)
       return NextResponse.json({ error: 'Erro ao verificar status da pergunta' }, { status: 500 })
     }
 
@@ -172,7 +169,6 @@ export async function POST(
       .single()
 
     if (comentarioError) {
-      console.error('Erro ao criar comentário:', comentarioError)
       return NextResponse.json({ error: 'Erro ao criar comentário' }, { status: 500 })
     }
 
@@ -199,31 +195,20 @@ export async function POST(
           // Não notificar o próprio autor
           if (mentionedUser.id === userId) continue
 
-          const { error: notifError } = await notifSupabase
-            .from('notificacoes')
-            .insert({
-              titulo: '💬 Você foi mencionado',
-              mensagem: `${autorNome} mencionou você em um comentário.`,
-              tipo: 'info',
-              data_inicio: agora.toISOString(),
-              data_fim: dataFim.toISOString(),
-              publico_alvo: 'todos',
-              target_user_id: mentionedUser.id,
-              action_url: actionUrl,
-              created_by: null,
-            })
-
-          if (notifError) {
-            console.error(`❌ Erro ao criar notificação para usuário ${mentionedUser.id}:`, notifError)
-            console.error('❌ Detalhes do erro:', JSON.stringify(notifError, null, 2))
-          } else {
-            console.log(`✅ Notificação criada para usuário ${mentionedUser.id} (${mentionedUser.name})`)
-          }
+          await notifSupabase.from('notificacoes').insert({
+            titulo: '💬 Você foi mencionado',
+            mensagem: `${autorNome} mencionou você em um comentário.`,
+            tipo: 'info',
+            data_inicio: agora.toISOString(),
+            data_fim: dataFim.toISOString(),
+            publico_alvo: 'todos',
+            target_user_id: mentionedUser.id,
+            action_url: actionUrl,
+            created_by: null,
+          })
         }
-      } catch (notifErr: any) {
+      } catch {
         // Não falhar a criação do comentário se notificação falhar
-        console.error('❌ Erro ao criar notificações de menção:', notifErr)
-        console.error('❌ Stack trace:', notifErr?.stack)
       }
     }
 
@@ -244,9 +229,8 @@ export async function POST(
     }
 
     return NextResponse.json({ success: true, comentario: comentarioFormatado })
-  } catch (error: any) {
-    console.error('Erro ao criar comentário:', error)
-    if (String(error?.message || '').includes('Não autenticado')) {
+  } catch (error: unknown) {
+    if (String((error as Error)?.message || '').includes('Não autenticado')) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
     return NextResponse.json({ error: 'Erro ao criar comentário' }, { status: 500 })

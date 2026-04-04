@@ -224,7 +224,6 @@ export default function AlunoDashboard() {
     } catch (err) {
       // Silenciar erro em produção para melhor performance
       if (process.env.NODE_ENV === 'development') {
-        console.error('❌ Erro ao obter sessão:', err)
       }
     }
 
@@ -348,7 +347,6 @@ export default function AlunoDashboard() {
     } catch (error) {
       // Silenciar erro em produção
       if (process.env.NODE_ENV === 'development') {
-        console.error('Erro ao buscar dados do dashboard:', error)
       }
     } finally {
       setLoadingData(false)

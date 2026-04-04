@@ -36,7 +36,6 @@ const isSupabaseConfigured = () => {
 
 export async function getUserById(userId: string): Promise<DatabaseUser | null> {
   if (!isSupabaseConfigured()) {
-    console.warn('Supabase não configurado - getUserById retornando null')
     return null
   }
 
@@ -53,20 +52,17 @@ export async function getUserById(userId: string): Promise<DatabaseUser | null> 
       if (error.code === 'PGRST116') {
         return null
       }
-      console.error('Error fetching user:', error)
       return null
     }
 
     return data
   } catch (error) {
-    console.error('Error in getUserById:', error)
     return null
   }
 }
 
 export async function getUserByEmail(email: string): Promise<DatabaseUser | null> {
   if (!isSupabaseConfigured()) {
-    console.warn('Supabase não configurado - getUserByEmail retornando null')
     return null
   }
 
@@ -83,13 +79,11 @@ export async function getUserByEmail(email: string): Promise<DatabaseUser | null
       if (error.code === 'PGRST116') {
         return null
       }
-      console.error('Error fetching user by email:', error)
       return null
     }
 
     return data
   } catch (error) {
-    console.error('Error in getUserByEmail:', error)
     return null
   }
 }
@@ -101,7 +95,6 @@ export async function updateUserAccessLevel(userId: string, accessLevel: 'full' 
     .eq('id', userId)
 
   if (error) {
-    console.error('Error updating user access level:', error)
     return false
   }
 
@@ -117,7 +110,6 @@ export async function updateUserRole(
   role: 'admin' | 'aluno' | 'formacao'
 ): Promise<boolean> {
   if (!isSupabaseConfigured()) {
-    console.warn('Supabase não configurado - updateUserRole retornando false')
     return false
   }
 
@@ -128,13 +120,11 @@ export async function updateUserRole(
       .eq('id', userId)
 
     if (error) {
-      console.error('Error updating user role:', error)
       return false
     }
 
     return true
   } catch (error) {
-    console.error('Error in updateUserRole:', error)
     return false
   }
 }
@@ -151,7 +141,6 @@ export async function createUser(userData: {
   access_level?: 'full' | 'limited'
 }): Promise<DatabaseUser | null> {
   if (!isSupabaseConfigured()) {
-    console.warn('Supabase não configurado - createUser retornando null')
     return null
   }
 
@@ -160,7 +149,6 @@ export async function createUser(userData: {
     if (userData.id) {
       const existingById = await getUserById(userData.id)
       if (existingById) {
-        console.log(`Usuário já existe com ID: ${userData.id}`)
         return existingById
       }
     }
@@ -168,14 +156,6 @@ export async function createUser(userData: {
     // Verificar se já existe usuário com este email
     const existingByEmail = await getUserByEmail(userData.email)
     if (existingByEmail) {
-      // Se um ID foi fornecido e já existe usuário com aquele email mas ID diferente,
-      // retornar o existente. O vínculo correto será feito via email no futuro.
-      // NOTA: Isso pode causar problemas se o ID não corresponder ao auth.users.id,
-      // mas será resolvido quando implementar vínculo por email.
-      if (userData.id && existingByEmail.id !== userData.id) {
-        console.warn(`⚠️ Usuário ${userData.email} já existe com ID diferente (${existingByEmail.id} vs ${userData.id}). Retornando existente.`)
-      }
-      console.log(`Usuário já existe: ${userData.email}`)
       return existingByEmail
     }
 
@@ -198,14 +178,11 @@ export async function createUser(userData: {
       .single()
 
     if (error) {
-      console.error('Error creating user:', error)
       return null
     }
 
-    console.log(`✅ Usuário criado: ${userData.email}`)
     return data
   } catch (error) {
-    console.error('Error in createUser:', error)
     return null
   }
 }
@@ -216,7 +193,6 @@ export async function createUser(userData: {
  */
 export async function getAllUsers(): Promise<DatabaseUser[]> {
   if (!isSupabaseConfigured()) {
-    console.warn('Supabase não configurado - getAllUsers retornando []')
     return []
   }
 
@@ -227,13 +203,11 @@ export async function getAllUsers(): Promise<DatabaseUser[]> {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching all users:', error)
       return []
     }
 
     return data || []
   } catch (error) {
-    console.error('Error in getAllUsers:', error)
     return []
   }
 }
@@ -246,13 +220,11 @@ export async function getRankingGeral(limit: number = 100): Promise<DatabaseUser
   const { data, error } = await supabase
     .from('users')
     .select('*')
-    .in('role', ['aluno', 'formacao'])
-    .eq('access_level', 'full')
+    .neq('role', 'admin')
     .order('xp', { ascending: false })
     .limit(limit)
 
   if (error) {
-    console.error('Error fetching ranking geral:', error)
     return []
   }
 
@@ -267,13 +239,11 @@ export async function getRankingMensal(limit: number = 100): Promise<DatabaseUse
   const { data, error } = await supabase
     .from('users')
     .select('*')
-    .in('role', ['aluno', 'formacao'])
-    .eq('access_level', 'full')
+    .neq('role', 'admin')
     .order('xp_mensal', { ascending: false })
     .limit(limit)
 
   if (error) {
-    console.error('Error fetching ranking mensal:', error)
     return []
   }
 
@@ -292,7 +262,6 @@ export async function getQuizzes(): Promise<DatabaseQuiz[]> {
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('Error fetching quizzes:', error)
     return []
   }
 
@@ -311,32 +280,21 @@ export async function getAllQuizzes(): Promise<DatabaseQuiz[]> {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching all quizzes:', error)
       return []
     }
 
     return data || []
   } catch (error) {
-    console.error('Error in getAllQuizzes:', error)
     return []
   }
 }
 
 export async function createQuiz(quiz: Omit<DatabaseQuiz, 'id' | 'created_at' | 'updated_at'>): Promise<DatabaseQuiz | null> {
   if (!isSupabaseConfigured()) {
-    console.error('❌ Supabase não configurado')
     return null
   }
 
   try {
-    console.log('📤 createQuiz: Enviando para Supabase...')
-    console.log('📊 Dados:', {
-      titulo: quiz.titulo,
-      tecnologia: quiz.tecnologia,
-      nivel: quiz.nivel,
-      xp: quiz.xp,
-      numQuestoes: Array.isArray(quiz.questoes) ? quiz.questoes.length : 0
-    })
     
     // Timeout de 30 segundos
     const controller = new AbortController()
@@ -351,30 +309,21 @@ export async function createQuiz(quiz: Omit<DatabaseQuiz, 'id' | 'created_at' | 
     clearTimeout(timeoutId)
 
     if (error) {
-      console.error('❌ Error creating quiz:', error.message, error.details, error.hint)
       return null
     }
 
-    console.log('✅ Quiz criado no Supabase:', data?.id)
     return data
-  } catch (error: any) {
-    if (error?.name === 'AbortError') {
-      console.error('❌ Timeout: criação do quiz demorou mais de 30s')
-    } else {
-      console.error('❌ Error in createQuiz:', error)
-    }
+  } catch {
     return null
   }
 }
 
 export async function updateQuiz(quizId: string, updates: Partial<DatabaseQuiz>): Promise<boolean> {
   if (!isSupabaseConfigured()) {
-    console.error('❌ Supabase não configurado')
     return false
   }
 
   try {
-    console.log('📤 updateQuiz: Atualizando quiz', quizId)
     
     // Timeout de 30 segundos
     const controller = new AbortController()
@@ -389,18 +338,11 @@ export async function updateQuiz(quizId: string, updates: Partial<DatabaseQuiz>)
     clearTimeout(timeoutId)
 
     if (error) {
-      console.error('❌ Error updating quiz:', error.message, error.details, error.hint)
       return false
     }
 
-    console.log('✅ Quiz atualizado com sucesso')
     return true
-  } catch (error: any) {
-    if (error?.name === 'AbortError') {
-      console.error('❌ Timeout: atualização do quiz demorou mais de 30s')
-    } else {
-      console.error('❌ Error in updateQuiz:', error)
-    }
+  } catch {
     return false
   }
 }
@@ -417,13 +359,11 @@ export async function deleteQuiz(quizId: string): Promise<boolean> {
       .eq('id', quizId)
 
     if (error) {
-      console.error('Error deleting quiz:', error)
       return false
     }
 
     return true
   } catch (error) {
-    console.error('Error in deleteQuiz:', error)
     return false
   }
 }
@@ -439,7 +379,6 @@ export async function getDesafios(): Promise<DatabaseDesafio[]> {
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('Error fetching desafios:', error)
     return []
   }
 
@@ -462,13 +401,11 @@ export async function createDesafio(desafio: Omit<DatabaseDesafio, 'id' | 'creat
       .single()
 
     if (error) {
-      console.error('Error creating desafio:', error)
       return null
     }
 
     return data
   } catch (error) {
-    console.error('Error in createDesafio:', error)
     return null
   }
 }
@@ -485,13 +422,11 @@ export async function updateDesafio(desafioId: string, updates: Partial<Database
       .eq('id', desafioId)
 
     if (error) {
-      console.error('Error updating desafio:', error)
       return false
     }
 
     return true
   } catch (error) {
-    console.error('Error in updateDesafio:', error)
     return false
   }
 }
@@ -508,13 +443,11 @@ export async function deleteDesafio(desafioId: string): Promise<boolean> {
       .eq('id', desafioId)
 
     if (error) {
-      console.error('Error deleting desafio:', error)
       return false
     }
 
     return true
   } catch (error) {
-    console.error('Error in deleteDesafio:', error)
     return false
   }
 }
@@ -558,7 +491,6 @@ export async function getNotificacoesAtivas(userId?: string, publicoAlvo?: strin
   const { data: broadcastNotifs, error } = await broadcastQuery
 
   if (error) {
-    console.error('Error fetching notificacoes:', error)
     return individualNotifs // Retornar ao menos as individuais
   }
 
@@ -581,13 +513,11 @@ export async function getAllNotificacoes(): Promise<DatabaseNotificacao[]> {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching all notificacoes:', error)
       return []
     }
 
     return data || []
   } catch (error) {
-    console.error('Error in getAllNotificacoes:', error)
     return []
   }
 }
@@ -605,13 +535,11 @@ export async function createNotificacao(notificacao: Omit<DatabaseNotificacao, '
       .single()
 
     if (error) {
-      console.error('Error creating notificacao:', error)
       return null
     }
 
     return data
   } catch (error) {
-    console.error('Error in createNotificacao:', error)
     return null
   }
 }
@@ -628,13 +556,11 @@ export async function updateNotificacao(notificacaoId: string, updates: Partial<
       .eq('id', notificacaoId)
 
     if (error) {
-      console.error('Error updating notificacao:', error)
       return false
     }
 
     return true
   } catch (error) {
-    console.error('Error in updateNotificacao:', error)
     return false
   }
 }
@@ -651,13 +577,11 @@ export async function deleteNotificacao(notificacaoId: string): Promise<boolean>
       .eq('id', notificacaoId)
 
     if (error) {
-      console.error('Error deleting notificacao:', error)
       return false
     }
 
     return true
   } catch (error) {
-    console.error('Error in deleteNotificacao:', error)
     return false
   }
 }
@@ -674,12 +598,10 @@ export async function addXP(
   description?: string
 ): Promise<boolean> {
   if (!isSupabaseConfigured()) {
-    console.error('❌ Supabase não configurado - não é possível adicionar XP')
     return false
   }
 
   try {
-    console.log(`📤 Adicionando ${amount} XP ao usuário ${userId} (source: ${source}, sourceId: ${sourceId})`)
 
     const { data, error } = await supabase
       .from('user_xp_history')
@@ -693,16 +615,8 @@ export async function addXP(
       .select()
 
     if (error) {
-      console.error('❌ Error adding XP (tentando com Supabase Admin como fallback):')
-      console.error('  Message:', error.message)
-      console.error('  Details:', error.details)
-      console.error('  Hint:', error.hint)
-      console.error('  Code:', error.code)
-      
-      // Tentar com Supabase Admin se disponível (server-side apenas)
       if (getSupabaseAdmin && typeof window === 'undefined') {
         try {
-          console.log('🔄 Tentando inserir XP usando Supabase Admin...')
           const supabaseAdmin = getSupabaseAdmin()
           const { error: adminError } = await supabaseAdmin
             .from('user_xp_history')
@@ -713,52 +627,29 @@ export async function addXP(
               source_id: sourceId || null,
               description: description || null,
             })
-          
+
           if (adminError) {
-            console.error('❌ Erro mesmo com Admin:', adminError)
             return false
           }
-          
-          console.log('✅ XP inserido usando Supabase Admin')
-        } catch (adminErr: any) {
-          console.error('❌ Erro ao usar Supabase Admin:', adminErr)
+
+          await new Promise(resolve => setTimeout(resolve, 500))
+          await supabase.from('users').select('xp, xp_mensal, level').eq('id', userId).single()
+          return true
+        } catch {
           return false
         }
-      } else {
-        return false
       }
-    }
-
-    if (!data || data.length === 0) {
-      console.error('❌ Nenhum dado retornado ao inserir XP')
       return false
     }
 
-    console.log('✅ XP adicionado ao histórico:', data[0]?.id)
-
-    // Aguardar um pouco para o trigger processar
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    // Verificar se o trigger atualizou o XP do usuário
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('xp, xp_mensal, level')
-      .eq('id', userId)
-      .single()
-
-    if (userError) {
-      console.error('❌ Erro ao verificar XP do usuário:', userError.message)
-    } else if (userData) {
-      console.log(`✅ XP do usuário atualizado: ${userData.xp} XP, Nível ${userData.level}`)
-    } else {
-      console.warn('⚠️ Não foi possível verificar se o XP foi atualizado')
+    if (!data || data.length === 0) {
+      return false
     }
 
-    // O trigger no banco atualiza automaticamente o XP do usuário
+    await new Promise(resolve => setTimeout(resolve, 500))
+    await supabase.from('users').select('xp, xp_mensal, level').eq('id', userId).single()
     return true
   } catch (error: any) {
-    console.error('❌ Exceção ao adicionar XP:', error)
-    console.error('  Stack:', error.stack)
     return false
   }
 }
@@ -772,7 +663,6 @@ export async function getXPHistory(userId: string, limit: number = 50): Promise<
     .limit(limit)
 
   if (error) {
-    console.error('Error fetching XP history:', error)
     return []
   }
 
@@ -785,7 +675,6 @@ export async function getXPHistory(userId: string, limit: number = 50): Promise<
 
 export async function getFormulariosAtivos(): Promise<DatabaseFormulario[]> {
   if (!isSupabaseConfigured()) {
-    console.warn('Supabase não configurado - getFormulariosAtivos retornando []')
     return []
   }
 
@@ -797,13 +686,11 @@ export async function getFormulariosAtivos(): Promise<DatabaseFormulario[]> {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching formularios:', error)
       return []
     }
 
     return data || []
   } catch (error) {
-    console.error('Error in getFormulariosAtivos:', error)
     return []
   }
 }
@@ -814,32 +701,23 @@ export async function getAllFormularios(): Promise<DatabaseFormulario[]> {
   }
 
   try {
-    console.log('📥 Buscando todos os formulários...')
     const { data, error } = await supabase
       .from('formularios')
       .select('*')
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('❌ Error fetching all formularios:', error.message, error.details, error.hint)
       return []
-    }
-
-    console.log(`✅ Formulários encontrados: ${data?.length || 0}`)
-    if (data && data.length > 0) {
-      console.log('📋 IDs dos formulários:', data.map(f => f.id))
     }
 
     return data || []
   } catch (error) {
-    console.error('❌ Error in getAllFormularios:', error)
     return []
   }
 }
 
 export async function getFormularioById(formularioId: string): Promise<DatabaseFormulario | null> {
   if (!isSupabaseConfigured()) {
-    console.warn('Supabase não configurado - getFormularioById retornando null')
     return null
   }
 
@@ -852,13 +730,11 @@ export async function getFormularioById(formularioId: string): Promise<DatabaseF
       .single()
 
     if (error) {
-      console.error('Error fetching formulario:', error)
       return null
     }
 
     return data
   } catch (error) {
-    console.error('Error in getFormularioById:', error)
     return null
   }
 }
@@ -877,13 +753,11 @@ export async function verificarRespostaExistente(formularioId: string, userId: s
       .maybeSingle()
 
     if (error) {
-      console.error('Error checking existing resposta:', error)
       return false
     }
 
     return !!data
   } catch (error) {
-    console.error('Error in verificarRespostaExistente:', error)
     return false
   }
 }
@@ -894,7 +768,6 @@ export async function salvarRespostaFormulario(
   respostas: any
 ): Promise<DatabaseFormularioResposta | null> {
   if (!isSupabaseConfigured()) {
-    console.warn('Supabase não configurado - salvarRespostaFormulario retornando null')
     return null
   }
 
@@ -912,7 +785,6 @@ export async function salvarRespostaFormulario(
         .single()
 
       if (error) {
-        console.error('Error updating resposta:', error)
         return null
       }
 
@@ -930,14 +802,12 @@ export async function salvarRespostaFormulario(
         .single()
 
       if (error) {
-        console.error('Error creating resposta:', error)
         return null
       }
 
       return data
     }
   } catch (error) {
-    console.error('Error in salvarRespostaFormulario:', error)
     return null
   }
 }
@@ -955,13 +825,11 @@ export async function getRespostasFormulario(formularioId: string): Promise<Data
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching respostas:', error)
       return []
     }
 
     return data || []
   } catch (error) {
-    console.error('Error in getRespostasFormulario:', error)
     return []
   }
 }
@@ -980,13 +848,11 @@ export async function getMinhaRespostaFormulario(formularioId: string, userId: s
       .maybeSingle()
 
     if (error) {
-      console.error('Error fetching minha resposta:', error)
       return null
     }
 
     return data
   } catch (error) {
-    console.error('Error in getMinhaRespostaFormulario:', error)
     return null
   }
 }
@@ -1012,9 +878,6 @@ export async function createFormulario(formulario: Omit<DatabaseFormulario, 'id'
     }
     // Se não houver perguntas, simplesmente não incluir o campo
 
-    console.log('📤 createFormulario: Enviando para Supabase...')
-    console.log('📊 Dados:', JSON.stringify(dadosInsert, null, 2))
-    console.log('👤 Created by:', createdBy)
 
     const { data, error } = await supabase
       .from('formularios')
@@ -1023,18 +886,11 @@ export async function createFormulario(formulario: Omit<DatabaseFormulario, 'id'
       .single()
 
     if (error) {
-      console.error('❌ Error creating formulario:')
-      console.error('  Message:', error.message)
-      console.error('  Details:', error.details)
-      console.error('  Hint:', error.hint)
-      console.error('  Code:', error.code)
       return null
     }
 
-    console.log('✅ Formulário criado no Supabase:', data?.id)
     return data
   } catch (error: any) {
-    console.error('❌ Error in createFormulario:', error)
     return null
   }
 }
@@ -1051,13 +907,11 @@ export async function updateFormulario(formularioId: string, updates: Partial<Da
       .eq('id', formularioId)
 
     if (error) {
-      console.error('Error updating formulario:', error)
       return false
     }
 
     return true
   } catch (error) {
-    console.error('Error in updateFormulario:', error)
     return false
   }
 }
@@ -1068,7 +922,6 @@ export async function deleteFormulario(formularioId: string): Promise<boolean> {
   }
 
   try {
-    console.log(`🗑️ Iniciando exclusão do formulário ${formularioId}`)
 
     // Buscar todas as respostas ao formulário
     const { data: respostas, error: respostasError } = await supabase
@@ -1077,11 +930,9 @@ export async function deleteFormulario(formularioId: string): Promise<boolean> {
       .eq('formulario_id', formularioId)
 
     if (respostasError) {
-      console.error('Erro ao buscar respostas do formulário:', respostasError)
       return false
     }
 
-    console.log(`📊 Encontradas ${respostas?.length || 0} respostas ao formulário`)
 
     // Se houver respostas, reverter o XP dos usuários
     if (respostas && respostas.length > 0) {
@@ -1093,7 +944,6 @@ export async function deleteFormulario(formularioId: string): Promise<boolean> {
         .single()
 
       if (formularioError) {
-        console.error('Erro ao buscar informações do formulário:', formularioError)
         return false
       }
 
@@ -1113,56 +963,32 @@ export async function deleteFormulario(formularioId: string): Promise<boolean> {
             description: `XP removido - Formulário excluído: ${nomeFormulario}`
           }))
 
-          console.log(`💰 Revertendo XP de ${xpEntries.length} usuário(s)...`)
 
           const { error: xpError } = await supabaseAdmin
             .from('user_xp_history')
             .insert(xpEntries)
 
           if (xpError) {
-            console.error('❌ Erro ao reverter XP dos usuários:', xpError)
             return false
           }
 
-          console.log('✅ XP revertido com sucesso para todos os usuários')
         } catch (adminError) {
-          console.error('❌ Erro ao usar Supabase Admin para reverter XP:', adminError)
           return false
         }
-      } else {
-        console.warn('⚠️ Supabase Admin não disponível - XP não será revertido')
       }
     }
 
     // Excluir notificações relacionadas ao formulário
     // As notificações têm action_url apontando para o formulário
     const actionUrlPattern = `/aluno/formularios/${formularioId}`
-    console.log(`🔔 Excluindo notificações com action_url: ${actionUrlPattern}`)
     
     const { data: notificacoes, error: notifFindError } = await supabase
       .from('notificacoes')
       .select('id')
       .eq('action_url', actionUrlPattern)
     
-    if (notifFindError) {
-      console.error('⚠️ Erro ao buscar notificações relacionadas:', notifFindError)
-      // Não bloquear a exclusão se houver erro ao buscar notificações
-    } else if (notificacoes && notificacoes.length > 0) {
-      console.log(`📢 Encontradas ${notificacoes.length} notificação(ões) para excluir`)
-      
-      const { error: notifDeleteError } = await supabase
-        .from('notificacoes')
-        .delete()
-        .eq('action_url', actionUrlPattern)
-      
-      if (notifDeleteError) {
-        console.error('⚠️ Erro ao excluir notificações:', notifDeleteError)
-        // Não bloquear a exclusão se houver erro ao excluir notificações
-      } else {
-        console.log(`✅ ${notificacoes.length} notificação(ões) excluída(s)`)
-      }
-    } else {
-      console.log('ℹ️ Nenhuma notificação encontrada para este formulário')
+    if (!notifFindError && notificacoes && notificacoes.length > 0) {
+      await supabase.from('notificacoes').delete().eq('action_url', actionUrlPattern)
     }
 
     // Agora excluir o formulário (as respostas serão excluídas em cascata pelo banco)
@@ -1172,14 +998,11 @@ export async function deleteFormulario(formularioId: string): Promise<boolean> {
       .eq('id', formularioId)
 
     if (deleteError) {
-      console.error('❌ Erro ao excluir formulário:', deleteError)
       return false
     }
 
-    console.log(`✅ Formulário ${formularioId} excluído com sucesso`)
     return true
   } catch (error) {
-    console.error('❌ Erro crítico em deleteFormulario:', error)
     return false
   }
 }
@@ -1285,10 +1108,7 @@ export async function getUserStats(userId: string): Promise<UserStats> {
 
     // Debug logs
     if (quizzesResult.error) {
-      console.error('Erro ao buscar quizzes:', quizzesResult.error)
     }
-    console.log('getUserStats - userId:', userId)
-    console.log('getUserStats - quizzes encontrados:', quizzesResult.data?.length, quizzesResult.data)
 
     // Contar aulas únicas (cada source_id diferente conta como uma aula)
     const aulasUnicas = new Set(
@@ -1317,7 +1137,6 @@ export async function getUserStats(userId: string): Promise<UserStats> {
       perguntasFeitas,
     }
   } catch (error) {
-    console.error('Error fetching user stats:', error)
     return defaultStats
   }
 }

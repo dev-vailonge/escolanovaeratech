@@ -43,8 +43,6 @@ function convertToAuthUser(dbUser: DatabaseUser | null, supabaseUser: User | nul
 // Isso funciona se o RLS permitir que o próprio usuário crie seu registro
 async function createUserDirectly(supabaseUser: User, userName: string): Promise<DatabaseUser | null> {
   try {
-    console.log(`🔄 Tentando criar usuário diretamente na tabela users: ${supabaseUser.email}`)
-    
     const { data, error } = await supabase
       .from('users')
       .insert({
@@ -60,7 +58,6 @@ async function createUserDirectly(supabaseUser: User, userName: string): Promise
     if (error) {
       // Se o erro for que o usuário já existe, tentar buscar
       if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('already exists')) {
-        console.log('ℹ️ Usuário já existe, buscando...')
         return await getUserById(supabaseUser.id)
       }
       
@@ -74,19 +71,14 @@ async function createUserDirectly(supabaseUser: User, userName: string): Promise
                                errorMessage.includes('not acceptable')
       
       if (isPermissionError) {
-        console.warn('⚠️ RLS bloqueou criação direta do usuário. Isso é esperado se não houver política RLS permitindo.')
-        console.warn('⚠️ O usuário será criado por trigger do banco ou precisa de configuração de RLS.')
         return null
       }
-      
-      console.error('❌ Erro ao criar usuário diretamente:', error)
+
       return null
     }
 
-    console.log(`✅ Usuário criado diretamente na tabela users: ${supabaseUser.email}`)
     return data
-  } catch (error: any) {
-    console.error('❌ Erro ao criar usuário diretamente:', error)
+  } catch {
     return null
   }
 }
@@ -109,8 +101,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Se o usuário não existe na tabela users, criar automaticamente
       // SEGURANÇA: Só cria se o usuário estiver autenticado (supabaseUser existe)
       if (!dbUser) {
-        console.warn(`⚠️ Usuário ${supabaseUser.id} não encontrado na tabela users. Criando automaticamente...`)
-        
         const userName = supabaseUser.user_metadata?.name || 
                          supabaseUser.user_metadata?.full_name || 
                          supabaseUser.user_metadata?.display_name ||
@@ -147,20 +137,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const result = await response.json()
 
           if (response.ok && result.success && result.user) {
-            console.log(`✅ Usuário criado automaticamente via API: ${supabaseUser.email}`)
             dbUser = result.user
           } else if (result.code === 'MISSING_SERVICE_ROLE_KEY') {
-            // Se não tiver service role key, criar diretamente usando cliente autenticado
-            console.warn('⚠️ Service role key não disponível, criando usuário diretamente com cliente autenticado...')
             dbUser = await createUserDirectly(supabaseUser, userName)
           } else {
-            console.error('❌ Erro ao criar usuário automaticamente:', result.error)
-            // Tentar criar diretamente como fallback
             dbUser = await createUserDirectly(supabaseUser, userName)
           }
-        } catch (apiError: any) {
-          console.warn('⚠️ Erro ao chamar API de criar usuário, tentando criar diretamente:', apiError.message)
-          // Tentar criar diretamente usando cliente autenticado
+        } catch {
           dbUser = await createUserDirectly(supabaseUser, userName)
         }
         
@@ -168,7 +151,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // (pode ter sido criado por trigger do banco de dados que demora alguns segundos)
         // REDUZIDO para 1.5 segundos para evitar travamento
         if (!dbUser) {
-          console.log('⏳ Aguardando 1.5 segundos para verificar se trigger criou o usuário...')
           await new Promise(resolve => setTimeout(resolve, 1500))
           
           // Tentar buscar novamente após aguardar (com timeout)
@@ -178,8 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setTimeout(() => reject(new Error('getUserById timeout')), 3000)
             )
             dbUser = await Promise.race([getUserPromise, getUserTimeoutPromise]) as DatabaseUser | null
-          } catch (error) {
-            console.warn('⚠️ getUserById timeout após aguardar:', error)
+          } catch {
             dbUser = null
           }
           
@@ -188,9 +169,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             dbUser = await getUserByEmail(supabaseUser.email || '')
             
             if (!dbUser) {
-              console.warn('⚠️ Usuário ainda não existe na tabela users após tentativas.')
-              console.warn('⚠️ Criando usuário temporário para permitir login...')
-              
               // Criar um usuário "temporário" usando os dados do Supabase Auth
               // Isso permite que o usuário faça login mesmo sem registro na tabela users
               // O registro será criado depois por um trigger ou processo em background
@@ -214,21 +192,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 created_at: supabaseUser.created_at || new Date().toISOString(),
                 updated_at: new Date().toISOString()
               }
-              
-              console.log('✅ Usuário temporário criado para permitir login')
+
               dbUser = tempUser
-            } else {
-              console.log('✅ Usuário encontrado por email após aguardar')
             }
-          } else {
-            console.log('✅ Usuário encontrado após aguardar (criado por trigger)')
           }
         }
       }
       
       return convertToAuthUser(dbUser, supabaseUser)
-    } catch (error) {
-      console.error('Error fetching user data:', error)
+    } catch {
       return null
     }
   }
@@ -251,8 +223,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const result = await Promise.race([sessionPromise, timeoutPromise]) as any
           session = result?.data
-        } catch (error) {
-          console.warn('⚠️ getSession timeout ou erro:', error)
+        } catch {
           session = null
         }
         
@@ -266,8 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
             const authUser = await Promise.race([fetchUserPromise, fetchTimeoutPromise]) as AuthUser | null
             setUser(authUser)
-          } catch (error) {
-            console.warn('⚠️ fetchUserData timeout ou erro:', error)
+          } catch {
             // Não fazer logout automático - manter estado anterior
           }
         } else {
@@ -285,10 +255,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
       setInitialized(true)
-    } catch (error) {
+    } catch {
       // Error getting initial session - não fazer logout automático
-      console.error('❌ Erro ao inicializar autenticação:', error)
-      // Não fazer setUser(null) - manter estado anterior
       setInitialized(true)
     } finally {
       setLoading(false)
@@ -309,8 +277,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const result = await Promise.race([sessionPromise, timeoutPromise]) as any
           session = result?.data
-        } catch (error) {
-          console.warn('⚠️ refreshSession: getSession timeout ou erro:', error)
+        } catch {
           session = null
         }
         if (session?.user) {
@@ -324,8 +291,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
             authUser = await Promise.race([fetchUserPromise, fetchTimeoutPromise]) as AuthUser | null
             setUser(authUser)
-          } catch (error) {
-            console.warn('⚠️ refreshSession: fetchUserData timeout ou erro:', error)
+          } catch {
             // Não fazer logout automático - manter estado anterior
           }
         }

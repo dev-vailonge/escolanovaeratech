@@ -8,9 +8,11 @@ import { MentoriaStep } from './MentoriaStep'
 type MentoriaTimelineProps = {
   mentoria: MentoriaWithSteps
   onRefetch?: () => void
+  /** Admin: visualização do aluno sem permitir marcar tarefas */
+  readOnly?: boolean
 }
 
-export function MentoriaTimeline({ mentoria, onRefetch }: MentoriaTimelineProps) {
+export function MentoriaTimeline({ mentoria, onRefetch, readOnly }: MentoriaTimelineProps) {
   const stepsOrdenados = [...mentoria.steps].sort((a, b) => a.ordem - b.ordem)
 
   // Step atual: primeiro habilitado não concluído
@@ -97,6 +99,7 @@ export function MentoriaTimeline({ mentoria, onRefetch }: MentoriaTimelineProps)
             isCurrent={activeStep.id === currentStepId}
             isBlocked={!activeStep.habilitado}
             onRefetch={onRefetch}
+            readOnly={readOnly}
           />
         )}
       </div>

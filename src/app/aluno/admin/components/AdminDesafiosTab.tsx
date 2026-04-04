@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
-import { Plus, Edit, Trash2, Sparkles, Loader2, Filter, Github, CheckCircle2, XCircle, ExternalLink, Clock, User, FileCode } from 'lucide-react'
+import { Plus, Edit, Trash2, Sparkles, Loader2, Filter, Github, CheckCircle2, XCircle, ExternalLink, Clock, User, FileCode, Flag } from 'lucide-react'
 import CreateDesafioModal from './CreateDesafioModal'
 import { getAllDesafios, createDesafio, updateDesafio, deleteDesafio } from '@/lib/database'
 import type { DatabaseDesafio, DesafioSubmissionWithUser } from '@/types/database'
@@ -94,7 +94,6 @@ export default function AdminDesafiosTab() {
 
       setSubmittersByDesafio((prev) => ({ ...prev, ...merged }))
     } catch (e) {
-      console.error('submitters-summary', e)
     }
   }, [])
 
@@ -161,7 +160,6 @@ export default function AdminDesafiosTab() {
       
       setDesafios(dados)
     } catch (err: any) {
-      console.error('Erro ao carregar desafios:', err)
       setError(err.message || 'Erro ao carregar desafios. Tente novamente.')
     } finally {
       setLoading(false)
@@ -192,7 +190,6 @@ export default function AdminDesafiosTab() {
       const json = await res.json()
       setSubmissions(json.submissions || [])
     } catch (err: any) {
-      console.error('Erro ao carregar submissions:', err)
       setError(err.message || 'Erro ao carregar submissions. Tente novamente.')
     } finally {
       setLoadingSubmissions(false)
@@ -260,7 +257,6 @@ export default function AdminDesafiosTab() {
         created_by: user?.id || null
       }
 
-      console.log('Dados do desafio a serem salvos:', dadosDesafio)
 
       if (editingDesafio) {
         // Atualizar desafio existente
@@ -283,7 +279,6 @@ export default function AdminDesafiosTab() {
         }
       }
     } catch (err) {
-      console.error('Erro ao salvar desafio:', err)
       setError('Erro ao salvar desafio. Tente novamente.')
     }
   }
@@ -302,7 +297,6 @@ export default function AdminDesafiosTab() {
         setError('Erro ao excluir desafio. Tente novamente.')
       }
     } catch (err) {
-      console.error('Erro ao excluir desafio:', err)
       setError('Erro ao excluir desafio. Tente novamente.')
     }
   }
@@ -927,33 +921,82 @@ export default function AdminDesafiosTab() {
                           {submission.desafio?.titulo}
                         </span>
                         {/* Status Badge */}
-                        {submission.status === 'pendente' && (
-                          <span className={cn(
-                            "px-2 py-0.5 text-xs rounded-full flex items-center gap-1",
-                            theme === 'dark' ? "bg-yellow-400/20 text-yellow-400" : "bg-yellow-500 text-white"
-                          )}>
-                            <Clock className="w-3 h-3" />
-                            Pendente
-                          </span>
-                        )}
-                        {submission.status === 'aprovado' && (
-                          <span className={cn(
-                            "px-2 py-0.5 text-xs rounded-full flex items-center gap-1",
-                            theme === 'dark' ? "bg-green-500/20 text-green-400" : "bg-green-100 text-green-700"
-                          )}>
-                            <CheckCircle2 className="w-3 h-3" />
-                            Aprovado
-                          </span>
-                        )}
-                        {submission.status === 'rejeitado' && (
-                          <span className={cn(
-                            "px-2 py-0.5 text-xs rounded-full flex items-center gap-1",
-                            theme === 'dark' ? "bg-red-500/20 text-red-400" : "bg-red-100 text-red-700"
-                          )}>
-                            <XCircle className="w-3 h-3" />
-                            Rejeitado
-                          </span>
-                        )}
+                        {(() => {
+                          const st = String((submission as any)?.status ?? '').trim()
+                          if (!st) return null
+                          if (st === 'pendente') {
+                            return (
+                              <span
+                                className={cn(
+                                  'px-2 py-0.5 text-xs rounded-full flex items-center gap-1',
+                                  theme === 'dark'
+                                    ? 'bg-yellow-400/20 text-yellow-400'
+                                    : 'bg-yellow-500 text-white'
+                                )}
+                              >
+                                <Clock className="w-3 h-3" />
+                                Pendente
+                              </span>
+                            )
+                          }
+                          if (st === 'aprovado') {
+                            return (
+                              <span
+                                className={cn(
+                                  'px-2 py-0.5 text-xs rounded-full flex items-center gap-1',
+                                  theme === 'dark'
+                                    ? 'bg-green-500/20 text-green-400'
+                                    : 'bg-green-100 text-green-700'
+                                )}
+                              >
+                                <CheckCircle2 className="w-3 h-3" />
+                                Aprovado
+                              </span>
+                            )
+                          }
+                          if (st === 'rejeitado') {
+                            return (
+                              <span
+                                className={cn(
+                                  'px-2 py-0.5 text-xs rounded-full flex items-center gap-1',
+                                  theme === 'dark'
+                                    ? 'bg-red-500/20 text-red-400'
+                                    : 'bg-red-100 text-red-700'
+                                )}
+                              >
+                                <XCircle className="w-3 h-3" />
+                                Rejeitado
+                              </span>
+                            )
+                          }
+                          if (st === 'desistiu') {
+                            return (
+                              <span
+                                className={cn(
+                                  'px-2 py-0.5 text-xs rounded-full flex items-center gap-1',
+                                  theme === 'dark'
+                                    ? 'bg-gray-500/20 text-gray-300'
+                                    : 'bg-gray-100 text-gray-700'
+                                )}
+                              >
+                                <Flag className="w-3 h-3" />
+                                Desistiu
+                              </span>
+                            )
+                          }
+                          return (
+                            <span
+                              className={cn(
+                                'px-2 py-0.5 text-xs rounded-full border',
+                                theme === 'dark'
+                                  ? 'border-white/15 bg-white/5 text-gray-300'
+                                  : 'border-gray-200 bg-white text-gray-700'
+                              )}
+                            >
+                              {st}
+                            </span>
+                          )
+                        })()}
                       </div>
                       
                       <a

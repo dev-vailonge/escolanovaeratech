@@ -134,7 +134,6 @@ export default function CreateFormularioModal({ isOpen, onClose, onSave, formula
         : []
     }
     
-    console.log('📤 Enviando dados do formulário:', dadosParaEnvio)
     await onSave(dadosParaEnvio)
     // Não fecha aqui - deixa a aba controlar após sucesso
   }

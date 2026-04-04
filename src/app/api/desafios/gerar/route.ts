@@ -272,13 +272,21 @@ export async function POST(request: Request) {
     // REGISTRAR ATRIBUIÇÃO DO DESAFIO AO USUÁRIO
     // ====================================================
 
-    const { error: erroAtribuicao, data: atribuicaoData } = await supabase
+    // Importante: não usar upsert aqui.
+    // Se já existiu uma atribuição anterior desse mesmo desafio, o `created_at` pode ficar antigo,
+    // e o frontend acaba "herdando" submissões antigas (ex.: `desistiu`) para a atribuição atual.
+    await supabase
       .from('user_desafio_atribuido')
-      .upsert({
+      .delete()
+      .eq('user_id', userId)
+      .eq('desafio_id', desafioFinal.id)
+
+    const { error: erroAtribuicao } = await supabase
+      .from('user_desafio_atribuido')
+      .insert({
         user_id: userId,
-        desafio_id: desafioFinal.id
-      }, { onConflict: 'user_id,desafio_id' })
-      .select()
+        desafio_id: desafioFinal.id,
+      })
 
     if (erroAtribuicao) {
       return NextResponse.json(

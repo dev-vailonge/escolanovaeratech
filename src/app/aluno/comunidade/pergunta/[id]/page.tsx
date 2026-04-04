@@ -111,13 +111,6 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
       const json = await res.json()
 
       if (json.success && json.pergunta) {
-        // Debug: verificar se melhorResposta está vindo corretamente
-        json.pergunta.respostas?.forEach((r: Resposta) => {
-          if (r.melhorResposta) {
-            console.log(`[FRONTEND] Resposta ${r.id} marcada como melhor: melhorResposta=${r.melhorResposta}`)
-          }
-        })
-        
         setPergunta(json.pergunta)
 
         // Buscar badges dos autores
@@ -138,9 +131,8 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
         }
         setBadgesMap(badges)
       }
-    } catch (e: any) {
-      console.error('Erro ao buscar pergunta:', e)
-      setError(e?.message || 'Erro ao carregar pergunta')
+    } catch (e: unknown) {
+      setError((e as Error)?.message || 'Erro ao carregar pergunta')
     } finally {
       setLoading(false)
     }
@@ -208,7 +200,6 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
           : null
       )
     } catch (e: any) {
-      console.error('Erro ao curtir pergunta:', e)
       setError(e?.message || 'Erro ao curtir pergunta')
     }
   }
@@ -283,7 +274,6 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
             setMentionUsers([])
           }
         } catch (e) {
-          console.error('Erro ao buscar sugestões de menção:', e)
           setMentionUsers([])
         }
       } else {
@@ -376,12 +366,14 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
           const jsonImagem = await resImagem.json()
 
           if (!resImagem.ok) {
-            console.error('Erro ao fazer upload de imagem:', jsonImagem)
-            setError(`Resposta criada, mas houve erro ao fazer upload da imagem: ${jsonImagem.error || 'Erro desconhecido'}`)
+            setError(
+              `Resposta criada, mas houve erro ao fazer upload da imagem: ${jsonImagem.error || 'Erro desconhecido'}`
+            )
           }
-        } catch (imgError: any) {
-          console.error('Erro ao fazer upload de imagem:', imgError)
-          setError(`Resposta criada, mas houve erro ao fazer upload da imagem: ${imgError.message || 'Erro desconhecido'}`)
+        } catch (imgError: unknown) {
+          setError(
+            `Resposta criada, mas houve erro ao fazer upload da imagem: ${(imgError as Error).message || 'Erro desconhecido'}`
+          )
         }
       }
 
@@ -444,9 +436,8 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
       if (jsonPergunta.success && jsonPergunta.pergunta) {
         setPergunta(jsonPergunta.pergunta)
       }
-    } catch (e: any) {
-      console.error('Erro ao votar:', e)
-      setError(e?.message || 'Erro ao votar')
+    } catch (e: unknown) {
+      setError((e as Error)?.message || 'Erro ao votar')
     }
   }
 
@@ -500,9 +491,8 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
           )
         }
       }
-    } catch (e: any) {
-      console.error('Erro ao deletar resposta:', e)
-      setError(e?.message || 'Erro ao deletar resposta')
+    } catch (e: unknown) {
+      setError((e as Error)?.message || 'Erro ao deletar resposta')
     }
   }
 
@@ -532,29 +522,9 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
       const json = await res.json()
 
       if (!res.ok) {
-        // Exibir logs de erro no console do navegador
-        if (json.logs && Array.isArray(json.logs)) {
-          console.group('❌ Erro ao deletar pergunta')
-          json.logs.forEach((log: string) => console.error(log))
-          console.groupEnd()
-        }
-        
-        // Exibir detalhes completos no console
-        if (json.details) {
-          console.error('📋 Detalhes do erro:', json.details)
-        }
-        
         throw new Error(json?.error || 'Erro ao deletar pergunta')
       }
 
-      // Exibir logs de sucesso no console do navegador
-      if (json.logs && Array.isArray(json.logs)) {
-        console.group('✅ Pergunta deletada com sucesso')
-        json.logs.forEach((log: string) => console.log(log))
-        console.groupEnd()
-      }
-
-      // Mostrar mensagem de sucesso
       alert(
         `✅ Pergunta deletada com sucesso!\n\n` +
         `${json.usuariosAfetados} usuário(s) tiveram seu XP revertido.\n\n` +
@@ -562,15 +532,13 @@ export default function PerguntaPage({ params }: { params: { id: string } }) {
           ? `Detalhes:\n${json.detalhes.map((d: any) => 
               `• ${d.nome}: ${d.xpAnterior} XP → ${d.novoXp} XP (perdeu ${d.xpPerdido} XP)`
             ).join('\n')}`
-          : '') +
-        `\n\n💡 Verifique o console do navegador (F12) para logs detalhados.`
+          : '')
       )
 
       // Voltar para a lista de perguntas e forçar reload completo para garantir atualização
       window.location.href = '/aluno/comunidade'
-    } catch (e: any) {
-      console.error('❌ Erro ao deletar pergunta:', e)
-      setError(e?.message || 'Erro ao deletar pergunta')
+    } catch (e: unknown) {
+      setError((e as Error)?.message || 'Erro ao deletar pergunta')
     } finally {
       setIsDeleting(false)
     }

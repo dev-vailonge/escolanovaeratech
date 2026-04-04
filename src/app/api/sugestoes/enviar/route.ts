@@ -72,35 +72,26 @@ export async function POST(request: Request) {
       .single()
 
     if (notifError) {
-      console.error('Erro ao criar sugestão:', notifError)
       return NextResponse.json({ error: 'Erro ao enviar sugestão' }, { status: 500 })
     }
 
     // Chamar função SECURITY DEFINER para notificar admins
     // Isso funciona com RLS pois a função tem SECURITY DEFINER
-    const { error: rpcError } = await supabase.rpc('notificar_admins_sugestao', {
+    await supabase.rpc('notificar_admins_sugestao', {
       p_tipo: tipo,
       p_action_url: actionUrl
     })
-
-    if (rpcError) {
-      console.error('Erro ao notificar admins (não crítico):', rpcError)
-      // Continuar mesmo se der erro - a sugestão já foi criada
-    } else {
-      console.log('✅ Admins notificados via função RPC')
-    }
 
     return NextResponse.json({ 
       success: true, 
       id: notificacao.id,
       message: 'Sugestão enviada com sucesso'
     })
-  } catch (error: any) {
-    console.error('Erro ao processar sugestão:', error)
-    if (String(error?.message || '').includes('Não autenticado')) {
+  } catch (error: unknown) {
+    if (String((error as Error)?.message || '').includes('Não autenticado')) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
-    return NextResponse.json({ error: error?.message || 'Erro ao processar sugestão' }, { status: 500 })
+    return NextResponse.json({ error: 'Erro ao processar sugestão' }, { status: 500 })
   }
 }
 

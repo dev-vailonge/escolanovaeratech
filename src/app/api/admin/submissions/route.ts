@@ -87,9 +87,8 @@ export async function GET(request: Request) {
     const { data: rankingData } = await supabase
       .from('users')
       .select('id, xp')
-      // Posição de ranking baseada apenas em alunos
-      .in('role', ['aluno', 'formacao'])
-      .eq('access_level', 'full')
+      // Mesma regra do ranking geral: só exclui admin
+      .neq('role', 'admin')
       .order('xp', { ascending: false })
 
     // Criar mapa de posições no ranking

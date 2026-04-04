@@ -40,7 +40,6 @@ export default function AdminFormulariosTab() {
     try {
       setLoading(true)
       setError(null)
-      console.log('🔄 Carregando formulários...')
       
       // Usar Promise.race com timeout para getAllFormularios
       const timeoutPromise = new Promise<DatabaseFormulario[]>((_, reject) => {
@@ -50,8 +49,6 @@ export default function AdminFormulariosTab() {
       const dataPromise = getAllFormularios()
       const dados = await Promise.race([dataPromise, timeoutPromise])
       
-      console.log(`📊 Formulários carregados: ${dados.length}`)
-      console.log('📋 Dados:', dados)
       setFormularios(dados)
 
       // Carregar contagem de respostas para cada formulário EM PARALELO (muito mais rápido)
@@ -69,7 +66,6 @@ export default function AdminFormulariosTab() {
         setRespostasCount(counts)
       }
     } catch (err: any) {
-      console.error('Erro ao carregar formulários:', err)
       setError(err.message || 'Erro ao carregar formulários. Tente novamente.')
     } finally {
       setLoading(false)
@@ -91,7 +87,6 @@ export default function AdminFormulariosTab() {
         created_by: user?.id || null
       }
 
-      console.log('📋 Dados do formulário a serem salvos:', dadosFormulario)
 
       if (editingFormulario) {
         // Atualizar formulário existente
@@ -105,10 +100,8 @@ export default function AdminFormulariosTab() {
         }
       } else {
         // Criar novo formulário
-        console.log('🔄 Criando novo formulário...')
         const novoFormulario = await createFormulario(dadosFormulario, user?.id)
         if (novoFormulario) {
-          console.log('✅ Formulário criado com sucesso:', novoFormulario.id)
           
           // Criar notificação para todos os alunos sobre o novo formulário
           if (novoFormulario.ativo) {
@@ -129,12 +122,9 @@ export default function AdminFormulariosTab() {
               })
               
               if (notificacao) {
-                console.log('✅ Notificação criada com sucesso:', notificacao.id)
               } else {
-                console.warn('⚠️ Formulário criado, mas falha ao criar notificação')
               }
             } catch (notifError) {
-              console.error('❌ Erro ao criar notificação:', notifError)
               // Não falhar o processo se a notificação falhar
             }
           }
@@ -146,12 +136,10 @@ export default function AdminFormulariosTab() {
           // Recarregar formulários
           await carregarFormularios()
         } else {
-          console.error('❌ Falha ao criar formulário - createFormulario retornou null')
           setError('Erro ao criar formulário. Verifique o console para mais detalhes.')
         }
       }
     } catch (err: any) {
-      console.error('❌ Erro ao salvar formulário:', err)
       setError(`Erro ao salvar formulário: ${err?.message || 'Erro desconhecido'}`)
     }
   }
@@ -178,12 +166,10 @@ export default function AdminFormulariosTab() {
       const sucesso = await deleteFormulario(formularioId)
       if (sucesso) {
         await carregarFormularios()
-        console.log(`✅ Formulário "${nomeFormulario}" excluído. ${numeroRespostas} usuário(s) tiveram XP revertido.`)
       } else {
         setError('Erro ao excluir formulário. Tente novamente.')
       }
     } catch (err) {
-      console.error('Erro ao excluir formulário:', err)
       setError('Erro ao excluir formulário. Tente novamente.')
     }
   }
@@ -198,7 +184,6 @@ export default function AdminFormulariosTab() {
         setError('Erro ao atualizar status do formulário. Tente novamente.')
       }
     } catch (err) {
-      console.error('Erro ao atualizar status:', err)
       setError('Erro ao atualizar status do formulário. Tente novamente.')
     }
   }

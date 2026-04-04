@@ -93,8 +93,6 @@ export async function POST(
       })
 
     if (uploadError) {
-      console.error('Erro upload imagem:', uploadError)
-      
       // Se o erro menciona bucket não encontrado, dar mensagem específica
       const errorMessage = uploadError?.message || 'Erro desconhecido'
       if (errorMessage.includes('Bucket') || errorMessage.includes('bucket')) {
@@ -138,32 +136,22 @@ export async function POST(
       .eq('id', respostaId)
 
     if (updateError) {
-      console.error('Erro ao atualizar resposta com imagem:', updateError)
-      console.error('Detalhes do erro:', {
-        message: updateError.message,
-        details: updateError.details,
-        hint: updateError.hint,
-        code: updateError.code,
-      })
-      
-      // Verificar se o erro é porque a coluna não existe
       if (updateError.message?.includes('column') && updateError.message?.includes('imagem_url')) {
-        return NextResponse.json({ 
-          error: 'Coluna imagem_url não existe na tabela respostas. Execute o script SQL: docs/ADICIONAR_IMAGEM_URL_RESPOSTAS.sql',
-          details: updateError.message 
-        }, { status: 500 })
+        return NextResponse.json(
+          {
+            error:
+              'Coluna imagem_url não existe na tabela respostas. Execute o script SQL: docs/ADICIONAR_IMAGEM_URL_RESPOSTAS.sql',
+          },
+          { status: 500 }
+        )
       }
-      
-      return NextResponse.json({ 
-        error: 'Erro ao atualizar resposta',
-        details: updateError.message 
-      }, { status: 500 })
+
+      return NextResponse.json({ error: 'Erro ao atualizar resposta' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, imagem_url: imagemUrl })
-  } catch (error: any) {
-    console.error('Erro ao fazer upload de imagem:', error)
-    if (String(error?.message || '').includes('Não autenticado')) {
+  } catch (error: unknown) {
+    if (String((error as Error)?.message || '').includes('Não autenticado')) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
     return NextResponse.json({ error: 'Erro ao fazer upload de imagem' }, { status: 500 })

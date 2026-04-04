@@ -14,14 +14,11 @@ import {
   Code2,
   Award,
   ArrowRight,
-  Baby,
-  Bot,
   ExternalLink,
   CalendarRange,
   Zap,
 } from 'lucide-react'
 import { BONUS_COMPLETAR_TODOS_XP } from '@/data/formacao-android-desafios'
-import { FORMACAO_ANDROID_PROJETOS_REAIS } from '@/data/formacao-android-projetos'
 import Modal from '@/components/ui/Modal'
 import IniciarDesafioPlanoModal from '@/components/aluno/IniciarDesafioPlanoModal'
 import { useAuth } from '@/lib/AuthContext'
@@ -32,79 +29,13 @@ import { ModuloConcluintesFacepile } from '@/components/formacao-android/ModuloC
 import { FormacaoGateAdminTestToggle } from '@/components/aluno/FormacaoGateAdminTestToggle'
 import { HOTMART_CURSOS } from '@/lib/constants/hotmart'
 import { useFormacaoDesafioAccessGate } from '@/lib/hooks/useFormacaoDesafioAccessGate'
+import { ProjetosReaisCasesGrid } from '@/components/formacao-android/ProjetosReaisCasesGrid'
 
 const heroBadges = [
   { icon: Rocket, label: '+15 APLICATIVOS' },
   { icon: Code2, label: 'PROJETOS REAIS' },
   { icon: Award, label: 'DESAFIOS GAMIFICADOS' },
 ] as const
-
-function ProjetoRealPhonePreview({
-  variant,
-  isDark,
-}: {
-  variant: 'lake' | 'ai-shopping'
-  isDark: boolean
-}) {
-  if (variant === 'lake') {
-    return (
-      <div
-        className={cn(
-          'flex h-full min-h-[220px] items-center justify-center p-6 md:p-8 md:min-h-[280px]',
-          isDark
-            ? 'bg-gradient-to-br from-emerald-950/40 via-slate-900/90 to-[#0a0a0a]'
-            : 'bg-gradient-to-br from-emerald-100/90 via-white to-slate-100'
-        )}
-      >
-        <div
-          className={cn(
-            'relative w-[9.25rem] shrink-0 rounded-[1.65rem] border-[6px] shadow-2xl overflow-hidden',
-            isDark ? 'border-zinc-600 bg-white' : 'border-gray-400 bg-white'
-          )}
-        >
-          <div className="flex aspect-[9/17] flex-col items-center bg-gradient-to-b from-emerald-50 to-white px-3 pb-6 pt-7">
-            <span
-              className="text-center font-serif text-lg font-bold leading-tight text-emerald-900"
-              style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-            >
-              Baby routine
-            </span>
-            <Baby className="mt-3 h-10 w-10 text-emerald-600/90" aria-hidden />
-            <div className="mt-4 flex gap-2">
-              <div className="h-8 w-8 rounded-full bg-emerald-100 ring-1 ring-emerald-200/80" />
-              <div className="h-8 w-8 rounded-full bg-emerald-100 ring-1 ring-emerald-200/80" />
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div
-      className={cn(
-        'flex h-full min-h-[220px] items-center justify-center p-6 md:p-8 md:min-h-[280px]',
-        isDark
-          ? 'bg-gradient-to-br from-violet-950/60 via-zinc-900 to-[#050508]'
-          : 'bg-gradient-to-br from-violet-200/40 via-slate-200 to-zinc-300/80'
-      )}
-    >
-      <div
-        className={cn(
-          'relative w-[9.25rem] shrink-0 rounded-[1.65rem] border-[6px] shadow-2xl overflow-hidden',
-          'border-zinc-600 bg-zinc-900'
-        )}
-      >
-        <div className="flex aspect-[9/17] flex-col items-center justify-center bg-gradient-to-b from-zinc-800 to-zinc-950 px-3 pb-8 pt-10">
-          <Bot className="mb-3 h-12 w-12 text-cyan-400" aria-hidden />
-          <span className="text-center text-[10px] font-extrabold tracking-[0.18em] text-white">
-            COMPRAS IA
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default function FormacaoAndroidPage() {
   const { theme } = useTheme()
@@ -717,56 +648,7 @@ export default function FormacaoAndroidPage() {
             Alunos das formações vão desenvolver projetos reais com programadores experientes. Você ganha
             experiência enquanto estuda, e isso aumenta em 70% sua chance de ser contratado.
           </p>
-          <div className="grid grid-cols-1 gap-6 lg:gap-8 lg:grid-cols-2">
-            {FORMACAO_ANDROID_PROJETOS_REAIS.map((proj) => (
-              <article
-                key={proj.id}
-                className={cn(
-                  'flex flex-col overflow-hidden rounded-2xl border md:min-h-[280px] md:flex-row',
-                  isDark ? 'border-white/10 bg-[#161616]' : 'border-gray-200 bg-[#fafafa]'
-                )}
-              >
-                <div className="relative overflow-hidden md:w-[44%] md:max-w-[320px] md:shrink-0">
-                  <ProjetoRealPhonePreview variant={proj.preview} isDark={isDark} />
-                </div>
-                <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden p-6 md:p-7 md:pl-8">
-                  <h3
-                    className={cn(
-                      'text-xl font-black uppercase leading-tight tracking-tight break-words md:text-2xl',
-                      isDark ? 'text-white' : 'text-gray-900'
-                    )}
-                  >
-                    {proj.title}
-                  </h3>
-                  <p
-                    className={cn(
-                      'mt-3 text-sm leading-relaxed break-words md:text-[0.95rem]',
-                      isDark ? 'text-gray-400' : 'text-gray-600'
-                    )}
-                  >
-                    {proj.description}
-                  </p>
-                  <ul className="mt-5 space-y-2">
-                    {proj.bullets.map((b) => (
-                      <li
-                        key={b}
-                        className={cn(
-                          'flex items-start gap-2.5 text-sm font-semibold',
-                          isDark ? 'text-gray-200' : 'text-gray-800'
-                        )}
-                      >
-                        <span
-                          className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#F2C94C]"
-                          aria-hidden
-                        />
-                        <span className="break-words">{b}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </article>
-            ))}
-          </div>
+          <ProjetosReaisCasesGrid isDark={isDark} />
         </div>
 
         <div

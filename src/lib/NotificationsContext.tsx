@@ -55,9 +55,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           const storedSet = new Set<string>(parsed)
           setReadIds(storedSet)
           setReadIdsLoaded(true)
-          console.log('📖 [NotificationsContext] IDs lidos carregados do localStorage:', storedSet.size)
-        } catch (e) {
-          console.error('Erro ao parsear notificações lidas:', e)
+        } catch {
           setReadIds(new Set())
           setReadIdsLoaded(true)
         }
@@ -65,7 +63,6 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         // Limpar readIds se não houver dados para este usuário
         setReadIds(new Set())
         setReadIdsLoaded(true)
-        console.log('📖 [NotificationsContext] Nenhum ID lido encontrado no localStorage')
       }
     } else if (!user?.id) {
       // Limpar quando não há usuário
@@ -101,9 +98,6 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       // 2. Notificações broadcast (target_user_id IS NULL) com público-alvo apropriado
       
       // Query para notificações individuais do usuário
-      console.log('🔍 [NotificationsContext] Buscando notificações para usuário:', user.id, 'role:', user?.role, 'accessLevel:', user?.accessLevel)
-      
-      // Query para notificações individuais do usuário
       let individualQuery = supabase
         .from('notificacoes')
         .select('*')
@@ -117,14 +111,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         individualQuery = individualQuery.or('is_sugestao_bug.is.null,is_sugestao_bug.eq.false')
       }
       
-      const { data: individualNotifs, error: error1 } = await individualQuery
-        .order('created_at', { ascending: false })
-      
-      if (error1) {
-        console.error('❌ [NotificationsContext] Erro ao buscar notificações individuais:', error1)
-      } else {
-        console.log('✅ [NotificationsContext] Notificações individuais encontradas:', individualNotifs?.length || 0)
-      }
+      const { data: individualNotifs } = await individualQuery.order('created_at', { ascending: false })
       
       // Query para notificações broadcast (sem target_user_id)
       let broadcastQuery = supabase
@@ -139,15 +126,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         broadcastQuery = broadcastQuery.or('is_sugestao_bug.is.null,is_sugestao_bug.eq.false')
       }
       
-      const { data: broadcastNotifs, error: error2 } = await broadcastQuery
-        .order('created_at', { ascending: false })
-
-      if (error1) {
-        console.error('Erro ao buscar notificações individuais:', error1)
-      }
-      if (error2) {
-        console.error('Erro ao buscar notificações broadcast:', error2)
-      }
+      const { data: broadcastNotifs } = await broadcastQuery.order('created_at', { ascending: false })
 
       // Filtrar notificações broadcast por público-alvo
       // IMPORTANTE: Notificações individuais (target_user_id) já foram filtradas acima
@@ -177,8 +156,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       }
 
       setNotifications(allNotifications)
-    } catch (error) {
-      console.error('Erro ao buscar notificações:', error)
+    } catch {
+      /* silencioso: evita vazar detalhes no console do cliente */
     }
   }, [user?.accessLevel, user?.id, user?.role])
 
@@ -207,14 +186,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           table: 'notificacoes',
         },
         (payload) => {
-          console.log('Nova notificação recebida:', payload)
           const newNotification = payload.new as DatabaseNotificacao
           
           if (!newNotification) return
 
           // Filtrar notificações de sugestões/bugs para alunos (apenas admins devem ver)
           if (isStudentRole(user?.role) && newNotification.is_sugestao_bug) {
-            console.log('⏭️ [NotificationsContext] Ignorando notificação de sugestão/bug para aluno')
             return
           }
           
@@ -268,7 +245,6 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           table: 'notificacoes',
         },
         (payload) => {
-          console.log('Notificação atualizada:', payload)
           const updatedNotification = payload.new as DatabaseNotificacao
           setNotifications(prev =>
             prev.map(n => n.id === updatedNotification.id ? updatedNotification : n)
@@ -283,7 +259,6 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           table: 'notificacoes',
         },
         (payload) => {
-          console.log('Notificação deletada:', payload)
           const deletedId = (payload.old as DatabaseNotificacao).id
           setNotifications(prev => prev.filter(n => n.id !== deletedId))
         }
@@ -297,9 +272,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   // Calcular contagem de não lidas (usando useMemo para garantir recálculo)
   const unreadCount = useMemo(() => {
-    const count = notifications.filter(n => !readIds.has(n.id)).length
-    console.log('📊 [NotificationsContext] unreadCount calculado:', count, '| Total notificações:', notifications.length, '| IDs lidos:', readIds.size)
-    return count
+    return notifications.filter(n => !readIds.has(n.id)).length
   }, [notifications, readIds])
 
   // Marcar notificação como lida

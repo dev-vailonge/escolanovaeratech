@@ -70,6 +70,14 @@ export default function AdminMentoriasTab() {
   const [draggingStepId, setDraggingStepId] = useState<string | null>(null)
   const [reorderingSteps, setReorderingSteps] = useState(false)
 
+  const [editingStepId, setEditingStepId] = useState<string | null>(null)
+  const [editStepTitulo, setEditStepTitulo] = useState('')
+  const [editStepDescricao, setEditStepDescricao] = useState('')
+  const [editStepOrdem, setEditStepOrdem] = useState(1)
+  const [editStepStatus, setEditStepStatus] = useState<MentoriaStepStatus>('nao_iniciado')
+  const [editStepTab, setEditStepTab] = useState<'edit' | 'preview'>('edit')
+  const [savingStepEdit, setSavingStepEdit] = useState(false)
+
   const [showAddTarefa, setShowAddTarefa] = useState<string | null>(null)
   const [newTarefaTitulo, setNewTarefaTitulo] = useState('')
   const [newTarefaDescricao, setNewTarefaDescricao] = useState('')
@@ -214,6 +222,56 @@ export default function AdminMentoriasTab() {
       setError(e.message || 'Erro ao adicionar step')
     } finally {
       setAddingStep(false)
+    }
+  }
+
+  const openEditStep = (step: StepWithTarefas) => {
+    setShowAddStep(false)
+    setEditingStepId(step.id)
+    setEditStepTitulo(step.titulo)
+    setEditStepDescricao(step.descricao || '')
+    setEditStepOrdem(step.ordem)
+    setEditStepStatus(step.status)
+    setEditStepTab('edit')
+    setError(null)
+  }
+
+  const cancelEditStep = () => {
+    setEditingStepId(null)
+    setEditStepTitulo('')
+    setEditStepDescricao('')
+    setSavingStepEdit(false)
+  }
+
+  const handleSaveStepEdit = async () => {
+    if (!editingStepId || !editStepTitulo.trim() || !selectedId) return
+    try {
+      setSavingStepEdit(true)
+      setError(null)
+      const token = await getToken()
+      if (!token) return
+
+      const res = await fetch(`/api/admin/mentorias/steps/${editingStepId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          titulo: editStepTitulo.trim(),
+          descricao: editStepDescricao.trim(),
+          ordem: editStepOrdem,
+          status: editStepStatus,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Erro ao salvar step')
+      cancelEditStep()
+      await loadDetail(selectedId)
+    } catch (e: unknown) {
+      setError((e as Error).message || 'Erro ao salvar step')
+    } finally {
+      setSavingStepEdit(false)
     }
   }
 
@@ -444,6 +502,7 @@ export default function AdminMentoriasTab() {
                   setSelectedId(value)
                   setShowAddStep(false)
                   setShowAddTarefa(null)
+                  setEditingStepId(null)
                 }}
                 className={cn(
                   'w-full appearance-none rounded-lg border px-3 py-2 text-sm pr-8',
@@ -484,7 +543,10 @@ export default function AdminMentoriasTab() {
                   <p className="text-xs text-gray-400">Steps</p>
                   <button
                     type="button"
-                    onClick={() => setShowAddStep((v) => !v)}
+                    onClick={() => {
+                      setShowAddStep((v) => !v)
+                      setEditingStepId(null)
+                    }}
                     className="text-xs text-yellow-400 hover:underline"
                   >
                     + Adicionar step
@@ -583,7 +645,7 @@ export default function AdminMentoriasTab() {
                     .map((step) => (
                       <li
                         key={step.id}
-                        draggable={!reorderingSteps}
+                        draggable={!reorderingSteps && editingStepId !== step.id}
                         onDragStart={() => setDraggingStepId(step.id)}
                         onDragOver={(e) => {
                           if (!draggingStepId || draggingStepId === step.id) return
@@ -604,42 +666,193 @@ export default function AdminMentoriasTab() {
                         )}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-start gap-2 flex-1">
-                            <span className="mt-1 text-gray-500">
-                              <GripVertical className="w-3 h-3" />
-                            </span>
-                            <p className="text-sm font-medium text-white">
-                              {step.ordem}. {step.titulo}
-                            </p>
-                            <div
-                              className={cn(
-                                'text-xs text-gray-400',
-                                '[&_ul]:list-disc [&_ul]:list-inside [&_ol]:list-decimal [&_ol]:list-inside',
-                                '[&_p]:my-0.5 [&_li]:my-0',
-                                '[&_h2]:mt-2 [&_h2]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold',
-                                '[&_h3]:mt-1.5 [&_h3]:mb-0.5 [&_h3]:text-[13px] [&_h3]:font-semibold',
-                                '[&_h4]:mt-1.5 [&_h4]:mb-0.5 [&_h4]:text-xs [&_h4]:font-semibold',
-                                '[&_hr]:my-2 [&_hr]:border-white/10'
+                          <div className="flex items-start gap-2 flex-1 min-w-0 flex-col">
+                            <div className="flex items-start gap-2 w-full">
+                              <span className="mt-1 text-gray-500 shrink-0">
+                                <GripVertical className="w-3 h-3" />
+                              </span>
+                              {editingStepId === step.id ? (
+                                <div className="flex-1 space-y-3 w-full min-w-0">
+                                  <input
+                                    type="text"
+                                    value={editStepTitulo}
+                                    onChange={(e) => setEditStepTitulo(e.target.value)}
+                                    placeholder="Título do step"
+                                    className={cn(
+                                      'w-full rounded border px-2 py-1 text-sm',
+                                      isDark ? 'bg-black/60 text-white' : 'bg-gray-50 text-gray-900'
+                                    )}
+                                  />
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <label className="flex items-center gap-1.5 text-xs text-gray-400">
+                                      Ordem
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        value={editStepOrdem}
+                                        onChange={(e) => setEditStepOrdem(Number(e.target.value) || 1)}
+                                        className={cn(
+                                          'w-16 rounded border px-2 py-1 text-xs',
+                                          isDark ? 'bg-black/60 text-white' : 'bg-white text-gray-900'
+                                        )}
+                                      />
+                                    </label>
+                                    <label className="flex items-center gap-1.5 text-xs text-gray-400">
+                                      Status
+                                      <select
+                                        value={editStepStatus}
+                                        onChange={(e) => setEditStepStatus(e.target.value as MentoriaStepStatus)}
+                                        className={cn(
+                                          'rounded border px-2 py-1 text-xs',
+                                          isDark ? 'bg-black/60 text-white' : 'bg-white text-gray-900'
+                                        )}
+                                      >
+                                        <option value="nao_iniciado">Não iniciado</option>
+                                        <option value="em_progresso">Em progresso</option>
+                                        <option value="concluido">Concluído</option>
+                                      </select>
+                                    </label>
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2 border-b border-white/10 mb-2 text-xs">
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditStepTab('edit')}
+                                        className={cn(
+                                          'px-3 py-1 border-b-2',
+                                          editStepTab === 'edit'
+                                            ? 'border-yellow-400 text-yellow-300'
+                                            : 'border-transparent text-gray-400 hover:text-gray-200'
+                                        )}
+                                      >
+                                        Editar
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditStepTab('preview')}
+                                        className={cn(
+                                          'px-3 py-1 border-b-2',
+                                          editStepTab === 'preview'
+                                            ? 'border-yellow-400 text-yellow-300'
+                                            : 'border-transparent text-gray-400 hover:text-gray-200'
+                                        )}
+                                      >
+                                        Preview
+                                      </button>
+                                    </div>
+                                    <div className="min-h-[200px] rounded-md bg-black/40 border border-white/10">
+                                      {editStepTab === 'edit' ? (
+                                        <div className="h-full flex flex-col">
+                                          <textarea
+                                            value={editStepDescricao}
+                                            onChange={(e) => setEditStepDescricao(e.target.value)}
+                                            placeholder="Descrição (markdown)"
+                                            className={cn(
+                                              'w-full rounded-md border-0 px-3 py-2 text-xs resize-y bg-transparent min-h-[160px]',
+                                              'outline-none focus:ring-0',
+                                              isDark ? 'text-white' : 'text-gray-900'
+                                            )}
+                                          />
+                                          <p className="px-3 pb-2 text-[11px] text-gray-500 border-t border-white/5">
+                                            Suporta **negrito**, *itálico* e listas.
+                                          </p>
+                                        </div>
+                                      ) : (
+                                        <div
+                                          className={cn(
+                                            'px-3 py-2 text-xs overflow-y-auto max-h-[220px]',
+                                            isDark ? 'text-gray-100' : 'text-gray-900',
+                                            '[&_ul]:list-disc [&_ul]:list-inside [&_ol]:list-decimal [&_ol]:list-inside',
+                                            '[&_p]:my-0.5 [&_li]:my-0',
+                                            '[&_h2]:mt-2 [&_h2]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold',
+                                            '[&_h3]:mt-1.5 [&_h3]:mb-0.5 [&_h3]:text-[13px] [&_h3]:font-semibold',
+                                            '[&_h4]:mt-1.5 [&_h4]:mb-0.5 [&_h4]:text-xs [&_h4]:font-semibold',
+                                            '[&_hr]:my-2 [&_hr]:border-white/10'
+                                          )}
+                                          dangerouslySetInnerHTML={{
+                                            __html: markdownToSafeHtml(editStepDescricao || ''),
+                                          }}
+                                        />
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={handleSaveStepEdit}
+                                      disabled={savingStepEdit || !editStepTitulo.trim()}
+                                      className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-yellow-500 text-black disabled:opacity-50"
+                                    >
+                                      {savingStepEdit ? (
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                      ) : (
+                                        <Check className="w-3 h-3" />
+                                      )}
+                                      Salvar
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={cancelEditStep}
+                                      disabled={savingStepEdit}
+                                      className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-gray-500 text-gray-300 hover:bg-white/5"
+                                    >
+                                      <X className="w-3 h-3" />
+                                      Cancelar
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-white">
+                                    {step.ordem}. {step.titulo}
+                                  </p>
+                                  <div
+                                    className={cn(
+                                      'text-xs text-gray-400 mt-1',
+                                      '[&_ul]:list-disc [&_ul]:list-inside [&_ol]:list-decimal [&_ol]:list-inside',
+                                      '[&_p]:my-0.5 [&_li]:my-0',
+                                      '[&_h2]:mt-2 [&_h2]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold',
+                                      '[&_h3]:mt-1.5 [&_h3]:mb-0.5 [&_h3]:text-[13px] [&_h3]:font-semibold',
+                                      '[&_h4]:mt-1.5 [&_h4]:mb-0.5 [&_h4]:text-xs [&_h4]:font-semibold',
+                                      '[&_hr]:my-2 [&_hr]:border-white/10'
+                                    )}
+                                    dangerouslySetInnerHTML={{
+                                      __html: markdownToSafeHtml(step.descricao || ''),
+                                    }}
+                                  />
+                                  <p className="text-[11px] text-gray-500 mt-1">
+                                    Status: {step.status} · {step.habilitado ? 'Habilitado' : 'Desabilitado'}
+                                  </p>
+                                </div>
                               )}
-                              dangerouslySetInnerHTML={{ __html: markdownToSafeHtml(step.descricao || '') }}
-                            />
-                            <p className="text-[11px] text-gray-500 mt-1">
-                              Status: {step.status} · {step.habilitado ? 'Habilitado' : 'Desabilitado'}
-                            </p>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 shrink-0">
+                            {editingStepId !== step.id && (
+                              <button
+                                type="button"
+                                onClick={() => openEditStep(step)}
+                                title="Editar step"
+                                className="text-xs px-2 py-0.5 rounded border border-white/20 text-gray-300 hover:bg-white/10 inline-flex items-center gap-1"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                                Editar
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => handleToggleStepHabilitado(step)}
                               title={step.habilitado ? 'Desabilitar' : 'Habilitar'}
-                              className="text-xs px-2 py-0.5 rounded border border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
+                              disabled={editingStepId === step.id}
+                              className="text-xs px-2 py-0.5 rounded border border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10 disabled:opacity-40"
                             >
                               {step.habilitado ? 'Desabilitar' : 'Habilitar'}
                             </button>
                             <button
                               type="button"
                               onClick={() => handleDeleteStep(step.id)}
-                              className="p-1 text-red-400 hover:bg-red-500/20 rounded"
+                              disabled={editingStepId === step.id}
+                              className="p-1 text-red-400 hover:bg-red-500/20 rounded disabled:opacity-40"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>

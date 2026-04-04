@@ -53,7 +53,6 @@ export async function safeSupabaseQuery<T>(
         attempt < retryAttempts && 
         (error?.message === 'Query timeout' || error?.name === 'AbortError')
       ) {
-        console.log(`🔄 Retry ${attempt + 1}/${retryAttempts} após timeout...`)
         await new Promise(resolve => setTimeout(resolve, retryDelay * (attempt + 1)))
         return executeWithTimeout(attempt + 1)
       }
@@ -100,7 +99,6 @@ export async function safeFetch(
       
       // Se a resposta não é OK e temos retries, tenta novamente
       if (!response.ok && retry && attempt < retryAttempts) {
-        console.log(`🔄 Retry ${attempt + 1}/${retryAttempts} para ${url}...`)
         clearTimeout(timeoutId)
         await new Promise(resolve => setTimeout(resolve, retryDelay * (attempt + 1)))
         return executeWithTimeout(attempt + 1)
@@ -116,7 +114,6 @@ export async function safeFetch(
         attempt < retryAttempts && 
         (error?.name === 'AbortError' || error?.message?.includes('timeout'))
       ) {
-        console.log(`🔄 Retry ${attempt + 1}/${retryAttempts} após timeout para ${url}...`)
         await new Promise(resolve => setTimeout(resolve, retryDelay * (attempt + 1)))
         return executeWithTimeout(attempt + 1)
       }
