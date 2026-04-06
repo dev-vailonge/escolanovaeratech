@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed:android-sql": "node --experimental-strip-types scripts/generate-seed-cursos-android-sql.mjs"
+    "seed:android-sql": "node --experimental-strip-types scripts/generate-seed-cursos-android-sql.mjs",
+    "db:apply-aluno-eventos": "node scripts/apply-aluno-eventos-migration.mjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

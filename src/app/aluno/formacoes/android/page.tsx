@@ -17,6 +17,7 @@ import {
   ExternalLink,
   CalendarRange,
   Zap,
+  Loader2,
 } from 'lucide-react'
 import { BONUS_COMPLETAR_TODOS_XP } from '@/data/formacao-android-desafios'
 import Modal from '@/components/ui/Modal'
@@ -30,6 +31,7 @@ import { FormacaoGateAdminTestToggle } from '@/components/aluno/FormacaoGateAdmi
 import { HOTMART_CURSOS } from '@/lib/constants/hotmart'
 import { useFormacaoDesafioAccessGate } from '@/lib/hooks/useFormacaoDesafioAccessGate'
 import { ProjetosReaisCasesGrid } from '@/components/formacao-android/ProjetosReaisCasesGrid'
+import { useProjetosReaisList } from '@/lib/hooks/useProjetosReaisList'
 
 const heroBadges = [
   { icon: Rocket, label: '+15 APLICATIVOS' },
@@ -41,6 +43,7 @@ export default function FormacaoAndroidPage() {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
   const { user } = useAuth()
+  const { projetos: projetosReais, loading: projetosReaisLoading } = useProjetosReaisList()
   const {
     apps,
     challenge10d,
@@ -648,7 +651,17 @@ export default function FormacaoAndroidPage() {
             Alunos das formações vão desenvolver projetos reais com programadores experientes. Você ganha
             experiência enquanto estuda, e isso aumenta em 70% sua chance de ser contratado.
           </p>
-          <ProjetosReaisCasesGrid isDark={isDark} />
+          {projetosReaisLoading ? (
+            <div className="flex justify-center py-16">
+              <Loader2 className={cn('h-8 w-8 animate-spin', isDark ? 'text-[#F2C94C]' : 'text-yellow-600')} />
+            </div>
+          ) : projetosReais.length === 0 ? (
+            <p className={cn('text-center text-sm', isDark ? 'text-gray-500' : 'text-gray-600')}>
+              Projetos em breve.
+            </p>
+          ) : (
+            <ProjetosReaisCasesGrid isDark={isDark} projetos={projetosReais} />
+          )}
         </div>
 
         <div

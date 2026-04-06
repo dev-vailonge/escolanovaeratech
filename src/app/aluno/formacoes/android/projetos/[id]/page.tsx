@@ -2,28 +2,54 @@
 
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
+import { supabase } from '@/lib/supabase'
 import type { LucideIcon } from 'lucide-react'
 import {
   Apple,
   ArrowLeft,
   BarChart3,
   CalendarDays,
+  Check,
   Globe,
+  Loader2,
   Server,
   Smartphone,
   Target,
+  UserPlus,
   Users,
 } from 'lucide-react'
 import { ProjetoRealPhonePreview } from '@/components/formacao-android/ProjetoRealPhonePreview'
 import { SubmittersFacepile } from '@/components/ui/SubmittersFacepile'
+import type { FacepilePerson } from '@/components/ui/SubmittersFacepile'
+import Modal from '@/components/ui/Modal'
+import { useAuth } from '@/lib/AuthContext'
+import { useFormacaoDesafioAccessGate } from '@/lib/hooks/useFormacaoDesafioAccessGate'
+import { getFormacaoGateAdminTestFetchHeaders } from '@/lib/formacao/formacaoGateAdminTest'
+import { HOTMART_CURSOS } from '@/lib/constants/hotmart'
 import {
-  getFormacaoAndroidProjetoRealById,
   OBJETIVO_PRINCIPAL_PROJETOS_REAIS,
   TECH_AREAS_PROJETO_META,
+  type FormacaoAndroidProjetoReal,
   type FormacaoAndroidTechAreaId,
 } from '@/data/formacao-android-projetos'
+
+type ParticipanteResumo = {
+  user_id: string
+  name: string
+  avatar_url: string | null
+  tech_area: string
+}
+
+const TECH_AREA_ORDER: FormacaoAndroidTechAreaId[] = [
+  'android',
+  'ios',
+  'web',
+  'backend',
+  'data',
+]
 
 const techIcons: Record<FormacaoAndroidTechAreaId, LucideIcon> = {
   android: Smartphone,
@@ -36,10 +62,127 @@ const techIcons: Record<FormacaoAndroidTechAreaId, LucideIcon> = {
 export default function FormacaoAndroidProjetoDetalhePage() {
   const params = useParams()
   const id = typeof params?.id === 'string' ? params.id : Array.isArray(params?.id) ? params.id[0] : ''
-  const projeto = id ? getFormacaoAndroidProjetoRealById(id) : null
+  const [projeto, setProjeto] = useState<FormacaoAndroidProjetoReal | null>(null)
+  const [participantesAlunos, setParticipantesAlunos] = useState<ParticipanteResumo[]>([])
+  const [minhaParticipacao, setMinhaParticipacao] = useState<{ tech_area: string } | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [joiningTech, setJoiningTech] = useState<FormacaoAndroidTechAreaId | null>(null)
+  const [joinError, setJoinError] = useState<string | null>(null)
 
   const { theme } = useTheme()
   const isDark = theme === 'dark'
+  const { user } = useAuth()
+  const { gate, validarModal } = useFormacaoDesafioAccessGate({
+    hotmartSubdomain: HOTMART_CURSOS.android.subdomain,
+  })
+
+  const facepilePeople = useMemo<FacepilePerson[]>(() => {
+    if (!projeto) return []
+    const fromAlunos: FacepilePerson[] = participantesAlunos.map((p) => ({
+      id: p.user_id,
+      name: p.name,
+      avatarUrl: p.avatar_url,
+    }))
+    return [...projeto.team, ...fromAlunos]
+  }, [projeto, participantesAlunos])
+
+  const loadProjeto = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!id?.trim()) {
+      setProjeto(null)
+      setParticipantesAlunos([])
+      setMinhaParticipacao(null)
+      if (!opts?.silent) setLoading(false)
+      return
+    }
+    if (!opts?.silent) setLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) {
+        setProjeto(null)
+        setParticipantesAlunos([])
+        setMinhaParticipacao(null)
+        return
+      }
+      const res = await fetch(`/api/aluno/projetos-reais/${encodeURIComponent(id.trim())}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setProjeto(null)
+        setParticipantesAlunos([])
+        setMinhaParticipacao(null)
+        return
+      }
+      setProjeto(json.projeto ?? null)
+      setParticipantesAlunos(Array.isArray(json.participantesAlunos) ? json.participantesAlunos : [])
+      setMinhaParticipacao(json.minhaParticipacao ?? null)
+    } catch {
+      setProjeto(null)
+      setParticipantesAlunos([])
+      setMinhaParticipacao(null)
+    } finally {
+      if (!opts?.silent) setLoading(false)
+    }
+  }, [id])
+
+  useEffect(() => {
+    loadProjeto()
+  }, [loadProjeto])
+
+  const confirmParticipar = async (tech: FormacaoAndroidTechAreaId) => {
+    if (!id?.trim()) return
+    setJoiningTech(tech)
+    setJoinError(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) {
+        setJoinError('Faça login novamente.')
+        return
+      }
+      const res = await fetch(
+        `/api/aluno/projetos-reais/${encodeURIComponent(id.trim())}/participar`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            ...getFormacaoGateAdminTestFetchHeaders(user?.role === 'admin'),
+          },
+          body: JSON.stringify({ tech_area: tech }),
+        }
+      )
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        if (res.status === 403 && json?.code === 'FORMACAO_NAO_VALIDADA') {
+          setJoinError(
+            typeof json?.error === 'string'
+              ? json.error
+              : 'Valide sua matrícula na formação antes de participar.'
+          )
+          return
+        }
+        setJoinError(typeof json?.error === 'string' ? json.error : 'Não foi possível participar.')
+        return
+      }
+      setModalOpen(false)
+      await loadProjeto({ silent: true })
+    } catch {
+      setJoinError('Erro de rede. Tente de novo.')
+    } finally {
+      setJoiningTech(null)
+    }
+  }
+
+  if (loading) {
+    return (
+      <section className={cn('flex min-h-[50vh] items-center justify-center px-4 py-16', isDark ? 'bg-[#0e0e0e]' : 'bg-gray-100')}>
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#F2C94C] border-t-transparent" />
+      </section>
+    )
+  }
 
   if (!projeto) {
     return (
@@ -183,11 +326,116 @@ export default function FormacaoAndroidProjetoDetalhePage() {
               isDark ? 'text-gray-500' : 'text-gray-600'
             )}
           >
-            Pessoas que compartilham o código, revisões e rituais com você neste squad.
+            Pessoas que compartilham o código, revisões e rituais com você neste squad. Alunos da escola podem
+            aparecer aqui ao se juntar ao projeto.
           </p>
+          {minhaParticipacao ? (
+            <div
+              className={cn(
+                'mt-4 flex flex-col gap-3 rounded-2xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between',
+                isDark ? 'border-green-500/35 bg-green-500/10' : 'border-green-200 bg-green-50'
+              )}
+            >
+              <p className={cn('text-sm', isDark ? 'text-green-200' : 'text-green-900')}>
+                <Check className="mr-1 inline h-4 w-4 align-text-bottom" aria-hidden />
+                Você está neste projeto em{' '}
+                <strong>
+                  {TECH_AREAS_PROJETO_META[minhaParticipacao.tech_area as FormacaoAndroidTechAreaId]
+                    ?.label ?? minhaParticipacao.tech_area}
+                </strong>
+                . Seu avatar aparece no squad abaixo.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setJoinError(null)
+                  setModalOpen(true)
+                }}
+                className={cn(
+                  'shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-colors',
+                  isDark
+                    ? 'bg-white/10 text-white hover:bg-white/15'
+                    : 'bg-white text-green-900 ring-1 ring-green-200 hover:bg-green-100'
+                )}
+              >
+                Alterar área
+              </button>
+            </div>
+          ) : (
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setJoinError(null)
+                  gate(() => setModalOpen(true))
+                }}
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors',
+                  'bg-[#F2C94C] text-black hover:bg-[#e8bd3d] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C94C] focus-visible:ring-offset-2',
+                  isDark ? 'focus-visible:ring-offset-[#0e0e0e]' : 'focus-visible:ring-offset-gray-100'
+                )}
+              >
+                <UserPlus className="h-4 w-4 shrink-0" aria-hidden />
+                Quero me juntar ao projeto
+              </button>
+              <p className={cn('mt-2 text-xs', isDark ? 'text-gray-500' : 'text-gray-500')}>
+                Mesma regra dos desafios da formação: você precisa comprovar matrícula na Formação Android
+                (e-mail da Hotmart). Depois, escolha a tecnologia em que vai atuar — seu perfil aparece no
+                time abaixo.
+              </p>
+            </div>
+          )}
           <div className="mt-5">
-            <SubmittersFacepile people={projeto.team} isDark={isDark} maxVisible={8} size="md" />
+            <SubmittersFacepile people={facepilePeople} isDark={isDark} maxVisible={14} size="md" />
           </div>
+          <Modal
+            isOpen={modalOpen}
+            onClose={() => {
+              if (!joiningTech) {
+                setModalOpen(false)
+                setJoinError(null)
+              }
+            }}
+            title={minhaParticipacao ? 'Alterar sua área no projeto' : 'Escolha sua tecnologia'}
+            size="md"
+          >
+            <p className={cn('mb-4 text-sm', isDark ? 'text-gray-400' : 'text-gray-600')}>
+              Selecione em qual frente você quer colaborar neste projeto.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {TECH_AREA_ORDER.map((key) => {
+                const meta = TECH_AREAS_PROJETO_META[key]
+                const Icon = techIcons[key]
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    disabled={joiningTech !== null}
+                    onClick={() => confirmParticipar(key)}
+                    className={cn(
+                      'flex items-center gap-3 rounded-xl border px-3 py-3 text-left text-sm font-semibold transition-colors',
+                      isDark
+                        ? 'border-white/15 bg-black/40 text-white hover:border-[#F2C94C]/50 hover:bg-white/5'
+                        : 'border-gray-200 bg-gray-50 text-gray-900 hover:border-yellow-300 hover:bg-yellow-50/80',
+                      joiningTech !== null && 'pointer-events-none opacity-60'
+                    )}
+                  >
+                    <Icon className={cn('h-5 w-5 shrink-0', isDark ? 'text-[#F2C94C]' : 'text-yellow-700')} />
+                    <span>{meta.label}</span>
+                    {joiningTech === key ? (
+                      <Loader2 className="ml-auto h-4 w-4 shrink-0 animate-spin opacity-90" />
+                    ) : null}
+                  </button>
+                )
+              })}
+            </div>
+            {joinError ? (
+              <p className="mt-3 text-sm text-red-500" role="alert">
+                {joinError}
+              </p>
+            ) : null}
+          </Modal>
+          {validarModal}
         </div>
 
         <div

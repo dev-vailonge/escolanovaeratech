@@ -1,24 +1,24 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
-import { ArrowLeft, ExternalLink, FolderKanban, ShieldAlert } from 'lucide-react'
-import { OBJETIVO_PRINCIPAL_PROJETOS_REAIS } from '@/data/formacao-android-projetos'
+import { ArrowLeft, FolderKanban, Loader2, ShieldAlert } from 'lucide-react'
 import { ProjetosReaisVerticalList } from '@/components/formacao-android/ProjetosReaisVerticalList'
+import { useProjetosReaisList } from '@/lib/hooks/useProjetosReaisList'
 
 const pageTags = ['Android', 'iOS', 'Backend', 'Data', 'Web'] as const
 
-const experienciaBullets = [
-  'Reuniões e rituais de time (daily, planning, revisão de código)',
-  'Feedback de quem já trabalha com entrega contínua em produção',
-  'Projetos que simulam demandas reais: prioridades, prazos e qualidade'
-]
+const propostaSimplesBullets = [
+  'Desenvolver projetos que vão para o ar e são usados por pessoas reais',
+  'Trabalhar junto com programadores experientes',
+  'Aprender na prática como funciona o dia a dia de um dev',
+] as const
 
 export default function AlunoProjetosPage() {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
+  const { projetos, loading: projetosLoading, error: projetosError } = useProjetosReaisList()
 
   return (
     <div className={cn('min-h-[70vh] pb-16 md:pb-24', isDark ? 'bg-[#0e0e0e]' : 'bg-gray-100')}>
@@ -64,27 +64,6 @@ export default function AlunoProjetosPage() {
               {tag}
             </span>
           ))}
-        </div>
-
-        {/* Banner */}
-        <div
-          className={cn(
-            'relative mt-8 aspect-[2/1] w-full overflow-hidden rounded-2xl border shadow-lg md:aspect-[21/9] md:rounded-3xl',
-            isDark ? 'border-white/10 bg-[#1a1a1a]' : 'border-gray-200 bg-white'
-          )}
-        >
-          <Image
-            src="/images/formacao-android-hero.png"
-            alt="Visual da formação e ecossistema mobile Nova Era Tech"
-            fill
-            className="object-cover object-center"
-            sizes="(max-width: 768px) 100vw, 720px"
-            priority
-          />
-          <div
-            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent md:from-black/35"
-            aria-hidden
-          />
         </div>
 
         {/* Cartão principal: cabeçalho + sobre */}
@@ -144,18 +123,41 @@ export default function AlunoProjetosPage() {
               )}
             >
               <p>
-                Aqui você conhece os projetos que mantemos com time misto — alunos em formação e programadores que
-                já estão no mercado — para aproximar o estudo da rotina profissional.
+                Você vai desenvolver produtos que são lançados para usuários de verdade, trabalhando junto com
+                programadores experientes que já atuam no mercado. É uma oportunidade de viver, na prática, o dia a
+                dia de um desenvolvedor — entendendo como as coisas realmente funcionam fora da teoria.
               </p>
-              <p>{OBJETIVO_PRINCIPAL_PROJETOS_REAIS}</p>
-              <ul className="list-none space-y-3 pt-1">
-                {experienciaBullets.map((t) => (
+              <p>
+                Essa experiência não só acelera o seu aprendizado, como também aumenta muito suas chances de conquistar
+                o primeiro emprego, já que você passa a ter vivência real para mostrar.
+              </p>
+              <p className={cn('font-semibold', isDark ? 'text-gray-200' : 'text-gray-800')}>
+                A proposta é simples:
+              </p>
+              <ul className="list-none space-y-3">
+                {propostaSimplesBullets.map((t) => (
                   <li key={t} className="flex gap-3">
                     <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[#F2C94C]" aria-hidden />
                     <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{t}</span>
                   </li>
                 ))}
               </ul>
+              <p
+                className={cn(
+                  'border-l-2 border-[#F2C94C]/70 pl-4 pt-1 italic text-[0.95rem]',
+                  isDark ? 'text-gray-300' : 'text-gray-700'
+                )}
+              >
+                “Mas eu ainda não sei programar, posso participar?”
+              </p>
+              <p className={cn('text-base font-semibold', isDark ? 'text-white' : 'text-gray-900')}>Sim.</p>
+              <p>
+                Você começa com tarefas iniciais e, para cada tarefa, existe uma trilha de aulas específica. Você
+                estuda o conteúdo necessário e aplica diretamente na prática para concluir a entrega.
+              </p>
+              <p className={cn('font-medium', isDark ? 'text-gray-200' : 'text-gray-800')}>
+                Você não precisa estar pronto para começar — você evolui enquanto faz.
+              </p>
             </div>
 
             <div
@@ -206,7 +208,20 @@ export default function AlunoProjetosPage() {
             Selecione um projeto para ver stack, rituais do time e o squad.
           </p>
           <div className="mt-8">
-            <ProjetosReaisVerticalList isDark={isDark} />
+            {projetosLoading ? (
+              <div className="flex items-center justify-center gap-2 py-12 text-sm text-gray-500">
+                <Loader2 className="h-5 w-5 animate-spin text-yellow-500" />
+                Carregando projetos...
+              </div>
+            ) : projetosError ? (
+              <p className={cn('text-sm', isDark ? 'text-red-400' : 'text-red-600')}>{projetosError}</p>
+            ) : projetos.length === 0 ? (
+              <p className={cn('text-sm', isDark ? 'text-gray-500' : 'text-gray-600')}>
+                Nenhum projeto cadastrado no momento.
+              </p>
+            ) : (
+              <ProjetosReaisVerticalList isDark={isDark} projetos={projetos} />
+            )}
           </div>
         </section>
       </div>

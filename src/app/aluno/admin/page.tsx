@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 import { cn } from '@/lib/utils'
-import { HelpCircle, Target, Bell, FileText, Users, Loader2, DollarSign, Settings, Gift, Sparkles, BookOpen } from 'lucide-react'
+import { HelpCircle, Target, Bell, FileText, Users, Loader2, DollarSign, Settings, Gift, Sparkles, BookOpen, Calendar } from 'lucide-react'
 import SafeLoading from '@/components/ui/SafeLoading'
 
 // Lazy loading dos componentes das abas para melhor performance
@@ -19,11 +19,13 @@ const AdminTokensTab = lazy(() => import('./components/AdminTokensTab'))
 const AdminCorrigirXPTab = lazy(() => import('./components/AdminCorrigirXPTab'))
 const AdminMentoriasTab = lazy(() => import('./components/AdminMentoriasTab'))
 const AdminCursosFormacaoTab = lazy(() => import('./components/AdminCursosFormacaoTab'))
+const AdminEventosTab = lazy(() => import('./components/AdminEventosTab'))
 
 type AdminTab =
   | 'quiz'
   | 'desafios'
   | 'notificacoes'
+  | 'eventos'
   | 'formularios'
   | 'alunos'
   | 'mentorias'
@@ -37,6 +39,7 @@ const validTabs: AdminTab[] = [
   'quiz',
   'desafios',
   'notificacoes',
+  'eventos',
   'formularios',
   'alunos',
   'mentorias',
@@ -89,6 +92,8 @@ export default function AdminPage() {
       import('./components/AdminDesafiosTab')
     } else if (tabToPreload === 'notificacoes') {
       import('./components/AdminNotificacoesTab')
+    } else if (tabToPreload === 'eventos') {
+      import('./components/AdminEventosTab')
     } else if (tabToPreload === 'formularios') {
       import('./components/AdminFormulariosTab')
     } else if (tabToPreload === 'alunos') {
@@ -175,6 +180,7 @@ export default function AdminPage() {
     { id: 'quiz', label: 'Quiz', icon: HelpCircle },
     { id: 'desafios', label: 'Desafios', icon: Target },
     { id: 'notificacoes', label: 'Notificações', icon: Bell },
+    { id: 'eventos', label: 'Eventos', icon: Calendar },
     { id: 'formularios', label: 'Formulários', icon: FileText },
     { id: 'alunos', label: 'Alunos', icon: Users },
     { id: 'mentorias', label: 'Mentorias', icon: Sparkles },
@@ -255,6 +261,9 @@ export default function AdminPage() {
           </div>
           <div style={{ display: activeTab === 'notificacoes' ? 'block' : 'none' }}>
             {(activeTab === 'notificacoes' || visitedTabs.has('notificacoes')) && <AdminNotificacoesTab />}
+          </div>
+          <div style={{ display: activeTab === 'eventos' ? 'block' : 'none' }}>
+            {(activeTab === 'eventos' || visitedTabs.has('eventos')) && <AdminEventosTab />}
           </div>
           <div style={{ display: activeTab === 'formularios' ? 'block' : 'none' }}>
             {(activeTab === 'formularios' || visitedTabs.has('formularios')) && <AdminFormulariosTab />}

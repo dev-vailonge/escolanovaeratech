@@ -3,17 +3,18 @@
 import Link from 'next/link'
 import { FileText, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { FORMACAO_ANDROID_PROJETOS_REAIS } from '@/data/formacao-android-projetos'
+import type { FormacaoAndroidProjetoReal } from '@/data/formacao-android-projetos'
 import { ProjetoRealPhonePreview } from '@/components/formacao-android/ProjetoRealPhonePreview'
 
 type ProjetosReaisVerticalListProps = {
   isDark: boolean
+  projetos: FormacaoAndroidProjetoReal[]
 }
 
-export function ProjetosReaisVerticalList({ isDark }: ProjetosReaisVerticalListProps) {
+export function ProjetosReaisVerticalList({ isDark, projetos }: ProjetosReaisVerticalListProps) {
   return (
     <ul className="flex list-none flex-col gap-4 md:gap-5">
-      {FORMACAO_ANDROID_PROJETOS_REAIS.map((proj) => (
+      {projetos.map((proj) => (
         <li key={proj.id}>
           <Link
             href={`/aluno/formacoes/android/projetos/${proj.id}`}

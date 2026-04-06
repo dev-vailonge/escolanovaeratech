@@ -392,6 +392,57 @@ export interface OpenAITokenUsage {
 }
 
 // -----------------------------
+// Projetos reais (hub)
+// -----------------------------
+
+export interface DatabaseProjetosReal {
+  id: string
+  title: string
+  description: string
+  detail_badge: string | null
+  detail_lead: string | null
+  preview: 'lake' | 'ai-shopping'
+  bullets: unknown
+  team: unknown
+  tech_areas: unknown
+  ceremonias: unknown
+  ordem: number
+  ativo: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type ProjetosRealParticipanteTechArea =
+  | 'android'
+  | 'ios'
+  | 'web'
+  | 'backend'
+  | 'data'
+
+export interface DatabaseProjetosRealParticipante {
+  id: string
+  projeto_id: string
+  user_id: string
+  tech_area: ProjetosRealParticipanteTechArea
+  created_at: string
+  updated_at: string
+}
+
+/** Calendário de eventos da área do aluno — tabela `aluno_eventos` */
+export interface DatabaseAlunoEvento {
+  id: string
+  tipo: 'meetup' | 'clube_livro' | 'projetos_reais' | 'mentoria'
+  start_at: string
+  end_at: string
+  title: string
+  series_label: string | null
+  description: string
+  publicado: boolean
+  created_at: string
+  updated_at: string
+}
+
+// -----------------------------
 // Mentorias
 // -----------------------------
 

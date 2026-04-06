@@ -25,6 +25,7 @@ import {
   Compass,
   LayoutDashboard,
   FolderKanban,
+  Calendar,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSidebar } from '@/lib/SidebarContext'
@@ -32,7 +33,7 @@ import { useTheme } from '@/lib/ThemeContext'
 import { useAuth } from '@/lib/AuthContext'
 
 /** `true` quando for liberar o hub /aluno/projetos na navegação */
-const SHOW_PROJETOS_REAIS_MENU = false
+const SHOW_PROJETOS_REAIS_MENU = true
 
 function isProjetosReaisNavActive(p: string): boolean {
   return (
@@ -81,6 +82,7 @@ const baseMenuModalItems: {
       ]
     : []),
   { icon: Sparkles, label: 'Mentorias', href: '/aluno/mentorias' },
+  { icon: Calendar, label: 'Eventos', href: '/aluno/eventos' },
 ]
 
 // Menu items secundários (apenas no sidebar desktop)
@@ -105,6 +107,7 @@ const secondaryMenuItems: {
       ]
     : []),
   { icon: Sparkles, label: 'Mentorias', href: '/aluno/mentorias' },
+  { icon: Calendar, label: 'Eventos', href: '/aluno/eventos' },
 ]
 const helpCenterItem = null
 

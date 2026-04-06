@@ -3,11 +3,12 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { FORMACAO_ANDROID_PROJETOS_REAIS } from '@/data/formacao-android-projetos'
+import type { FormacaoAndroidProjetoReal } from '@/data/formacao-android-projetos'
 import { ProjetoRealPhonePreview } from '@/components/formacao-android/ProjetoRealPhonePreview'
 
 type ProjetosReaisCasesGridProps = {
   isDark: boolean
+  projetos: FormacaoAndroidProjetoReal[]
   /** Quando true, o card inteiro leva à página de detalhe do projeto */
   wrapWithDetailLink?: boolean
 }
@@ -25,10 +26,14 @@ function ProjetoArticle({ isDark, children }: { isDark: boolean; children: React
   )
 }
 
-export function ProjetosReaisCasesGrid({ isDark, wrapWithDetailLink }: ProjetosReaisCasesGridProps) {
+export function ProjetosReaisCasesGrid({
+  isDark,
+  projetos,
+  wrapWithDetailLink,
+}: ProjetosReaisCasesGridProps) {
   return (
     <div className="grid grid-cols-1 gap-6 lg:gap-8 lg:grid-cols-2">
-      {FORMACAO_ANDROID_PROJETOS_REAIS.map((proj) => {
+      {projetos.map((proj) => {
         const inner = (
           <>
             <div className="relative overflow-hidden md:w-[44%] md:max-w-[320px] md:shrink-0">
