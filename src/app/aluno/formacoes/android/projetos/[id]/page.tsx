@@ -13,6 +13,7 @@ import {
   BarChart3,
   CalendarDays,
   Check,
+  ExternalLink,
   Globe,
   Loader2,
   Server,
@@ -51,6 +52,37 @@ const TECH_AREA_ORDER: FormacaoAndroidTechAreaId[] = [
   'data',
 ]
 
+const ONBOARDING_TAREFAS_PROJETO: ReadonlyArray<{ label: string; href?: string }> = [
+  {
+    label: 'Assistir aulas Git & GitHub',
+    href: 'https://hotmart.com/pt-BR/club/escolanovaeratech/products/6576377/content/z7r2d1G07j?from=EditProductPage',
+  },
+  {
+    label: 'Assistir aulas Git & GitHub avançado',
+    href: 'https://hotmart.com/pt-BR/club/escolanovaeratech/products/6576377/content/NOwAprwAem?from=EditProductPage',
+  },
+  {
+    label: 'Assistir aulas Scrum',
+    href: 'https://hotmart.com/pt-BR/club/escolanovaeratech/products/6576377/content/kOXxgNoVOW?from=EditProductPage',
+  },
+  {
+    label: 'Assistir aulas Kanban',
+    href: 'https://hotmart.com/pt-BR/club/escolanovaeratech/products/6576377/content/146qnjVwOd?from=EditProductPage',
+  },
+  {
+    label: 'Ler o CONTRIBUTING do projeto',
+    href: 'https://github.com/Escola-Nova-Era/BabyTracker/blob/main/CONTRIBUTING.md',
+  },
+  {
+    label: 'Enviar mensagem no grupo do projeto avisando que entrou',
+    href: 'https://discord.com/channels/1353076854189195264/1467457437467541740',
+  },
+  {
+    label: 'Acessar o board de tarefas',
+    href: 'https://github.com/orgs/Escola-Nova-Era/projects/1',
+  },
+]
+
 const techIcons: Record<FormacaoAndroidTechAreaId, LucideIcon> = {
   android: Smartphone,
   ios: Apple,
@@ -69,6 +101,9 @@ export default function FormacaoAndroidProjetoDetalhePage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [joiningTech, setJoiningTech] = useState<FormacaoAndroidTechAreaId | null>(null)
   const [joinError, setJoinError] = useState<string | null>(null)
+  const [leaving, setLeaving] = useState(false)
+  const [leaveModalOpen, setLeaveModalOpen] = useState(false)
+  const [leaveError, setLeaveError] = useState<string | null>(null)
 
   const { theme } = useTheme()
   const isDark = theme === 'dark'
@@ -79,12 +114,17 @@ export default function FormacaoAndroidProjetoDetalhePage() {
 
   const facepilePeople = useMemo<FacepilePerson[]>(() => {
     if (!projeto) return []
-    const fromAlunos: FacepilePerson[] = participantesAlunos.map((p) => ({
-      id: p.user_id,
-      name: p.name,
-      avatarUrl: p.avatar_url,
-    }))
-    return [...projeto.team, ...fromAlunos]
+    const fromAlunos: FacepilePerson[] = participantesAlunos
+      .filter((p) => typeof p.avatar_url === 'string' && p.avatar_url.trim().length > 0)
+      .map((p) => ({
+        id: p.user_id,
+        name: p.name,
+        avatarUrl: p.avatar_url,
+      }))
+    const fromTime = projeto.team.filter(
+      (p) => typeof p.avatarUrl === 'string' && p.avatarUrl.trim().length > 0
+    )
+    return [...fromTime, ...fromAlunos]
   }, [projeto, participantesAlunos])
 
   const loadProjeto = useCallback(async (opts?: { silent?: boolean }) => {
@@ -107,6 +147,7 @@ export default function FormacaoAndroidProjetoDetalhePage() {
       }
       const res = await fetch(`/api/aluno/projetos-reais/${encodeURIComponent(id.trim())}`, {
         headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
       })
       const json = await res.json()
       if (!res.ok) {
@@ -173,6 +214,45 @@ export default function FormacaoAndroidProjetoDetalhePage() {
       setJoinError('Erro de rede. Tente de novo.')
     } finally {
       setJoiningTech(null)
+    }
+  }
+
+  const sairDoProjeto = async () => {
+    if (!id?.trim() || leaving) return
+
+    setLeaving(true)
+    setLeaveError(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) {
+        setLeaveError('Faça login novamente.')
+        return
+      }
+      const res = await fetch(
+        `/api/aluno/projetos-reais/${encodeURIComponent(id.trim())}/sair`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setLeaveError(typeof json?.error === 'string' ? json.error : 'Não foi possível sair do projeto.')
+        return
+      }
+      setMinhaParticipacao(null)
+      if (user?.id) {
+        setParticipantesAlunos((prev) => prev.filter((p) => p.user_id !== user.id))
+      }
+      setLeaveModalOpen(false)
+      await loadProjeto({ silent: true })
+    } catch {
+      setLeaveError('Erro de rede. Tente de novo.')
+    } finally {
+      setLeaving(false)
     }
   }
 
@@ -329,40 +409,122 @@ export default function FormacaoAndroidProjetoDetalhePage() {
             Pessoas que compartilham o código, revisões e rituais com você neste squad. Alunos da escola podem
             aparecer aqui ao se juntar ao projeto.
           </p>
+          <div
+            className={cn(
+              'mt-4 rounded-2xl border p-4 md:p-5',
+              minhaParticipacao
+                ? isDark
+                  ? 'border-green-500/35 bg-green-500/10'
+                  : 'border-green-200 bg-green-50'
+                : isDark
+                  ? 'border-white/10 bg-[#0a0a0a]'
+                  : 'border-gray-200 bg-gray-50/70'
+            )}
+          >
+            <p className={cn('text-sm leading-relaxed', minhaParticipacao ? (isDark ? 'text-green-200' : 'text-green-900') : isDark ? 'text-gray-300' : 'text-gray-700')}>
+              {minhaParticipacao ? (
+                <>
+                  <Check className="mr-1 inline h-4 w-4 align-text-bottom" aria-hidden />
+                  Você já participa deste projeto em{' '}
+                  <strong>
+                    {TECH_AREAS_PROJETO_META[minhaParticipacao.tech_area as FormacaoAndroidTechAreaId]?.label ??
+                      minhaParticipacao.tech_area}
+                  </strong>
+                  . Seu avatar aparece no squad abaixo.
+                </>
+              ) : (
+                'Você ainda não participa deste projeto. Entre para colaborar com o time, acessar o board e pegar sua primeira tarefa.'
+              )}
+            </p>
+            <p className={cn('mt-2 text-xs', isDark ? 'text-gray-500' : 'text-gray-600')}>
+              Mesma regra dos desafios da formação: você precisa comprovar matrícula na Formação Android (e-mail da Hotmart).
+            </p>
+          </div>
+
+          <div
+            className={cn(
+              'mt-4 rounded-2xl border p-4 md:p-5',
+              isDark ? 'border-white/10 bg-[#0a0a0a]' : 'border-gray-200 bg-gray-50/60'
+            )}
+          >
+            <p className={cn('text-xs font-black uppercase tracking-[0.12em]', isDark ? 'text-white' : 'text-gray-900')}>
+              Squad ativo
+            </p>
+            <p className={cn('mt-2 text-xs md:text-sm', isDark ? 'text-gray-400' : 'text-gray-600')}>
+              Pessoas com foto que estão colaborando neste projeto.
+            </p>
+            <div className="mt-4">
+              <SubmittersFacepile people={facepilePeople} isDark={isDark} maxVisible={14} size="md" />
+            </div>
+          </div>
+
           {minhaParticipacao ? (
             <div
               className={cn(
-                'mt-4 flex flex-col gap-3 rounded-2xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between',
-                isDark ? 'border-green-500/35 bg-green-500/10' : 'border-green-200 bg-green-50'
+                'mt-4 rounded-2xl border p-4 md:p-5',
+                isDark ? 'border-white/10 bg-[#0a0a0a]' : 'border-gray-200 bg-gray-50/60'
               )}
             >
-              <p className={cn('text-sm', isDark ? 'text-green-200' : 'text-green-900')}>
-                <Check className="mr-1 inline h-4 w-4 align-text-bottom" aria-hidden />
-                Você está neste projeto em{' '}
-                <strong>
-                  {TECH_AREAS_PROJETO_META[minhaParticipacao.tech_area as FormacaoAndroidTechAreaId]
-                    ?.label ?? minhaParticipacao.tech_area}
-                </strong>
-                . Seu avatar aparece no squad abaixo.
+              <h3
+                className={cn(
+                  'text-xs font-black uppercase tracking-[0.12em]',
+                  isDark ? 'text-white' : 'text-gray-900'
+                )}
+              >
+                Onboarding no projeto
+              </h3>
+              <p className={cn('mt-2 text-xs md:text-sm', isDark ? 'text-gray-400' : 'text-gray-600')}>
+                Complete este checklist para acelerar sua integração no time.
               </p>
+              <ul className="mt-4 list-disc space-y-2.5 pl-5">
+                {ONBOARDING_TAREFAS_PROJETO.map((tarefa) => (
+                  <li key={tarefa.label} className={cn('pl-0.5', isDark ? 'text-gray-300' : 'text-gray-800')}>
+                    {tarefa.href ? (
+                      <a
+                        href={tarefa.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={cn(
+                          'inline-flex items-center gap-1.5 text-sm font-medium leading-relaxed underline decoration-dotted underline-offset-4 transition-colors',
+                          isDark
+                            ? 'text-[#F2C94C] hover:text-[#f7d875]'
+                            : 'text-yellow-800 hover:text-yellow-900'
+                        )}
+                      >
+                        {tarefa.label}
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                      </a>
+                    ) : (
+                      <span className={cn('text-sm leading-relaxed', isDark ? 'text-gray-300' : 'text-gray-800')}>
+                        {tarefa.label}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          <div className={cn('mt-5 border-t pt-4', isDark ? 'border-white/10' : 'border-gray-200')}>
+            {minhaParticipacao ? (
               <button
                 type="button"
                 onClick={() => {
-                  setJoinError(null)
-                  setModalOpen(true)
+                  setLeaveError(null)
+                  setLeaveModalOpen(true)
                 }}
+                disabled={leaving}
                 className={cn(
-                  'shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-colors',
+                  'inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition-colors disabled:opacity-60',
                   isDark
                     ? 'bg-white/10 text-white hover:bg-white/15'
-                    : 'bg-white text-green-900 ring-1 ring-green-200 hover:bg-green-100'
+                    : 'bg-gray-900 text-white hover:bg-black'
                 )}
               >
-                Alterar área
+                {leaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {leaving ? 'Saindo...' : 'Sair do projeto'}
               </button>
-            </div>
-          ) : (
-            <div className="mt-4">
+            ) : (
               <button
                 type="button"
                 onClick={() => {
@@ -370,7 +532,7 @@ export default function FormacaoAndroidProjetoDetalhePage() {
                   gate(() => setModalOpen(true))
                 }}
                 className={cn(
-                  'inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors',
+                  'inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition-colors',
                   'bg-[#F2C94C] text-black hover:bg-[#e8bd3d] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C94C] focus-visible:ring-offset-2',
                   isDark ? 'focus-visible:ring-offset-[#0e0e0e]' : 'focus-visible:ring-offset-gray-100'
                 )}
@@ -378,16 +540,64 @@ export default function FormacaoAndroidProjetoDetalhePage() {
                 <UserPlus className="h-4 w-4 shrink-0" aria-hidden />
                 Quero me juntar ao projeto
               </button>
-              <p className={cn('mt-2 text-xs', isDark ? 'text-gray-500' : 'text-gray-500')}>
-                Mesma regra dos desafios da formação: você precisa comprovar matrícula na Formação Android
-                (e-mail da Hotmart). Depois, escolha a tecnologia em que vai atuar — seu perfil aparece no
-                time abaixo.
+            )}
+          </div>
+
+          <Modal
+            isOpen={leaveModalOpen}
+            onClose={() => {
+              if (!leaving) {
+                setLeaveModalOpen(false)
+                setLeaveError(null)
+              }
+            }}
+            title="Sair do projeto"
+            size="sm"
+          >
+            <div
+              className={cn(
+                'rounded-2xl border p-4',
+                isDark ? 'border-white/10 bg-[#0a0a0a]' : 'border-gray-200 bg-gray-50'
+              )}
+            >
+              <p className={cn('text-sm leading-relaxed', isDark ? 'text-gray-300' : 'text-gray-700')}>
+                Você será removido do squad deste projeto. Depois, se quiser voltar, basta entrar novamente.
               </p>
             </div>
-          )}
-          <div className="mt-5">
-            <SubmittersFacepile people={facepilePeople} isDark={isDark} maxVisible={14} size="md" />
-          </div>
+            {leaveError ? (
+              <p className="mt-3 text-sm text-red-500" role="alert">
+                {leaveError}
+              </p>
+            ) : null}
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setLeaveModalOpen(false)
+                  setLeaveError(null)
+                }}
+                disabled={leaving}
+                className={cn(
+                  'rounded-lg px-3 py-2 text-xs font-semibold transition-colors disabled:opacity-60',
+                  isDark ? 'bg-white/10 text-white hover:bg-white/15' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                )}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={sairDoProjeto}
+                disabled={leaving}
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-colors disabled:opacity-60',
+                  'bg-[#F2C94C] text-black hover:bg-[#e8bd3d]'
+                )}
+              >
+                {leaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                Confirmar saída
+              </button>
+            </div>
+          </Modal>
           <Modal
             isOpen={modalOpen}
             onClose={() => {
@@ -396,7 +606,7 @@ export default function FormacaoAndroidProjetoDetalhePage() {
                 setJoinError(null)
               }
             }}
-            title={minhaParticipacao ? 'Alterar sua área no projeto' : 'Escolha sua tecnologia'}
+            title="Escolha sua tecnologia"
             size="md"
           >
             <p className={cn('mb-4 text-sm', isDark ? 'text-gray-400' : 'text-gray-600')}>

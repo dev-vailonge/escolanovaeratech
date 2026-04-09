@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/requestAuth'
 import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
 import { getUsersBySubdomain } from '@/lib/hotmart'
-import { FORMACAO_GATE_ADMIN_VALIDATE_MODE_HEADER } from '@/lib/formacao/formacaoGateAdminTest'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -30,33 +29,22 @@ export async function POST(request: Request) {
     const body = (await request.json().catch(() => ({}))) as ValidateBody
     const email = String(body.email ?? '').trim().toLowerCase()
     const subdomain = String(body.subdomain ?? '').trim()
+    const currentRole = profile?.role
+
+    // Se já possui a permissão, não exige nova validação.
+    if (currentRole === 'formacao' || currentRole === 'admin') {
+      return NextResponse.json({
+        success: true,
+        validated: true,
+        role: currentRole,
+      })
+    }
 
     if (!email || !subdomain) {
       return NextResponse.json(
         { error: 'email e subdomain são obrigatórios', validated: false },
         { status: 400 }
       )
-    }
-
-    const adminValidateMode = request.headers.get(FORMACAO_GATE_ADMIN_VALIDATE_MODE_HEADER)?.trim()
-    const isAdmin = profile?.role === 'admin'
-
-    // Admin: resultado do fluxo é simulado pelo toggle (success/fail), sem Hotmart e sem UPDATE de role.
-    if (isAdmin && (adminValidateMode === 'success' || adminValidateMode === 'fail')) {
-      if (adminValidateMode === 'fail') {
-        return NextResponse.json({
-          success: true,
-          validated: false,
-          reason: 'email_not_found',
-          admin_test_matricula_simulada: true,
-        })
-      }
-      return NextResponse.json({
-        success: true,
-        validated: true,
-        role: 'admin',
-        admin_test_matricula_simulada: true,
-      })
     }
 
     const users = await getUsersBySubdomain(subdomain)
@@ -76,16 +64,6 @@ export async function POST(request: Request) {
         validated: false,
         reason: 'status_not_active',
         status: matched.status,
-      })
-    }
-
-    // Admin nunca muda para `formacao`; apenas confirmamos sucesso do fluxo.
-    if (isAdmin) {
-      return NextResponse.json({
-        success: true,
-        validated: true,
-        role: 'admin',
-        admin_test_matricula_simulada: true,
       })
     }
 

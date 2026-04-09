@@ -14,10 +14,13 @@ export async function GET(request: Request) {
     const accessToken = getAccessTokenFromBearer(request)
     const supabase = await getSupabaseClient(accessToken)
 
+    const nowIso = new Date().toISOString()
+
     const { data, error } = await supabase
       .from('aluno_eventos')
       .select('*')
       .eq('publicado', true)
+      .gte('end_at', nowIso)
       .order('start_at', { ascending: true })
 
     if (error) {

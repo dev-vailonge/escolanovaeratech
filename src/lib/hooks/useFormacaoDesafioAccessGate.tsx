@@ -6,7 +6,6 @@ import { getAuthToken } from '@/lib/getAuthToken'
 import { userHasFormacaoMatriculaRole } from '@/lib/formacao/formacaoAlunoAccess'
 import {
   getFormacaoGateAdminValidateModeHeaders,
-  markFormacaoAdminTestHotmartOk,
 } from '@/lib/formacao/formacaoGateAdminTest'
 import ValidarFormacaoModal from '@/components/aluno/ValidarFormacaoModal'
 import FormacaoNaoMatriculadoModal from '@/components/aluno/FormacaoNaoMatriculadoModal'
@@ -29,7 +28,7 @@ type Options = {
 }
 
 /**
- * Antes de abrir plano de desafio da formação: exige `role === formacao'` ou `admin` (exceto modo teste admin).
+ * Antes de abrir plano de desafio da formação: exige `role === 'formacao'` ou `admin`.
  * Caso contrário abre o modal de validação; após sucesso chama `refreshSession` e o callback.
  */
 export function useFormacaoDesafioAccessGate({
@@ -50,13 +49,14 @@ export function useFormacaoDesafioAccessGate({
   const gate = useCallback(
     (then: () => void) => {
       if (!user) return
-      // Para admin, o fluxo sempre passa pelo modal (toggle define sucesso/falha simulados).
-      if (user.role !== 'admin' && userHasFormacaoMatriculaRole(user.role)) {
+      // Se já tem permissão, não abre modal.
+      if (userHasFormacaoMatriculaRole(user.role)) {
         then()
         return
       }
       pendingThenRef.current = then
-      setValidarEmail(user.email?.trim() ?? '')
+      // Sempre pedir o e-mail da compra, sem pré-preencher.
+      setValidarEmail('')
       setValidarError('')
       setValidarOpen(true)
     },
@@ -118,9 +118,6 @@ export function useFormacaoDesafioAccessGate({
         }
         setValidarError(mensagemValidacaoFalhou(data.reason, data.status))
         return
-      }
-      if (data.admin_test_matricula_simulada) {
-        markFormacaoAdminTestHotmartOk()
       }
       await refreshSession()
       setValidarOpen(false)
