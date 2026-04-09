@@ -63,6 +63,18 @@ export function useFormacaoDesafioAccessGate({
     [user]
   )
 
+  const requestValidation = useCallback(
+    (then?: () => void) => {
+      if (!user) return
+      pendingThenRef.current = then ?? null
+      // Sempre pedir o e-mail da compra, sem pré-preencher.
+      setValidarEmail('')
+      setValidarError('')
+      setValidarOpen(true)
+    },
+    [user]
+  )
+
   const closeValidar = useCallback(() => {
     if (validarLoading) return
     if (pendingThenRef.current) {
@@ -150,5 +162,5 @@ export function useFormacaoDesafioAccessGate({
     </>
   )
 
-  return { gate, validarModal }
+  return { gate, requestValidation, validarModal }
 }

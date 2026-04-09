@@ -28,7 +28,6 @@ import type { FacepilePerson } from '@/components/ui/SubmittersFacepile'
 import Modal from '@/components/ui/Modal'
 import { useAuth } from '@/lib/AuthContext'
 import { useFormacaoDesafioAccessGate } from '@/lib/hooks/useFormacaoDesafioAccessGate'
-import { getFormacaoGateAdminTestFetchHeaders } from '@/lib/formacao/formacaoGateAdminTest'
 import { HOTMART_CURSOS } from '@/lib/constants/hotmart'
 import {
   OBJETIVO_PRINCIPAL_PROJETOS_REAIS,
@@ -108,7 +107,7 @@ export default function FormacaoAndroidProjetoDetalhePage() {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
   const { user } = useAuth()
-  const { gate, validarModal } = useFormacaoDesafioAccessGate({
+  const { gate, requestValidation, validarModal } = useFormacaoDesafioAccessGate({
     hotmartSubdomain: HOTMART_CURSOS.android.subdomain,
   })
 
@@ -190,7 +189,6 @@ export default function FormacaoAndroidProjetoDetalhePage() {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
-            ...getFormacaoGateAdminTestFetchHeaders(user?.role === 'admin'),
           },
           body: JSON.stringify({ tech_area: tech }),
         }
@@ -198,11 +196,9 @@ export default function FormacaoAndroidProjetoDetalhePage() {
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
         if (res.status === 403 && json?.code === 'FORMACAO_NAO_VALIDADA') {
-          setJoinError(
-            typeof json?.error === 'string'
-              ? json.error
-              : 'Valide sua matrícula na formação antes de participar.'
-          )
+          setJoinError('')
+          setModalOpen(false)
+          requestValidation(() => setModalOpen(true))
           return
         }
         setJoinError(typeof json?.error === 'string' ? json.error : 'Não foi possível participar.')

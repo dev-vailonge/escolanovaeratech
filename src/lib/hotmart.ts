@@ -185,6 +185,7 @@ export async function getAulasDoCurso(subdomain: string, productId: string): Pro
 export async function getUsersBySubdomain(subdomain: string): Promise<HotmartClubUser[]> {
   const users: HotmartClubUser[] = []
   let pageToken: string | null = null
+  const seenPageTokens = new Set<string>()
 
   while (true) {
     const url =
@@ -203,6 +204,9 @@ export async function getUsersBySubdomain(subdomain: string): Promise<HotmartClu
     const data = (await res.json()) as {
       items?: Array<{ email?: string; status?: string }>
       page_info?: { next_page_token?: string | null }
+      next_page_token?: string | null
+      pagination?: { next_page_token?: string | null; nextPageToken?: string | null }
+      pageInfo?: { nextPageToken?: string | null }
     }
 
     const items = Array.isArray(data?.items) ? data.items : []
@@ -215,8 +219,17 @@ export async function getUsersBySubdomain(subdomain: string): Promise<HotmartClu
         .filter((u) => u.email.length > 0)
     )
 
-    const next = String(data?.page_info?.next_page_token ?? '').trim()
+    const next = String(
+      data?.page_info?.next_page_token ??
+        data?.next_page_token ??
+        data?.pagination?.next_page_token ??
+        data?.pagination?.nextPageToken ??
+        data?.pageInfo?.nextPageToken ??
+        ''
+    ).trim()
     if (!next) break
+    if (seenPageTokens.has(next)) break
+    seenPageTokens.add(next)
     pageToken = next
   }
 

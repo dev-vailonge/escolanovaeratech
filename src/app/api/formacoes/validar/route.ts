@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireUserIdFromBearer, getAccessTokenFromBearer } from '@/lib/server/requestAuth'
 import { getSupabaseClient } from '@/lib/server/getSupabaseClient'
+import { getSupabaseAdmin } from '@/lib/server/supabaseAdmin'
 import { getUsersBySubdomain } from '@/lib/hotmart'
 
 export const runtime = 'nodejs'
@@ -67,13 +68,63 @@ export async function POST(request: Request) {
       })
     }
 
-    const { error: updateError } = await supabase
+    const updatePayload = { role: 'formacao', updated_at: new Date().toISOString() }
+    let updated = false
+
+    // 1) Tenta com cliente atual (JWT do usuário / admin fallback)
+    const { data: updatedRows, error: updateError } = await supabase
       .from('users')
-      .update({ role: 'formacao', updated_at: new Date().toISOString() })
+      .update(updatePayload)
       .eq('id', userId)
+      .select('id, role')
 
     if (updateError) {
       return NextResponse.json({ error: 'Erro ao atualizar role do usuário' }, { status: 500 })
+    }
+    updated = Array.isArray(updatedRows) && updatedRows.some((r) => r.id === userId && r.role === 'formacao')
+
+    // 2) Se RLS bloqueou silenciosamente (0 rows), tenta com service role.
+    if (!updated) {
+      try {
+        const admin = getSupabaseAdmin()
+        const { data: adminRows, error: adminErr } = await admin
+          .from('users')
+          .update(updatePayload)
+          .eq('id', userId)
+          .select('id, role')
+
+        if (adminErr) {
+          return NextResponse.json({ error: 'Erro ao atualizar role do usuário' }, { status: 500 })
+        }
+        updated =
+          Array.isArray(adminRows) && adminRows.some((r) => r.id === userId && r.role === 'formacao')
+      } catch {
+        // Sem service role configurada.
+      }
+    }
+
+    // 3) Verificação final para evitar falso positivo e loop de validação.
+    if (!updated) {
+      const { data: checkUser } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle()
+      if (checkUser?.role === 'formacao') {
+        updated = true
+      }
+    }
+
+    if (!updated) {
+      return NextResponse.json(
+        {
+          error:
+            'Validação concluída, mas não foi possível persistir sua permissão de formação. Verifique as políticas RLS da tabela users.',
+          validated: false,
+          code: 'ROLE_NOT_PERSISTED',
+        },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({
