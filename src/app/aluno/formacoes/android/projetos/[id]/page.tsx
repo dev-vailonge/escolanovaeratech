@@ -451,7 +451,7 @@ export default function FormacaoAndroidProjetoDetalhePage() {
               Squad ativo
             </p>
             <p className={cn('mt-2 text-xs md:text-sm', isDark ? 'text-gray-400' : 'text-gray-600')}>
-              Pessoas com foto que estão colaborando neste projeto.
+              Pessoas que estão colaborando neste projeto.
             </p>
             <div className="mt-4">
               <SubmittersFacepile people={facepilePeople} isDark={isDark} maxVisible={14} size="md" />
