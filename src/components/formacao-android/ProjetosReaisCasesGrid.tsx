@@ -88,7 +88,7 @@ export function ProjetosReaisCasesGrid({
           return (
             <Link
               key={proj.id}
-              href={`/aluno/formacoes/android/projetos/${proj.id}`}
+              href={`/aluno/projetos/${proj.id}`}
               className={cn(
                 'group block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C94C] focus-visible:ring-offset-2',
                 isDark ? 'focus-visible:ring-offset-[#0e0e0e]' : 'focus-visible:ring-offset-gray-100'

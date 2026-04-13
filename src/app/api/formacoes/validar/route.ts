@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         validated: false,
-        reason: 'status_not_active',
+        reason: 'upgrade_required',
         status: matched.status,
       })
     }

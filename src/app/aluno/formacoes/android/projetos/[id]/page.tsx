@@ -15,6 +15,7 @@ import {
   Check,
   ExternalLink,
   Globe,
+  KanbanSquare,
   Loader2,
   Server,
   Smartphone,
@@ -643,6 +644,67 @@ export default function FormacaoAndroidProjetoDetalhePage() {
           </Modal>
           {validarModal}
         </div>
+
+        <section
+          className={cn(
+            'mt-8 rounded-3xl border p-6 md:p-8',
+            isDark ? 'border-white/10 bg-[#161616]' : 'border-gray-200 bg-white'
+          )}
+        >
+          <h3 className={cn('text-xs font-black uppercase tracking-[0.18em]', isDark ? 'text-white/90' : 'text-gray-900')}>
+            Board de tarefas
+          </h3>
+          <div
+            className={cn(
+              'mt-3 rounded-2xl border p-4 md:p-5',
+              isDark ? 'border-white/10 bg-[#0a0a0a]' : 'border-gray-200 bg-gray-50/60'
+            )}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={cn(
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+                  isDark ? 'bg-[#F2C94C]/15 text-[#F2C94C]' : 'bg-yellow-100 text-yellow-800'
+                )}
+              >
+                <KanbanSquare className="h-4 w-4" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={cn('text-sm font-black', isDark ? 'text-white' : 'text-gray-900')}>
+                  Board de tarefas
+                </p>
+                <p className={cn('mt-1 text-sm leading-relaxed', isDark ? 'text-gray-400' : 'text-gray-600')}>
+                  Acesse o board para criar tarefas, atribuir responsáveis, adicionar comentários e acompanhar o progresso do time.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4">
+              {minhaParticipacao ? (
+                <Link
+                  href={`/aluno/projetos/${encodeURIComponent(id)}/kanban`}
+                  className={cn(
+                    'inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors',
+                    'bg-[#F2C94C] text-black hover:bg-[#e8bd3d]'
+                  )}
+                >
+                  <KanbanSquare className="h-4 w-4" aria-hidden />
+                  Abrir board de tarefas
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className={cn(
+                    'inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold opacity-70',
+                    isDark ? 'bg-white/10 text-gray-300' : 'bg-gray-200 text-gray-600'
+                  )}
+                >
+                  Entre no projeto para acessar o board
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
 
         <div
           className={cn(

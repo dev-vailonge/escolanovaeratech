@@ -17,7 +17,7 @@ export function ProjetosReaisVerticalList({ isDark, projetos }: ProjetosReaisVer
       {projetos.map((proj) => (
         <li key={proj.id}>
           <Link
-            href={`/aluno/formacoes/android/projetos/${proj.id}`}
+            href={`/aluno/projetos/${proj.id}`}
             className={cn(
               'group block overflow-hidden rounded-2xl border transition-colors md:rounded-3xl',
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F2C94C] focus-visible:ring-offset-2',

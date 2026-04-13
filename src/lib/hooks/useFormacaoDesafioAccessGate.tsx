@@ -4,17 +4,11 @@ import { useCallback, useRef, useState } from 'react'
 import { useAuth } from '@/lib/AuthContext'
 import { getAuthToken } from '@/lib/getAuthToken'
 import { userHasFormacaoMatriculaRole } from '@/lib/formacao/formacaoAlunoAccess'
-import {
-  getFormacaoGateAdminValidateModeHeaders,
-} from '@/lib/formacao/formacaoGateAdminTest'
 import ValidarFormacaoModal from '@/components/aluno/ValidarFormacaoModal'
 import FormacaoNaoMatriculadoModal from '@/components/aluno/FormacaoNaoMatriculadoModal'
 import { payUrlComCupomNorteTechPorSubdomainHotmart } from '@/lib/constants/formacoes'
 
 function mensagemValidacaoFalhou(reason: string | undefined, status?: string): string {
-  if (reason === 'status_not_active') {
-    return `Compra não está ativa na Hotmart (status: ${status ?? '—'}).`
-  }
   return 'Não foi possível validar. Tente novamente.'
 }
 
@@ -104,7 +98,6 @@ export function useFormacaoDesafioAccessGate({
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
-          ...getFormacaoGateAdminValidateModeHeaders(user?.role === 'admin'),
         },
         body: JSON.stringify({ email, subdomain: hotmartSubdomain }),
       })
@@ -113,14 +106,14 @@ export function useFormacaoDesafioAccessGate({
         reason?: string
         status?: string
         error?: string
-        admin_test_matricula_simulada?: boolean
+        role?: 'aluno' | 'formacao' | 'admin'
       }
       if (!res.ok) {
         setValidarError(typeof data.error === 'string' ? data.error : 'Erro ao validar.')
         return
       }
       if (!data.validated) {
-        if (data.reason === 'email_not_found') {
+        if (data.reason === 'email_not_found' || data.reason === 'upgrade_required') {
           pendingThenRef.current = null
           onDismissWithoutContinue?.()
           setValidarOpen(false)
@@ -132,6 +125,10 @@ export function useFormacaoDesafioAccessGate({
         return
       }
       await refreshSession()
+      if (data.role !== 'formacao' && data.role !== 'admin') {
+        setValidarError('Validação concluída, mas a permissão não foi atualizada. Tente novamente.')
+        return
+      }
       setValidarOpen(false)
       const next = pendingThenRef.current
       pendingThenRef.current = null

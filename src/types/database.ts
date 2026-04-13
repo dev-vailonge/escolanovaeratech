@@ -428,6 +428,47 @@ export interface DatabaseProjetosRealParticipante {
   updated_at: string
 }
 
+export type ProjetoRealKanbanColuna = 'todo' | 'doing' | 'done'
+
+export interface DatabaseProjetoRealKanbanTarefa {
+  id: string
+  projeto_id: string
+  titulo: string
+  descricao: string | null
+  labels: string[]
+  plataformas: string[]
+  imagem_url: string | null
+  coluna: ProjetoRealKanbanColuna
+  ordem: number
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export interface DatabaseProjetoRealKanbanTarefaAssignee {
+  id: string
+  tarefa_id: string
+  user_id: string
+  created_at: string
+}
+
+export interface DatabaseProjetoRealKanbanTarefaComentario {
+  id: string
+  tarefa_id: string
+  user_id: string
+  comentario: string
+  created_at: string
+}
+
+export interface DatabaseProjetoRealKanbanTarefaAnexo {
+  id: string
+  tarefa_id: string
+  user_id: string
+  nome: string
+  arquivo_url: string
+  created_at: string
+}
+
 /** Calendário de eventos da área do aluno — tabela `aluno_eventos` */
 export interface DatabaseAlunoEvento {
   id: string
