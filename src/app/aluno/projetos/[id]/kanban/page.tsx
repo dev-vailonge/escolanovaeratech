@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, Filter, Loader2, Plus, Tag, Trash2, UserCheck, Users, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { ArrowLeft, Bold, Code, Filter, Italic, Link2, List, ListOrdered, Loader2, MessageSquareQuote, Plus, Tag, Trash2, UserCheck, Users, X } from 'lucide-react'
 import { useTheme } from '@/lib/ThemeContext'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
@@ -61,6 +61,136 @@ const getPlataformaSelectedButtonClasses = (plataforma: string, isDark: boolean)
   return isDark ? 'bg-white/20 text-white' : 'bg-gray-400 text-white'
 }
 
+const INLINE_MD_REGEX = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\]\((https?:\/\/[^)]+)\))/g
+
+const renderInlineMarkdown = (text: string, isDark: boolean, keyPrefix: string): ReactNode[] => {
+  const nodes: ReactNode[] = []
+  let lastIndex = 0
+  let matchIndex = 0
+  for (const match of text.matchAll(INLINE_MD_REGEX)) {
+    const token = match[0]
+    const index = match.index ?? 0
+    if (index > lastIndex) {
+      nodes.push(
+        <span key={`${keyPrefix}-text-${matchIndex}`}>{text.slice(lastIndex, index)}</span>
+      )
+    }
+    if (token.startsWith('**') && token.endsWith('**')) {
+      nodes.push(
+        <strong key={`${keyPrefix}-bold-${matchIndex}`}>{token.slice(2, -2)}</strong>
+      )
+    } else if (token.startsWith('*') && token.endsWith('*')) {
+      nodes.push(<em key={`${keyPrefix}-italic-${matchIndex}`}>{token.slice(1, -1)}</em>)
+    } else if (token.startsWith('`') && token.endsWith('`')) {
+      nodes.push(
+        <code
+          key={`${keyPrefix}-code-${matchIndex}`}
+          className={cn(
+            'rounded px-1 py-0.5 text-[0.9em]',
+            isDark ? 'bg-white/10 text-gray-200' : 'bg-gray-200 text-gray-800'
+          )}
+        >
+          {token.slice(1, -1)}
+        </code>
+      )
+    } else if (token.startsWith('[')) {
+      const parts = token.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/)
+      if (parts) {
+        nodes.push(
+          <a
+            key={`${keyPrefix}-link-${matchIndex}`}
+            href={parts[2]}
+            target="_blank"
+            rel="noreferrer"
+            className={cn(
+              'font-semibold underline underline-offset-2',
+              isDark ? 'text-blue-300 hover:text-blue-200' : 'text-blue-700 hover:text-blue-800'
+            )}
+          >
+            {parts[1]}
+          </a>
+        )
+      } else {
+        nodes.push(<span key={`${keyPrefix}-raw-${matchIndex}`}>{token}</span>)
+      }
+    } else {
+      nodes.push(<span key={`${keyPrefix}-raw-${matchIndex}`}>{token}</span>)
+    }
+    lastIndex = index + token.length
+    matchIndex += 1
+  }
+  if (lastIndex < text.length) {
+    nodes.push(<span key={`${keyPrefix}-tail`}>{text.slice(lastIndex)}</span>)
+  }
+  return nodes
+}
+
+const renderDescriptionMarkdown = (value: string, isDark: boolean): ReactNode => {
+  const lines = value.split('\n')
+  const blocks: ReactNode[] = []
+  let i = 0
+  while (i < lines.length) {
+    const raw = lines[i]
+    const line = raw.trimEnd()
+    if (!line.trim()) {
+      i += 1
+      continue
+    }
+    if (line.startsWith('- ')) {
+      const items: string[] = []
+      while (i < lines.length && lines[i].trimStart().startsWith('- ')) {
+        items.push(lines[i].trimStart().slice(2))
+        i += 1
+      }
+      blocks.push(
+        <ul key={`ul-${i}`} className="list-disc space-y-1 pl-5">
+          {items.map((item, idx) => (
+            <li key={`ul-${i}-${idx}`}>{renderInlineMarkdown(item, isDark, `ul-${i}-${idx}`)}</li>
+          ))}
+        </ul>
+      )
+      continue
+    }
+    if (/^\d+\.\s/.test(line)) {
+      const items: string[] = []
+      while (i < lines.length && /^\d+\.\s/.test(lines[i].trimStart())) {
+        items.push(lines[i].trimStart().replace(/^\d+\.\s/, ''))
+        i += 1
+      }
+      blocks.push(
+        <ol key={`ol-${i}`} className="list-decimal space-y-1 pl-5">
+          {items.map((item, idx) => (
+            <li key={`ol-${i}-${idx}`}>{renderInlineMarkdown(item, isDark, `ol-${i}-${idx}`)}</li>
+          ))}
+        </ol>
+      )
+      continue
+    }
+    if (line.startsWith('> ')) {
+      blocks.push(
+        <blockquote
+          key={`quote-${i}`}
+          className={cn(
+            'border-l-2 pl-3 italic',
+            isDark ? 'border-[#F2C94C]/60 text-gray-300' : 'border-[#F2C94C] text-gray-700'
+          )}
+        >
+          {renderInlineMarkdown(line.slice(2), isDark, `quote-${i}`)}
+        </blockquote>
+      )
+      i += 1
+      continue
+    }
+    blocks.push(
+      <p key={`p-${i}`} className="leading-relaxed">
+        {renderInlineMarkdown(line, isDark, `p-${i}`)}
+      </p>
+    )
+    i += 1
+  }
+  return <div className="space-y-2">{blocks}</div>
+}
+
 type KanbanTarefa = DatabaseProjetoRealKanbanTarefa & {
   assignees?: Array<{ user_id: string; name: string; avatar_url?: string | null }>
   commentsCount?: number
@@ -103,6 +233,9 @@ export default function ProjetoKanbanPage() {
   const [createMemberSearch, setCreateMemberSearch] = useState('')
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null)
   const [dragOverColuna, setDragOverColuna] = useState<ProjetoRealKanbanColuna | null>(null)
+  const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null)
+  const [dragOverPosition, setDragOverPosition] = useState<'before' | 'after'>('after')
+  const [lastDroppedTaskId, setLastDroppedTaskId] = useState<string | null>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [showLabelsMenu, setShowLabelsMenu] = useState(false)
   const [showPlataformasMenu, setShowPlataformasMenu] = useState(false)
@@ -118,6 +251,7 @@ export default function ProjetoKanbanPage() {
   const [selectedPlataformas, setSelectedPlataformas] = useState<string[]>([])
   const [selectedTaskAnexos, setSelectedTaskAnexos] = useState<KanbanAnexo[]>([])
   const [uploadingAttachment, setUploadingAttachment] = useState(false)
+  const descriptionTextareaRef = useRef<HTMLTextAreaElement | null>(null)
   const labelsButtonRef = useRef<HTMLButtonElement | null>(null)
   const plataformasButtonRef = useRef<HTMLButtonElement | null>(null)
   const membersButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -279,27 +413,33 @@ export default function ProjetoKanbanPage() {
     setCreateShowMembersMenu(false)
   }
 
-  const mover = async (tarefaId: string, nextColuna: ProjetoRealKanbanColuna) => {
-    if (!id.trim()) return
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      const token = session?.access_token
-      if (!token) throw new Error('Nao autenticado')
-      const res = await fetch(`/api/aluno/projetos-reais/${encodeURIComponent(id.trim())}/kanban-tarefas/${encodeURIComponent(tarefaId)}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ coluna: nextColuna }),
+  const persistReorder = async (updates: Array<{ id: string; coluna: ProjetoRealKanbanColuna; ordem: number }>) => {
+    if (!id.trim() || updates.length === 0) return
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) throw new Error('Nao autenticado')
+    const results = await Promise.all(
+      updates.map(async (item) => {
+        const res = await fetch(
+          `/api/aluno/projetos-reais/${encodeURIComponent(id.trim())}/kanban-tarefas/${encodeURIComponent(item.id)}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ coluna: item.coluna, ordem: item.ordem }),
+          }
+        )
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(json?.error || 'Nao foi possivel reordenar tarefa')
+        return true
       })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json?.error || 'Nao foi possivel mover tarefa')
-      await load()
-    } catch (e: unknown) {
-      setError((e as Error).message || 'Erro ao mover tarefa')
+    )
+    if (results.length !== updates.length) {
+      throw new Error('Falha ao persistir reordenação')
     }
   }
 
@@ -337,13 +477,72 @@ export default function ProjetoKanbanPage() {
     setDeletingTask(false)
   }
 
-  const onDropColuna = async (nextColuna: ProjetoRealKanbanColuna) => {
+  const onDropDestino = async (
+    nextColuna: ProjetoRealKanbanColuna,
+    targetTaskId?: string,
+    position: 'before' | 'after' = 'after'
+  ) => {
     if (!draggingTaskId) return
     const task = tarefas.find((t) => t.id === draggingTaskId)
     setDragOverColuna(null)
+    setDragOverTaskId(null)
     setDraggingTaskId(null)
-    if (!task || task.coluna === nextColuna) return
-    await mover(task.id, nextColuna)
+    if (!task) return
+    if (targetTaskId && targetTaskId === task.id) return
+
+    const sourceColuna = task.coluna
+    const sourceSemCard = tarefas
+      .filter((t) => t.coluna === sourceColuna && t.id !== task.id)
+      .sort((a, b) => a.ordem - b.ordem)
+    const targetListaBase =
+      sourceColuna === nextColuna
+        ? sourceSemCard
+        : tarefas.filter((t) => t.coluna === nextColuna).sort((a, b) => a.ordem - b.ordem)
+
+    let insertAt = targetListaBase.length
+    if (targetTaskId) {
+      const idx = targetListaBase.findIndex((t) => t.id === targetTaskId)
+      if (idx >= 0) insertAt = position === 'before' ? idx : idx + 1
+    }
+
+    const movedTask: KanbanTarefa = { ...task, coluna: nextColuna }
+    const targetComCard = [...targetListaBase]
+    targetComCard.splice(insertAt, 0, movedTask)
+
+    const nextTarefas = tarefas.map((t) => ({ ...t }))
+    const updates: Array<{ id: string; coluna: ProjetoRealKanbanColuna; ordem: number }> = []
+
+    const applyColuna = (items: KanbanTarefa[], coluna: ProjetoRealKanbanColuna) => {
+      items.forEach((item, idx) => {
+        const current = nextTarefas.find((t) => t.id === item.id)
+        if (!current) return
+        if (current.ordem !== idx || current.coluna !== coluna) {
+          current.ordem = idx
+          current.coluna = coluna
+          updates.push({ id: current.id, coluna, ordem: idx })
+        }
+      })
+    }
+
+    if (sourceColuna === nextColuna) {
+      applyColuna(targetComCard, nextColuna)
+    } else {
+      applyColuna(sourceSemCard, sourceColuna)
+      applyColuna(targetComCard, nextColuna)
+    }
+
+    if (updates.length === 0) return
+    const prev = tarefas
+    setTarefas(nextTarefas)
+    setLastDroppedTaskId(task.id)
+    window.setTimeout(() => setLastDroppedTaskId((curr) => (curr === task.id ? null : curr)), 350)
+    try {
+      await persistReorder(updates)
+    } catch (e: unknown) {
+      setTarefas(prev)
+      setError((e as Error).message || 'Erro ao mover tarefa')
+      await load()
+    }
   }
 
   const selectedTask = useMemo(
@@ -643,6 +842,74 @@ export default function ProjetoKanbanPage() {
     })
   }
 
+  const applyDescriptionFormat = (
+    type: 'bold' | 'italic' | 'bullet' | 'numbered' | 'link' | 'quote' | 'code'
+  ) => {
+    const input = descriptionTextareaRef.current
+    if (!input) return
+    const value = draftDescription
+    const start = input.selectionStart ?? 0
+    const end = input.selectionEnd ?? 0
+    const selected = value.slice(start, end)
+    let nextValue = value
+    let nextStart = start
+    let nextEnd = end
+
+    if (type === 'bold') {
+      const text = selected || 'texto'
+      const insertion = `**${text}**`
+      nextValue = `${value.slice(0, start)}${insertion}${value.slice(end)}`
+      nextStart = start + 2
+      nextEnd = start + 2 + text.length
+    }
+    if (type === 'italic') {
+      const text = selected || 'texto'
+      const insertion = `*${text}*`
+      nextValue = `${value.slice(0, start)}${insertion}${value.slice(end)}`
+      nextStart = start + 1
+      nextEnd = start + 1 + text.length
+    }
+    if (type === 'code') {
+      const text = selected || 'codigo'
+      const insertion = selected.includes('\n') ? `\`\`\`\n${text}\n\`\`\`` : `\`${text}\``
+      nextValue = `${value.slice(0, start)}${insertion}${value.slice(end)}`
+      nextStart = start
+      nextEnd = start + insertion.length
+    }
+    if (type === 'link') {
+      const text = selected || 'texto do link'
+      const insertion = `[${text}](https://)`
+      nextValue = `${value.slice(0, start)}${insertion}${value.slice(end)}`
+      nextStart = start + text.length + 3
+      nextEnd = nextStart + 8
+    }
+    if (type === 'quote') {
+      const text = selected || 'citação'
+      const lines = text.split('\n').map((line) => `> ${line}`)
+      const insertion = lines.join('\n')
+      nextValue = `${value.slice(0, start)}${insertion}${value.slice(end)}`
+      nextStart = start
+      nextEnd = start + insertion.length
+    }
+    if (type === 'bullet' || type === 'numbered') {
+      const text = selected || 'item'
+      const lines = text.split('\n')
+      const insertion =
+        type === 'bullet'
+          ? lines.map((line) => `- ${line}`).join('\n')
+          : lines.map((line, idx) => `${idx + 1}. ${line}`).join('\n')
+      nextValue = `${value.slice(0, start)}${insertion}${value.slice(end)}`
+      nextStart = start
+      nextEnd = start + insertion.length
+    }
+
+    setDraftDescription(nextValue)
+    window.requestAnimationFrame(() => {
+      descriptionTextareaRef.current?.focus()
+      descriptionTextareaRef.current?.setSelectionRange(nextStart, nextEnd)
+    })
+  }
+
   return (
     <section className={cn('min-h-[70vh] pb-16', isDark ? 'bg-[#0e0e0e]' : 'bg-gray-100')}>
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-10">
@@ -758,14 +1025,17 @@ export default function ProjetoKanbanPage() {
                 onDragOver={(e) => {
                   e.preventDefault()
                   if (dragOverColuna !== c.id) setDragOverColuna(c.id)
+                  if (dragOverTaskId !== null) setDragOverTaskId(null)
                 }}
                 onDragLeave={() => {
                   if (dragOverColuna === c.id) setDragOverColuna(null)
+                  if (dragOverTaskId !== null) setDragOverTaskId(null)
                 }}
-                onDrop={() => onDropColuna(c.id)}
+                onDrop={() => onDropDestino(c.id)}
                 className={cn(
                   'rounded-2xl border p-3 transition-colors',
-                  dragOverColuna === c.id && 'border-[#F2C94C]',
+                  dragOverColuna === c.id &&
+                    'border-[#F2C94C] bg-[#F2C94C]/10 ring-2 ring-[#F2C94C]/30',
                   isDark ? 'border-white/10 bg-[#161616]' : 'border-gray-200 bg-white'
                 )}
               >
@@ -775,21 +1045,48 @@ export default function ProjetoKanbanPage() {
                 </div>
                 <div className="space-y-3">
                   {c.items.map((t) => (
-                    <article
-                      key={t.id}
-                      draggable
-                      onDragStart={() => setDraggingTaskId(t.id)}
-                      onDragEnd={() => {
-                        setDraggingTaskId(null)
-                        setDragOverColuna(null)
-                      }}
-                      onClick={() => setSelectedTaskId(t.id)}
-                      className={cn(
-                        'cursor-grab rounded-xl border p-3 active:cursor-grabbing',
-                        draggingTaskId === t.id && 'opacity-60',
-                        isDark ? 'border-white/10 bg-[#0f0f0f]' : 'border-gray-200 bg-gray-50'
-                      )}
-                    >
+                    <div key={t.id} className="space-y-2">
+                      {dragOverTaskId === t.id && dragOverPosition === 'before' ? (
+                        <div
+                          className={cn(
+                            'h-2 rounded-full transition-all duration-150 ease-out',
+                            isDark ? 'bg-[#F2C94C]/45' : 'bg-[#F2C94C]/70'
+                          )}
+                        />
+                      ) : null}
+                      <article
+                        draggable
+                        onDragStart={() => setDraggingTaskId(t.id)}
+                        onDragEnd={() => {
+                          setDraggingTaskId(null)
+                          setDragOverColuna(null)
+                          setDragOverTaskId(null)
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                          const pos = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+                          setDragOverColuna(c.id)
+                          setDragOverTaskId(t.id)
+                          setDragOverPosition(pos)
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          void onDropDestino(c.id, t.id, dragOverPosition)
+                        }}
+                        onClick={() => setSelectedTaskId(t.id)}
+                        className={cn(
+                          'cursor-grab rounded-xl border p-3 transition-all duration-200 ease-out active:cursor-grabbing',
+                          draggingTaskId === t.id && 'scale-[0.98] opacity-60 shadow-lg',
+                          lastDroppedTaskId === t.id &&
+                            (isDark
+                              ? 'scale-[1.01] border-[#F2C94C]/70 shadow-[0_0_0_3px_rgba(242,201,76,0.25)]'
+                              : 'scale-[1.01] border-[#F2C94C] shadow-[0_0_0_3px_rgba(242,201,76,0.35)]'),
+                          isDark ? 'border-white/10 bg-[#0f0f0f]' : 'border-gray-200 bg-gray-50'
+                        )}
+                      >
                       <h3 className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>{t.titulo}</h3>
                       {t.imagem_url ? (
                         <button
@@ -886,7 +1183,16 @@ export default function ProjetoKanbanPage() {
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                    </article>
+                      </article>
+                      {dragOverTaskId === t.id && dragOverPosition === 'after' ? (
+                        <div
+                          className={cn(
+                            'h-2 rounded-full transition-all duration-150 ease-out',
+                            isDark ? 'bg-[#F2C94C]/45' : 'bg-[#F2C94C]/70'
+                          )}
+                        />
+                      ) : null}
+                    </div>
                   ))}
                   {c.items.length === 0 ? (
                     <p className={cn('rounded-xl border border-dashed p-3 text-xs', isDark ? 'border-white/15 text-gray-500' : 'border-gray-300 text-gray-500')}>
@@ -1464,38 +1770,94 @@ export default function ProjetoKanbanPage() {
               ) : null}
               <p className={cn('text-xs uppercase tracking-wide', isDark ? 'text-gray-400' : 'text-gray-500')}>Description</p>
               {isEditingDescription ? (
-                <textarea
-                  autoFocus
-                  value={draftDescription}
-                  onChange={(e) => setDraftDescription(e.target.value)}
-                  onBlur={salvarDescricao}
-                  onKeyDown={(e) => {
-                    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                      e.preventDefault()
-                      void salvarDescricao()
-                    }
-                    if (e.key === 'Escape') {
-                      setDraftDescription(selectedTask.descricao || '')
-                      setIsEditingDescription(false)
-                    }
-                  }}
-                  rows={4}
-                  className={cn(
-                    'mt-1 w-full rounded-lg border px-3 py-2 text-sm',
-                    isDark ? 'border-white/15 bg-black/30 text-white' : 'border-gray-300 bg-white text-gray-900'
-                  )}
-                />
+                <div className="mt-1 space-y-2">
+                  <div
+                    className={cn(
+                      'flex flex-wrap items-center gap-1 rounded-lg border p-1.5',
+                      isDark ? 'border-white/15 bg-black/30' : 'border-gray-300 bg-white'
+                    )}
+                  >
+                    {[
+                      { id: 'bold', icon: Bold, label: 'Negrito' },
+                      { id: 'italic', icon: Italic, label: 'Itálico' },
+                      { id: 'bullet', icon: List, label: 'Lista' },
+                      { id: 'numbered', icon: ListOrdered, label: 'Lista numerada' },
+                      { id: 'link', icon: Link2, label: 'Link' },
+                      { id: 'quote', icon: MessageSquareQuote, label: 'Citação' },
+                      { id: 'code', icon: Code, label: 'Código' },
+                    ].map(({ id, icon: Icon, label }) => (
+                      <button
+                        key={id}
+                        type="button"
+                        title={label}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() =>
+                          applyDescriptionFormat(
+                            id as 'bold' | 'italic' | 'bullet' | 'numbered' | 'link' | 'quote' | 'code'
+                          )
+                        }
+                        className={cn(
+                          'inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors',
+                          isDark
+                            ? 'border-white/15 text-gray-200 hover:bg-white/10'
+                            : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </button>
+                    ))}
+                  </div>
+                  <textarea
+                    ref={descriptionTextareaRef}
+                    autoFocus
+                    value={draftDescription}
+                    onChange={(e) => setDraftDescription(e.target.value)}
+                    onBlur={salvarDescricao}
+                    onKeyDown={(e) => {
+                      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                        e.preventDefault()
+                        void salvarDescricao()
+                      }
+                      if (e.key === 'Escape') {
+                        setDraftDescription(selectedTask.descricao || '')
+                        setIsEditingDescription(false)
+                      }
+                    }}
+                    rows={6}
+                    className={cn(
+                      'w-full rounded-lg border px-3 py-2 text-sm',
+                      isDark ? 'border-white/15 bg-black/30 text-white' : 'border-gray-300 bg-white text-gray-900'
+                    )}
+                  />
+                  <p className={cn('text-[11px]', isDark ? 'text-gray-500' : 'text-gray-500')}>
+                    Use a toolbar para formatar. Pressione Ctrl/Cmd + Enter para salvar.
+                  </p>
+                </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsEditingDescription(true)}
+                <div
                   className={cn(
                     'mt-1 w-full rounded-lg border border-dashed px-3 py-2 text-left text-sm',
-                    isDark ? 'border-white/15 text-gray-200 hover:bg-white/5' : 'border-gray-300 text-gray-800 hover:bg-gray-50'
+                    isDark ? 'border-white/15 text-gray-200' : 'border-gray-300 text-gray-800'
                   )}
                 >
-                  {selectedTask.descricao || 'Adicionar descricao'}
-                </button>
+                  <div className="mb-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingDescription(true)}
+                      className={cn(
+                        'rounded-md px-2.5 py-1 text-xs font-semibold transition-colors',
+                        isDark ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                      )}
+                    >
+                      Editar descrição
+                    </button>
+                  </div>
+                  {selectedTask.descricao ? (
+                    renderDescriptionMarkdown(selectedTask.descricao, isDark)
+                  ) : (
+                    <p className={cn('text-sm', isDark ? 'text-gray-400' : 'text-gray-600')}>Sem descrição.</p>
+                  )}
+                </div>
               )}
             </div>
             {savingAssign ? (
