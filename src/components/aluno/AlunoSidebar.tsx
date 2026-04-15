@@ -167,6 +167,7 @@ export default function AlunoSidebar() {
     if (currentPath === '/aluno/cursos' || currentPath.startsWith('/aluno/cursos/')) return 'marketplace'
     if (currentPath === '/aluno/norte-tech' || currentPath.startsWith('/aluno/norte-tech/')) return 'norte-tech'
     if (currentPath === '/aluno/formacoes/android' || currentPath.startsWith('/aluno/formacoes/android/')) return 'formacao-android'
+    if (currentPath === '/aluno/formacoes/backend' || currentPath.startsWith('/aluno/formacoes/backend/')) return 'formacao-backend'
     return null
   }
 
@@ -857,6 +858,26 @@ export default function AlunoSidebar() {
                   >
                     <BookOpen className="w-5 h-5 flex-shrink-0" />
                     <span className="font-medium">Formação Android</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCursosChildId('formacao-backend')
+                      router.push('/aluno/formacoes/backend')
+                    }}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-lg transition-all group relative px-4 py-2 text-left',
+                      selectedCursosChildId === 'formacao-backend'
+                        ? theme === 'dark'
+                          ? 'text-yellow-400'
+                          : 'text-yellow-900'
+                        : theme === 'dark'
+                          ? 'text-gray-400 hover:text-white hover:bg-white/5'
+                          : 'text-gray-700 hover:text-gray-900 hover:bg-yellow-500/20'
+                    )}
+                  >
+                    <BookOpen className="w-5 h-5 flex-shrink-0" />
+                    <span className="font-medium">Formação Backend</span>
                   </button>
                 </div>
               )}
